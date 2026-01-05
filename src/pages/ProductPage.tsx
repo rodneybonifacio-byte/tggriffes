@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { StoreHeader } from '@/components/store/StoreHeader';
 import { ProductGallery } from '@/components/store/ProductGallery';
@@ -8,7 +8,7 @@ import { useProductBySlug } from '@/hooks/useProducts';
 import { formatPrice } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Minus, Plus, Loader2, ShoppingCart } from 'lucide-react';
+import { ChevronLeft, Plus, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/hooks/useCart';
@@ -98,9 +98,6 @@ const ProductPage = () => {
   const { toast } = useToast();
   const { addItem } = useCart();
 
-  // Track quantities per color+size combination (key: "color|size")
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
-
   // Get unique colors and sizes
   const colors = useMemo(() => {
     if (!product?.product_variants) return [];
@@ -136,41 +133,26 @@ const ProductPage = () => {
     return variant && variant.stock_qty > 0;
   };
 
-  // Get stock for a color+size
-  const getStock = (color: string | null, size: string) => {
+  // Add to cart directly
+  const handleAddToCart = (color: string | null, size: string) => {
     const variant = getVariant(color, size);
-    return variant?.stock_qty || 0;
-  };
-
-  // Create key for quantities map
-  const getKey = (color: string | null, size: string) => `${color || ''}|${size}`;
-
-  // Handle quantity change
-  const handleQuantityChange = (color: string | null, size: string, delta: number) => {
-    const key = getKey(color, size);
-    const currentQty = quantities[key] || 0;
-    const maxStock = getStock(color, size);
-    const newQty = Math.max(0, Math.min(maxStock, currentQty + delta));
-    setQuantities(prev => ({ ...prev, [key]: newQty }));
-  };
-
-  // Calculate totals
-  const totalPieces = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
-  const totalPrice = totalPieces * (product?.price_cents || 0);
-
-  // Get selected items for cart
-  const getSelectedItems = () => {
-    return Object.entries(quantities)
-      .filter(([_, qty]) => qty > 0)
-      .map(([key, qty]) => {
-        const [color, size] = key.split('|');
-        return {
-          color: color || null,
-          size,
-          quantity: qty,
-          variant: getVariant(color || null, size),
-        };
-      });
+    if (!variant || !product) return;
+    
+    addItem({
+      productId: product.id,
+      productName: product.name,
+      variantId: variant.id,
+      size: size,
+      color: color,
+      quantity: 1,
+      unitPriceCents: product.price_cents,
+      imageUrl: product.main_image_url,
+    });
+    
+    toast({
+      title: 'Adicionado ao carrinho!',
+      description: `${product.name} - ${size}${color ? ` (${color})` : ''}`,
+    });
   };
 
   const totalStock = product?.product_variants?.reduce((sum, v) => sum + v.stock_qty, 0) || 0;
@@ -219,7 +201,7 @@ const ProductPage = () => {
             {/* Instruction */}
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
               <p className="text-sm text-amber-800">
-                <span className="font-semibold">ATENÇÃO!</span> Aperte no + para incluir a quantidade de peças desejadas.
+                <span className="font-semibold">ATENÇÃO!</span> Aperte no + para adicionar ao carrinho.
               </p>
             </div>
 
@@ -264,9 +246,6 @@ const ProductPage = () => {
                   {/* Size buttons for this color */}
                   {sizes.map((size) => {
                     const available = isVariantAvailable(color, size);
-                    const key = getKey(color, size);
-                    const currentQty = quantities[key] || 0;
-                    const stock = getStock(color, size);
                     
                     return (
                       <div 
@@ -277,31 +256,12 @@ const ProductPage = () => {
                         )}
                       >
                         {available ? (
-                          currentQty > 0 ? (
-                            <div className="flex items-center gap-0.5">
-                              <button
-                                onClick={() => handleQuantityChange(color, size, -1)}
-                                className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-secondary transition-colors"
-                              >
-                                <Minus className="h-3 w-3" />
-                              </button>
-                              <span className="w-6 text-center font-semibold text-sm">{currentQty}</span>
-                              <button
-                                onClick={() => handleQuantityChange(color, size, 1)}
-                                disabled={currentQty >= stock}
-                                className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-secondary transition-colors disabled:opacity-50"
-                              >
-                                <Plus className="h-3 w-3" />
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => handleQuantityChange(color, size, 1)}
-                              className="w-9 h-9 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-primary hover:bg-primary/5 transition-all"
-                            >
-                              <Plus className="h-4 w-4 text-muted-foreground" />
-                            </button>
-                          )
+                          <button
+                            onClick={() => handleAddToCart(color, size)}
+                            className="w-10 h-10 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-95"
+                          >
+                            <Plus className="h-5 w-5" />
+                          </button>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
@@ -311,52 +271,6 @@ const ProductPage = () => {
                 </div>
               ))}
             </div>
-
-            {/* Order Summary */}
-            <div className="flex items-center justify-between py-3">
-              <span className="text-muted-foreground">
-                {totalPieces} {totalPieces === 1 ? 'peça' : 'peças'}
-              </span>
-              <span className="text-lg font-semibold">{formatPrice(totalPrice)}</span>
-            </div>
-
-            {/* CTA Button */}
-            <Button
-              size="lg"
-              className="w-full h-14"
-              disabled={totalPieces === 0 || isOutOfStock}
-              onClick={() => {
-                const items = getSelectedItems();
-                items.forEach(item => {
-                  if (item.variant) {
-                    addItem({
-                      productId: product.id,
-                      productName: product.name,
-                      variantId: item.variant.id,
-                      size: item.size,
-                      color: item.color,
-                      quantity: item.quantity,
-                      unitPriceCents: product.price_cents,
-                      imageUrl: product.main_image_url,
-                    });
-                  }
-                });
-                toast({
-                  title: 'Adicionado ao carrinho!',
-                  description: `${totalPieces} ${totalPieces === 1 ? 'peça' : 'peças'} de ${product.name}`,
-                });
-                setQuantities({});
-              }}
-            >
-              <ShoppingCart className="h-5 w-5 mr-2" />
-              Continuar comprando
-            </Button>
-
-            {totalPieces === 0 && (
-              <p className="text-sm text-muted-foreground text-center">
-                Selecione a quantidade desejada para continuar
-              </p>
-            )}
           </div>
         </div>
       </main>
