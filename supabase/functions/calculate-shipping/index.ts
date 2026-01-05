@@ -132,17 +132,23 @@ async function calculateShipping(params: ShippingRequest): Promise<ShippingOptio
     }
   }
 
-  // Se não houver opções, retornar mock para não quebrar a experiência
+  // Se não houver opções dos Correios, retornar fallback
   if (options.length === 0) {
     console.log('No shipping options returned, using fallback');
-    return [
+    options.push(
       { service: 'PAC', price: 1990, deadline: 8 },
       { service: 'SEDEX', price: 2990, deadline: 3 },
-    ];
+    );
   }
 
-  // Ordenar por preço
+  // Ordenar por preço (opções com preço)
   options.sort((a, b) => a.price - b.price);
+
+  // Adicionar opções alternativas sem valor
+  options.push(
+    { service: 'Ônibus', price: 0, deadline: 0 },
+    { service: 'A combinar', price: 0, deadline: 0 },
+  );
 
   return options;
 }

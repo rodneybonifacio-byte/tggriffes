@@ -132,11 +132,17 @@ export function ShippingCalculator({
             >
               <div className="text-left">
                 <p className="font-medium">{option.service}</p>
-                <p className="text-sm text-muted-foreground">
-                  {option.deadline === 1 ? '1 dia útil' : `${option.deadline} dias úteis`}
-                </p>
+                {option.deadline > 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {option.deadline === 1 ? '1 dia útil' : `${option.deadline} dias úteis`}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Prazo a combinar</p>
+                )}
               </div>
-              <span className="font-semibold">{formatPrice(option.price)}</span>
+              <span className="font-semibold">
+                {option.price > 0 ? formatPrice(option.price) : 'A combinar'}
+              </span>
             </button>
           ))}
         </div>
