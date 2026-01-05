@@ -240,7 +240,7 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <div className="group block animate-fade-in">
+    <div className="group block animate-fade-in bg-card rounded-xl border border-border/50 p-2 pb-3 shadow-sm">
       <div 
         className="relative aspect-square overflow-hidden rounded-xl bg-secondary"
         onTouchStart={handleTouchStart}
