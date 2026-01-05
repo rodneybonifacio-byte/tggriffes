@@ -5,7 +5,7 @@ import { formatPrice } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Minus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
@@ -88,7 +88,7 @@ const findColorHex = (colorName: string): string => {
 };
 
 export function ProductCard({ product }: ProductCardProps) {
-  const { addItem, getQuantityForVariant } = useCart();
+  const { addItem, getQuantityForVariant, items, updateQuantity, removeItem } = useCart();
   const { toast } = useToast();
   
   const variants = product.product_variants || [];
@@ -173,6 +173,29 @@ export function ProductCard({ product }: ProductCardProps) {
     
     toast({
       title: 'Adicionado!',
+      description: `${product.name} - ${size}${color ? ` (${color})` : ''}`,
+    });
+  };
+
+  // Remove from cart
+  const handleRemoveFromCart = (e: React.MouseEvent, color: string | null, size: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const variant = getVariant(color, size);
+    if (!variant) return;
+    
+    const cartItem = items.find(i => i.variantId === variant.id);
+    if (!cartItem) return;
+    
+    if (cartItem.quantity <= 1) {
+      removeItem(cartItem.id);
+    } else {
+      updateQuantity(cartItem.id, cartItem.quantity - 1);
+    }
+    
+    toast({
+      title: 'Removido',
       description: `${product.name} - ${size}${color ? ` (${color})` : ''}`,
     });
   };
@@ -311,12 +334,23 @@ export function ProductCard({ product }: ProductCardProps) {
                     >
                       {available ? (
                         quantityInCart > 0 ? (
-                          <button
-                            onClick={(e) => handleAddToCart(e, color, size)}
-                            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all active:scale-90 active:bg-green-600"
-                          >
-                            {quantityInCart}
-                          </button>
+                          <div className="flex items-center gap-0.5">
+                            <button
+                              onClick={(e) => handleRemoveFromCart(e, color, size)}
+                              className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                            >
+                              <Minus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                            </button>
+                            <span className="w-4 text-center text-[10px] sm:text-xs font-bold text-green-600">
+                              {quantityInCart}
+                            </span>
+                            <button
+                              onClick={(e) => handleAddToCart(e, color, size)}
+                              className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
+                            >
+                              <Plus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                            </button>
+                          </div>
                         ) : (
                           <button
                             onClick={(e) => handleAddToCart(e, color, size)}
