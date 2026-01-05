@@ -319,7 +319,7 @@ export function ProductCard({ product }: ProductCardProps) {
         </p>
 
         {!isOutOfStock && (
-          <div className="space-y-2 pt-1" onClick={(e) => e.stopPropagation()}>
+          <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
             {/* Colors */}
             {colors.length > 0 && (
               <div className="space-y-1">
