@@ -288,7 +288,9 @@ export function ProductCard({ product }: ProductCardProps) {
               style={{ gridTemplateColumns: colors.length > 0 ? `28px repeat(${sizes.length}, 1fr)` : `repeat(${sizes.length}, 1fr)` }}
             >
               {colors.length > 0 && (
-                <div className="py-1 border-r" />
+                <div className="py-1 border-r flex items-center justify-center text-[8px] text-muted-foreground font-medium">
+                  Cor
+                </div>
               )}
               {sizes.map((size) => (
                 <div key={size} className="text-center py-1 font-medium text-[9px] sm:text-[10px] border-r last:border-r-0">
