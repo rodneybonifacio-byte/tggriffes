@@ -55,13 +55,39 @@ function formatCep(cep: string): string {
   return cep;
 }
 
-async function fetchImage(url: string): Promise<Uint8Array | null> {
+async function fetchImageAsBytes(url: string): Promise<{ bytes: Uint8Array; type: string } | null> {
   try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
+    console.log("[generate-order-pdf] fetching image:", url);
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'image/*',
+      },
+    });
+    
+    if (!response.ok) {
+      console.log("[generate-order-pdf] image fetch failed:", response.status);
+      return null;
+    }
+    
+    const contentType = response.headers.get('content-type') || '';
     const buffer = await response.arrayBuffer();
-    return new Uint8Array(buffer);
-  } catch {
+    const bytes = new Uint8Array(buffer);
+    
+    console.log("[generate-order-pdf] image fetched:", { size: bytes.length, contentType });
+    
+    // Determine type from content-type header or URL
+    let type = 'unknown';
+    if (contentType.includes('png') || url.toLowerCase().includes('.png')) {
+      type = 'png';
+    } else if (contentType.includes('jpeg') || contentType.includes('jpg') || url.toLowerCase().includes('.jpg') || url.toLowerCase().includes('.jpeg')) {
+      type = 'jpg';
+    } else if (contentType.includes('webp') || url.toLowerCase().includes('.webp')) {
+      type = 'webp';
+    }
+    
+    return { bytes, type };
+  } catch (error) {
+    console.log("[generate-order-pdf] image fetch error:", error);
     return null;
   }
 }
@@ -80,118 +106,127 @@ function resolveUrl(maybeUrl: string | undefined, siteUrl?: string): string | un
 async function generatePDF(order: OrderData): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
   
-  // Calculate page height based on items (compact)
-  const headerHeight = 60;
-  const customerHeight = 50;
-  const itemHeight = 45; // Each item row height
-  const totalsHeight = 70;
-  const footerHeight = 30;
-  const margin = 30;
+  // Page dimensions - A4 width, dynamic height
+  const pageWidth = 595; // A4 width in points
+  const margin = 40;
+  const contentWidth = pageWidth - (margin * 2);
   
-  const contentHeight = headerHeight + customerHeight + (order.items.length * itemHeight) + totalsHeight + footerHeight + 40;
-  const pageHeight = Math.max(400, contentHeight);
-  const pageWidth = 400; // Compact width
+  // Calculate heights
+  const headerHeight = 80;
+  const customerSectionHeight = 60;
+  const itemRowHeight = 70;
+  const itemsHeight = order.items.length * itemRowHeight + 40;
+  const totalsHeight = 100;
+  const footerHeight = 40;
   
-  const page = pdfDoc.addPage([pageWidth, pageHeight]);
+  const pageHeight = headerHeight + customerSectionHeight + itemsHeight + totalsHeight + footerHeight + 60;
+  
+  const page = pdfDoc.addPage([pageWidth, Math.max(500, pageHeight)]);
   
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
   
   const black = rgb(0, 0, 0);
-  const gray = rgb(0.5, 0.5, 0.5);
-  const lightGray = rgb(0.95, 0.95, 0.95);
+  const gray = rgb(0.4, 0.4, 0.4);
+  const lightGray = rgb(0.85, 0.85, 0.85);
+  const orange = rgb(0.95, 0.6, 0.1);
   
-  let y = pageHeight - margin;
+  let y = page.getHeight() - margin;
   
-  // White header with logo
-  page.drawRectangle({
-    x: 0,
-    y: pageHeight - headerHeight,
-    width: pageWidth,
-    height: headerHeight,
-    color: rgb(1, 1, 1),
-  });
-  
-  // Try to embed logo
+  // ========== HEADER SECTION ==========
+  // Logo on the left
   const logoUrl = resolveUrl(order.logoUrl, order.siteUrl);
   let logoEmbedded = false;
   
   if (logoUrl) {
     try {
-      const logoBytes = await fetchImage(logoUrl);
-      if (logoBytes) {
-        let logoImage;
-        if (logoUrl.toLowerCase().includes('.png')) {
-          logoImage = await pdfDoc.embedPng(logoBytes);
-        } else {
-          logoImage = await pdfDoc.embedJpg(logoBytes);
-        }
-        
-        const logoHeight = 35;
+      const imageData = await fetchImageAsBytes(logoUrl);
+      if (imageData && imageData.type === 'png') {
+        const logoImage = await pdfDoc.embedPng(imageData.bytes);
+        const logoHeight = 45;
         const logoWidth = (logoImage.width / logoImage.height) * logoHeight;
         
         page.drawImage(logoImage, {
           x: margin,
-          y: pageHeight - margin - logoHeight,
+          y: y - logoHeight,
+          width: logoWidth,
+          height: logoHeight,
+        });
+        logoEmbedded = true;
+      } else if (imageData && imageData.type === 'jpg') {
+        const logoImage = await pdfDoc.embedJpg(imageData.bytes);
+        const logoHeight = 45;
+        const logoWidth = (logoImage.width / logoImage.height) * logoHeight;
+        
+        page.drawImage(logoImage, {
+          x: margin,
+          y: y - logoHeight,
           width: logoWidth,
           height: logoHeight,
         });
         logoEmbedded = true;
       }
     } catch (e) {
-      console.log("Could not embed logo:", e);
+      console.log("[generate-order-pdf] logo embed error:", e);
     }
   }
   
   if (!logoEmbedded) {
-    page.drawText("TG GRIFFES", {
+    page.drawText("LOJA ATACADO TG GRIFFES", {
       x: margin,
-      y: pageHeight - margin - 20,
+      y: y - 30,
       size: 18,
       font: fontBold,
       color: black,
     });
   }
   
-  // Order number on the right
+  // Order number on the right - big and prominent
   const orderLabel = order.orderNumber ? `#${order.orderNumber}` : "";
   if (orderLabel) {
-    const labelWidth = fontBold.widthOfTextAtSize(orderLabel, 16);
+    const labelWidth = fontBold.widthOfTextAtSize(orderLabel, 24);
     page.drawText(orderLabel, {
       x: pageWidth - margin - labelWidth,
-      y: pageHeight - margin - 20,
-      size: 16,
+      y: y - 25,
+      size: 24,
       font: fontBold,
       color: black,
     });
+    
+    // Date below
+    const dateWidth = fontRegular.widthOfTextAtSize(order.orderDate, 10);
+    page.drawText(order.orderDate, {
+      x: pageWidth - margin - dateWidth,
+      y: y - 42,
+      size: 10,
+      font: fontRegular,
+      color: gray,
+    });
   }
   
-  // Date below order number
-  const dateWidth = fontRegular.widthOfTextAtSize(order.orderDate, 10);
-  page.drawText(order.orderDate, {
-    x: pageWidth - margin - dateWidth,
-    y: pageHeight - margin - 35,
-    size: 10,
-    font: fontRegular,
-    color: gray,
-  });
+  y -= headerHeight;
   
   // Divider line
-  y = pageHeight - headerHeight;
   page.drawLine({
-    start: { x: 0, y },
-    end: { x: pageWidth, y },
+    start: { x: margin, y },
+    end: { x: pageWidth - margin, y },
     thickness: 1,
     color: lightGray,
   });
   
-  y -= 15;
+  y -= 20;
   
-  // Customer info (compact, single line)
-  page.drawText(`${order.customerName} • ${formatPhone(order.customerWhatsapp)} • CEP: ${formatCep(order.destCep)}`, {
+  // ========== CUSTOMER SECTION ==========
+  page.drawText("Cliente", { x: margin, y, size: 10, font: fontBold, color: gray });
+  y -= 16;
+  
+  page.drawText(order.customerName, { x: margin, y, size: 12, font: fontBold, color: black });
+  y -= 16;
+  
+  page.drawText(`${formatPhone(order.customerWhatsapp)} • CEP: ${formatCep(order.destCep)}`, {
     x: margin,
     y,
-    size: 9,
+    size: 10,
     font: fontRegular,
     color: gray,
   });
@@ -200,17 +235,32 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
   
   // Divider
   page.drawLine({
-    start: { x: margin, y: y + 10 },
-    end: { x: pageWidth - margin, y: y + 10 },
-    thickness: 0.5,
+    start: { x: margin, y },
+    end: { x: pageWidth - margin, y },
+    thickness: 1,
     color: lightGray,
   });
   
-  // Items with images
+  y -= 25;
+  
+  // ========== ITEMS SECTION ==========
+  page.drawText("Itens do Pedido", { x: margin, y, size: 10, font: fontBold, color: gray });
+  y -= 20;
+  
   for (const item of order.items) {
-    const rowY = y;
-    const imgSize = 35;
-    let imgX = margin;
+    const rowStartY = y;
+    const imgSize = 50;
+    
+    // Draw item background
+    page.drawRectangle({
+      x: margin,
+      y: rowStartY - imgSize - 8,
+      width: contentWidth,
+      height: imgSize + 16,
+      color: rgb(0.98, 0.98, 0.98),
+      borderColor: lightGray,
+      borderWidth: 0.5,
+    });
     
     // Try to embed product image
     const productImageUrl = resolveUrl(item.imageUrl, order.siteUrl);
@@ -218,21 +268,21 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
     
     if (productImageUrl) {
       try {
-        const imgBytes = await fetchImage(productImageUrl);
-        if (imgBytes) {
-          let productImage;
-          if (productImageUrl.toLowerCase().includes('.png')) {
-            productImage = await pdfDoc.embedPng(imgBytes);
-          } else if (productImageUrl.toLowerCase().includes('.webp')) {
-            // webp not supported, draw placeholder
-          } else {
-            productImage = await pdfDoc.embedJpg(imgBytes);
+        const imageData = await fetchImageAsBytes(productImageUrl);
+        if (imageData) {
+          let productImage = null;
+          
+          if (imageData.type === 'png') {
+            productImage = await pdfDoc.embedPng(imageData.bytes);
+          } else if (imageData.type === 'jpg') {
+            productImage = await pdfDoc.embedJpg(imageData.bytes);
           }
+          // Note: webp is not supported by pdf-lib
           
           if (productImage) {
             page.drawImage(productImage, {
-              x: imgX,
-              y: rowY - imgSize,
+              x: margin + 8,
+              y: rowStartY - imgSize - 4,
               width: imgSize,
               height: imgSize,
             });
@@ -240,115 +290,191 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
           }
         }
       } catch (e) {
-        console.log("Could not embed product image:", e);
+        console.log("[generate-order-pdf] product image error:", e);
       }
     }
     
     if (!imageEmbedded) {
-      // Draw placeholder box
+      // Draw placeholder with icon-like appearance
       page.drawRectangle({
-        x: imgX,
-        y: rowY - imgSize,
+        x: margin + 8,
+        y: rowStartY - imgSize - 4,
         width: imgSize,
         height: imgSize,
-        color: lightGray,
-        borderColor: rgb(0.9, 0.9, 0.9),
+        color: rgb(0.92, 0.92, 0.92),
+        borderColor: lightGray,
         borderWidth: 1,
+      });
+      
+      // Draw simple "image" text in center
+      const placeholderText = "IMG";
+      const placeholderWidth = fontRegular.widthOfTextAtSize(placeholderText, 10);
+      page.drawText(placeholderText, {
+        x: margin + 8 + (imgSize - placeholderWidth) / 2,
+        y: rowStartY - imgSize / 2 - 8,
+        size: 10,
+        font: fontRegular,
+        color: gray,
       });
     }
     
-    const textX = imgX + imgSize + 10;
+    const textX = margin + imgSize + 20;
     
-    // Product name (truncated)
-    const productText = item.productName.length > 25 
-      ? item.productName.substring(0, 22) + "..." 
+    // Product name
+    const productText = item.productName.length > 35 
+      ? item.productName.substring(0, 32) + "..." 
       : item.productName;
     
     page.drawText(productText, {
       x: textX,
-      y: rowY - 12,
-      size: 10,
+      y: rowStartY - 18,
+      size: 11,
       font: fontBold,
       color: black,
     });
     
-    // Size and color
-    const sizeColor = `${item.size}${item.color ? ` • ${item.color}` : ""}`;
-    page.drawText(sizeColor, {
+    // Size and color info
+    const variantText = `${item.color || ''} / ${item.size}`;
+    page.drawText(variantText, {
       x: textX,
-      y: rowY - 24,
-      size: 9,
+      y: rowStartY - 34,
+      size: 10,
       font: fontRegular,
       color: gray,
     });
     
-    // Quantity and price on the right
-    const qtyText = `${item.quantity}x`;
-    const priceText = formatPrice(item.unitPriceCents * item.quantity);
+    // Price, quantity and total on the right side
+    const unitPriceText = formatPrice(item.unitPriceCents);
+    const qtyText = `× ${item.quantity}`;
+    const lineTotalText = formatPrice(item.unitPriceCents * item.quantity);
     
+    // Unit price
+    page.drawText(unitPriceText, {
+      x: pageWidth - margin - 180,
+      y: rowStartY - 18,
+      size: 10,
+      font: fontRegular,
+      color: black,
+    });
+    
+    // Quantity
     page.drawText(qtyText, {
-      x: pageWidth - margin - 80,
-      y: rowY - 12,
+      x: pageWidth - margin - 100,
+      y: rowStartY - 18,
       size: 10,
+      font: fontRegular,
+      color: gray,
+    });
+    
+    // Line total (right aligned)
+    const lineTotalWidth = fontBold.widthOfTextAtSize(lineTotalText, 11);
+    page.drawText(lineTotalText, {
+      x: pageWidth - margin - 8 - lineTotalWidth,
+      y: rowStartY - 18,
+      size: 11,
       font: fontBold,
       color: black,
     });
     
-    const priceWidth = fontBold.widthOfTextAtSize(priceText, 10);
-    page.drawText(priceText, {
-      x: pageWidth - margin - priceWidth,
-      y: rowY - 12,
-      size: 10,
-      font: fontBold,
-      color: black,
-    });
-    
-    y -= itemHeight;
-    
-    // Separator line
-    page.drawLine({
-      start: { x: margin, y: y + 5 },
-      end: { x: pageWidth - margin, y: y + 5 },
-      thickness: 0.5,
-      color: lightGray,
-    });
+    y = rowStartY - imgSize - 20;
   }
   
   y -= 10;
   
-  // Totals section (compact)
-  const totalsX = pageWidth - margin - 150;
+  // Divider before totals
+  page.drawLine({
+    start: { x: margin, y },
+    end: { x: pageWidth - margin, y },
+    thickness: 1,
+    color: lightGray,
+  });
+  
+  y -= 25;
+  
+  // ========== TOTALS SECTION ==========
+  const totalsLabelX = pageWidth - margin - 200;
+  const totalsValueX = pageWidth - margin - 8;
   
   // Subtotal
-  page.drawText("Subtotal:", { x: totalsX, y, size: 9, font: fontRegular, color: gray });
+  const itemsCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  page.drawText(`Subtotal (${itemsCount} ${itemsCount === 1 ? 'item' : 'itens'})`, {
+    x: totalsLabelX,
+    y,
+    size: 10,
+    font: fontRegular,
+    color: gray,
+  });
   const subtotalText = formatPrice(order.subtotalCents);
-  const subtotalWidth = fontRegular.widthOfTextAtSize(subtotalText, 9);
-  page.drawText(subtotalText, { x: pageWidth - margin - subtotalWidth, y, size: 9, font: fontRegular, color: black });
-  
-  y -= 14;
-  
-  // Shipping
-  const shippingLabel = `Frete (${order.shippingService}):`;
-  page.drawText(shippingLabel, { x: totalsX, y, size: 9, font: fontRegular, color: gray });
-  const shippingText = formatPrice(order.shippingPriceCents);
-  const shippingWidth = fontRegular.widthOfTextAtSize(shippingText, 9);
-  page.drawText(shippingText, { x: pageWidth - margin - shippingWidth, y, size: 9, font: fontRegular, color: black });
+  const subtotalWidth = fontRegular.widthOfTextAtSize(subtotalText, 10);
+  page.drawText(subtotalText, {
+    x: totalsValueX - subtotalWidth,
+    y,
+    size: 10,
+    font: fontRegular,
+    color: black,
+  });
   
   y -= 18;
   
-  // Total line
+  // Shipping
+  const shippingLabel = `Frete (${order.shippingService})`;
+  page.drawText(shippingLabel, {
+    x: totalsLabelX,
+    y,
+    size: 10,
+    font: fontRegular,
+    color: gray,
+  });
+  const shippingText = formatPrice(order.shippingPriceCents);
+  const shippingWidth = fontRegular.widthOfTextAtSize(shippingText, 10);
+  page.drawText(shippingText, {
+    x: totalsValueX - shippingWidth,
+    y,
+    size: 10,
+    font: fontRegular,
+    color: black,
+  });
+  
+  y -= 22;
+  
+  // Total line separator
   page.drawLine({
-    start: { x: totalsX, y: y + 8 },
+    start: { x: totalsLabelX, y: y + 8 },
     end: { x: pageWidth - margin, y: y + 8 },
     thickness: 1,
     color: black,
   });
   
-  // Total
-  page.drawText("TOTAL:", { x: totalsX, y, size: 12, font: fontBold, color: black });
+  // TOTAL
+  page.drawText("Total", {
+    x: totalsLabelX,
+    y,
+    size: 14,
+    font: fontBold,
+    color: black,
+  });
   const totalText = formatPrice(order.totalCents);
-  const totalWidth = fontBold.widthOfTextAtSize(totalText, 12);
-  page.drawText(totalText, { x: pageWidth - margin - totalWidth, y, size: 12, font: fontBold, color: black });
+  const totalWidth = fontBold.widthOfTextAtSize(totalText, 14);
+  page.drawText(totalText, {
+    x: totalsValueX - totalWidth,
+    y,
+    size: 14,
+    font: fontBold,
+    color: black,
+  });
+  
+  y -= 40;
+  
+  // ========== FOOTER ==========
+  const footerText = "Loja Atacado TG Griffes • Streetwear Premium";
+  const footerWidth = fontRegular.widthOfTextAtSize(footerText, 9);
+  page.drawText(footerText, {
+    x: (pageWidth - footerWidth) / 2,
+    y: margin,
+    size: 9,
+    font: fontRegular,
+    color: gray,
+  });
   
   return await pdfDoc.save();
 }
@@ -365,6 +491,16 @@ serve(async (req) => {
       orderNumber: orderData.orderNumber,
       customerName: orderData.customerName,
       items: orderData.items?.length ?? 0,
+      siteUrl: orderData.siteUrl,
+      logoUrl: orderData.logoUrl,
+    });
+    
+    // Log each item's image URL for debugging
+    orderData.items?.forEach((item, idx) => {
+      console.log(`[generate-order-pdf] item ${idx}:`, {
+        name: item.productName,
+        imageUrl: item.imageUrl,
+      });
     });
 
     const pdfBytes = await generatePDF(orderData);
