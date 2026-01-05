@@ -8,7 +8,7 @@ import { useProductBySlug, useProducts } from '@/hooks/useProducts';
 import { formatPrice } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Plus, Loader2, ArrowLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, Plus, Minus, Loader2, ArrowLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/hooks/useCart';
@@ -97,7 +97,7 @@ const ProductPage = () => {
   const { data: product, isLoading } = useProductBySlug(slug);
   const { data: allProducts } = useProducts({ status: 'active' });
   const { toast } = useToast();
-  const { addItem } = useCart();
+  const { addItem, getQuantityForVariant, items, updateQuantity, removeItem } = useCart();
   const navigate = useNavigate();
   
   // Swipe navigation
@@ -157,6 +157,14 @@ const ProductPage = () => {
     setSwipeDirection(null);
   }, [slug]);
 
+  // Track expanded cell for +/- controls
+  const [expandedCell, setExpandedCell] = useState<string | null>(null);
+
+  // Reset expanded cell when product changes
+  useEffect(() => {
+    setExpandedCell(null);
+  }, [slug]);
+
   // Get unique colors and sizes
   const colors = useMemo(() => {
     if (!product?.product_variants) return [];
@@ -209,7 +217,27 @@ const ProductPage = () => {
     });
     
     toast({
-      title: 'Adicionado ao carrinho!',
+      title: 'Adicionado!',
+      description: `${product.name} - ${size}${color ? ` (${color})` : ''}`,
+    });
+  };
+
+  // Remove from cart
+  const handleRemoveFromCart = (color: string | null, size: string) => {
+    const variant = getVariant(color, size);
+    if (!variant) return;
+    
+    const cartItem = items.find(i => i.variantId === variant.id);
+    if (!cartItem) return;
+    
+    if (cartItem.quantity <= 1) {
+      removeItem(cartItem.id);
+    } else {
+      updateQuantity(cartItem.id, cartItem.quantity - 1);
+    }
+    
+    toast({
+      title: 'Removido',
       description: `${product.name} - ${size}${color ? ` (${color})` : ''}`,
     });
   };
@@ -375,6 +403,10 @@ const ProductPage = () => {
                   {/* Size buttons for this color */}
                   {sizes.map((size) => {
                     const available = isVariantAvailable(color, size);
+                    const variant = getVariant(color, size);
+                    const quantityInCart = variant ? getQuantityForVariant(variant.id) : 0;
+                    const cellKey = `${color || ''}|${size}`;
+                    const isExpanded = expandedCell === cellKey;
                     
                     return (
                       <div 
@@ -385,12 +417,47 @@ const ProductPage = () => {
                         )}
                       >
                         {available ? (
-                          <button
-                            onClick={() => handleAddToCart(color, size)}
-                            className="w-10 h-10 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-95"
-                          >
-                            <Plus className="h-5 w-5" />
-                          </button>
+                          quantityInCart > 0 ? (
+                            isExpanded ? (
+                              // Expanded: show +/- controls
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => {
+                                    handleRemoveFromCart(color, size);
+                                    const newQty = quantityInCart - 1;
+                                    if (newQty <= 0) setExpandedCell(null);
+                                  }}
+                                  className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </button>
+                                <span className="w-6 text-center text-sm font-bold text-green-600">
+                                  {quantityInCart}
+                                </span>
+                                <button
+                                  onClick={() => handleAddToCart(color, size)}
+                                  className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              // Collapsed: show quantity badge
+                              <button
+                                onClick={() => setExpandedCell(cellKey)}
+                                className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold transition-all active:scale-90"
+                              >
+                                {quantityInCart}
+                              </button>
+                            )
+                          ) : (
+                            <button
+                              onClick={() => handleAddToCart(color, size)}
+                              className="w-10 h-10 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-95"
+                            >
+                              <Plus className="h-5 w-5" />
+                            </button>
+                          )
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
