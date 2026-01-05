@@ -92,9 +92,9 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <StoreHeader onSearch={handleSearch} searchValue={search} />
 
-      <main className="container py-6">
-        <div className="flex gap-8">
-          {/* Filters */}
+      <main className="container py-4 md:py-6">
+        {/* Mobile: Filters + Sort in one row */}
+        <div className="flex items-center justify-between gap-3 mb-4 lg:hidden">
           <ProductFilters
             categories={categories}
             selectedCategory={selectedCategory}
@@ -108,17 +108,51 @@ const Index = () => {
             onInStockChange={setInStockOnly}
             onClearFilters={clearFilters}
           />
+          
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{filteredProducts.length}</span>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-32 h-9 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="relevance">Relevância</SelectItem>
+                <SelectItem value="newest">Mais recentes</SelectItem>
+                <SelectItem value="price-asc">Menor preço</SelectItem>
+                <SelectItem value="price-desc">Maior preço</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="flex gap-8">
+          {/* Desktop Filters */}
+          <div className="hidden lg:block">
+            <ProductFilters
+              categories={categories}
+              selectedCategory={selectedCategory}
+              selectedSizes={selectedSizes}
+              priceRange={priceRange}
+              maxPrice={maxPrice}
+              inStockOnly={inStockOnly}
+              onCategoryChange={handleCategoryChange}
+              onSizeChange={setSelectedSizes}
+              onPriceChange={setPriceRange}
+              onInStockChange={setInStockOnly}
+              onClearFilters={clearFilters}
+            />
+          </div>
 
           {/* Products Grid */}
           <div className="flex-1">
-            {/* Sort & Results Count */}
-            <div className="flex items-center justify-between mb-6">
+            {/* Desktop Sort & Results Count */}
+            <div className="hidden lg:flex items-center justify-between mb-6">
               <p className="text-sm text-muted-foreground">
                 {filteredProducts.length} produto{filteredProducts.length !== 1 ? 's' : ''}
               </p>
               
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground hidden sm:inline">Ordenar:</span>
+                <span className="text-sm text-muted-foreground">Ordenar:</span>
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="w-40">
                     <SelectValue />
@@ -145,7 +179,7 @@ const Index = () => {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 {filteredProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}

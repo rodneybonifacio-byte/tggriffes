@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, TouchEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { Product } from '@/hooks/useProducts';
 import { formatPrice } from '@/lib/utils';
@@ -50,6 +50,7 @@ export function ProductCard({ product }: ProductCardProps) {
   }, [product.main_image_url, images]);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
 
   // Get unique colors and sizes
   const colors = useMemo(() => {
@@ -74,16 +75,37 @@ export function ProductCard({ product }: ProductCardProps) {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
 
-  const handlePrevImage = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handlePrevImage = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
   };
 
-  const handleNextImage = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleNextImage = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
     setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+  };
+
+  // Touch handlers for swipe
+  const handleTouchStart = (e: TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: TouchEvent) => {
+    if (touchStartX.current === null || allImages.length <= 1) return;
+    
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX.current - touchEndX;
+    
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) {
+        handleNextImage();
+      } else {
+        handlePrevImage();
+      }
+    }
+    touchStartX.current = null;
   };
 
   // Get available variant based on selection
@@ -154,13 +176,18 @@ export function ProductCard({ product }: ProductCardProps) {
 
   return (
     <div className="group block animate-fade-in">
-      <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-secondary">
+      <div 
+        className="relative aspect-square sm:aspect-[3/4] overflow-hidden rounded-xl bg-secondary"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <Link to={`/produto/${product.slug}`}>
           {allImages.length > 0 ? (
             <img
               src={allImages[currentImageIndex]}
               alt={product.name}
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              draggable={false}
             />
           ) : (
             <div className="h-full w-full flex items-center justify-center text-muted-foreground">
