@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useCategories } from '@/hooks/useProducts';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { getWhatsAppLink } from '@/lib/utils';
+import logoImage from '@/assets/logo.png';
 
 interface StoreHeaderProps {
   onSearch?: (query: string) => void;
@@ -57,9 +58,7 @@ export function StoreHeader({ onSearch, searchValue = '' }: StoreHeaderProps) {
 
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <span className="font-display text-xl md:text-2xl font-bold tracking-tight">
-            {settings?.store_name || 'TGGRIFFES'}
-          </span>
+          <img src={logoImage} alt={settings?.store_name || 'TG GRIFFES'} className="h-10 md:h-12" />
         </Link>
 
         {/* Desktop Search */}
