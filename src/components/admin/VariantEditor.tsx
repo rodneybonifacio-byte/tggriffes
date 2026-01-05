@@ -2,15 +2,30 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Palette } from 'lucide-react';
 
 const DEFAULT_SIZES = ['P', 'M', 'G', 'GG', 'XG'];
+const DEFAULT_COLORS = [
+  { name: 'Preto', value: '#000000' },
+  { name: 'Branco', value: '#FFFFFF' },
+  { name: 'Vermelho', value: '#EF4444' },
+  { name: 'Azul', value: '#3B82F6' },
+  { name: 'Verde', value: '#22C55E' },
+  { name: 'Amarelo', value: '#EAB308' },
+  { name: 'Rosa', value: '#EC4899' },
+  { name: 'Roxo', value: '#A855F7' },
+  { name: 'Laranja', value: '#F97316' },
+  { name: 'Marrom', value: '#92400E' },
+  { name: 'Cinza', value: '#6B7280' },
+  { name: 'Bege', value: '#D4A574' },
+];
 
 export interface VariantData {
   size: string;
+  color?: string;
   stock_qty: number;
   sku?: string;
+  id?: string;
 }
 
 interface VariantEditorProps {
@@ -20,29 +35,91 @@ interface VariantEditorProps {
 
 export function VariantEditor({ variants, onChange }: VariantEditorProps) {
   const [customSize, setCustomSize] = useState('');
+  const [customColor, setCustomColor] = useState('');
+  const [selectedColors, setSelectedColors] = useState<string[]>(() => {
+    const colors = [...new Set(variants.map(v => v.color).filter(Boolean) as string[])];
+    return colors.length > 0 ? colors : [];
+  });
+  const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
+    const sizes = [...new Set(variants.map(v => v.size))];
+    return sizes.length > 0 ? sizes : [];
+  });
 
-  const selectedSizes = new Set(variants.map(v => v.size));
+  // Rebuild variants when sizes or colors change
+  const rebuildVariants = (sizes: string[], colors: string[]) => {
+    const newVariants: VariantData[] = [];
+    
+    if (colors.length === 0) {
+      // No colors selected - just use sizes
+      sizes.forEach(size => {
+        const existing = variants.find(v => v.size === size && !v.color);
+        newVariants.push(existing || { size, stock_qty: 0 });
+      });
+    } else {
+      // Create variant for each size+color combination
+      sizes.forEach(size => {
+        colors.forEach(color => {
+          const existing = variants.find(v => v.size === size && v.color === color);
+          newVariants.push(existing || { size, color, stock_qty: 0 });
+        });
+      });
+    }
+    
+    onChange(newVariants);
+  };
 
   const toggleSize = (size: string) => {
-    if (selectedSizes.has(size)) {
-      onChange(variants.filter(v => v.size !== size));
-    } else {
-      onChange([...variants, { size, stock_qty: 0 }]);
-    }
+    const newSizes = selectedSizes.includes(size)
+      ? selectedSizes.filter(s => s !== size)
+      : [...selectedSizes, size];
+    setSelectedSizes(newSizes);
+    rebuildVariants(newSizes, selectedColors);
+  };
+
+  const toggleColor = (color: string) => {
+    const newColors = selectedColors.includes(color)
+      ? selectedColors.filter(c => c !== color)
+      : [...selectedColors, color];
+    setSelectedColors(newColors);
+    rebuildVariants(selectedSizes, newColors);
   };
 
   const addCustomSize = () => {
-    if (customSize.trim() && !selectedSizes.has(customSize.trim().toUpperCase())) {
+    if (customSize.trim() && !selectedSizes.includes(customSize.trim().toUpperCase())) {
       const newSize = customSize.trim().toUpperCase();
-      onChange([...variants, { size: newSize, stock_qty: 0 }]);
+      const newSizes = [...selectedSizes, newSize];
+      setSelectedSizes(newSizes);
+      rebuildVariants(newSizes, selectedColors);
       setCustomSize('');
     }
   };
 
-  const updateVariant = (size: string, updates: Partial<VariantData>) => {
+  const addCustomColor = () => {
+    if (customColor.trim() && !selectedColors.includes(customColor.trim())) {
+      const newColor = customColor.trim();
+      const newColors = [...selectedColors, newColor];
+      setSelectedColors(newColors);
+      rebuildVariants(selectedSizes, newColors);
+      setCustomColor('');
+    }
+  };
+
+  const removeCustomSize = (size: string) => {
+    const newSizes = selectedSizes.filter(s => s !== size);
+    setSelectedSizes(newSizes);
+    rebuildVariants(newSizes, selectedColors);
+  };
+
+  const removeCustomColor = (color: string) => {
+    const newColors = selectedColors.filter(c => c !== color);
+    setSelectedColors(newColors);
+    rebuildVariants(selectedSizes, newColors);
+  };
+
+  const updateVariant = (size: string, color: string | undefined, updates: Partial<VariantData>) => {
     onChange(
       variants.map(v => 
-        v.size === size ? { ...v, ...updates } : v
+        v.size === size && v.color === color ? { ...v, ...updates } : v
       )
     );
   };
@@ -51,15 +128,28 @@ export function VariantEditor({ variants, onChange }: VariantEditorProps) {
   const sortedVariants = [...variants].sort((a, b) => {
     const indexA = sizeOrder.indexOf(a.size);
     const indexB = sizeOrder.indexOf(b.size);
-    if (indexA === -1 && indexB === -1) return a.size.localeCompare(b.size);
+    if (indexA === -1 && indexB === -1) {
+      const sizeCompare = a.size.localeCompare(b.size);
+      if (sizeCompare !== 0) return sizeCompare;
+      return (a.color || '').localeCompare(b.color || '');
+    }
     if (indexA === -1) return 1;
     if (indexB === -1) return -1;
-    return indexA - indexB;
+    if (indexA !== indexB) return indexA - indexB;
+    return (a.color || '').localeCompare(b.color || '');
   });
 
+  const getColorDisplay = (colorName: string) => {
+    const preset = DEFAULT_COLORS.find(c => c.name === colorName);
+    return preset?.value || '#888888';
+  };
+
+  const customSizes = selectedSizes.filter(s => !DEFAULT_SIZES.includes(s));
+  const customColorsList = selectedColors.filter(c => !DEFAULT_COLORS.find(dc => dc.name === c));
+
   return (
-    <div className="space-y-4">
-      {/* Size Checkboxes */}
+    <div className="space-y-6">
+      {/* Size Selection */}
       <div>
         <Label className="mb-2 block">Tamanhos disponíveis</Label>
         <div className="flex flex-wrap gap-2">
@@ -69,7 +159,7 @@ export function VariantEditor({ variants, onChange }: VariantEditorProps) {
               type="button"
               onClick={() => toggleSize(size)}
               className={`px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
-                selectedSizes.has(size)
+                selectedSizes.includes(size)
                   ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border hover:border-primary'
               }`}
@@ -77,64 +167,128 @@ export function VariantEditor({ variants, onChange }: VariantEditorProps) {
               {size}
             </button>
           ))}
+          {customSizes.map((size) => (
+            <button
+              key={size}
+              type="button"
+              onClick={() => removeCustomSize(size)}
+              className="px-4 py-2 rounded-lg border border-primary bg-primary text-primary-foreground text-sm font-medium flex items-center gap-1"
+            >
+              {size}
+              <X className="h-3 w-3" />
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2 mt-2">
+          <Input
+            placeholder="Tamanho customizado (ex: XXG)"
+            value={customSize}
+            onChange={(e) => setCustomSize(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomSize())}
+            className="max-w-xs"
+          />
+          <Button type="button" variant="outline" size="sm" onClick={addCustomSize}>
+            <Plus className="h-4 w-4 mr-1" />
+            Adicionar
+          </Button>
         </div>
       </div>
 
-      {/* Add Custom Size */}
-      <div className="flex gap-2">
-        <Input
-          placeholder="Tamanho customizado (ex: XXG)"
-          value={customSize}
-          onChange={(e) => setCustomSize(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomSize())}
-        />
-        <Button type="button" variant="outline" onClick={addCustomSize}>
-          <Plus className="h-4 w-4 mr-1" />
-          Adicionar
-        </Button>
+      {/* Color Selection */}
+      <div>
+        <Label className="mb-2 block flex items-center gap-2">
+          <Palette className="h-4 w-4" />
+          Cores disponíveis (opcional)
+        </Label>
+        <div className="flex flex-wrap gap-2">
+          {DEFAULT_COLORS.map((color) => (
+            <button
+              key={color.name}
+              type="button"
+              onClick={() => toggleColor(color.name)}
+              className={`px-3 py-2 rounded-lg border text-sm font-medium transition-all flex items-center gap-2 ${
+                selectedColors.includes(color.name)
+                  ? 'border-primary ring-2 ring-primary ring-offset-1'
+                  : 'border-border hover:border-primary'
+              }`}
+            >
+              <span 
+                className="w-4 h-4 rounded-full border border-border" 
+                style={{ backgroundColor: color.value }}
+              />
+              {color.name}
+            </button>
+          ))}
+          {customColorsList.map((color) => (
+            <button
+              key={color}
+              type="button"
+              onClick={() => removeCustomColor(color)}
+              className="px-3 py-2 rounded-lg border border-primary ring-2 ring-primary ring-offset-1 text-sm font-medium flex items-center gap-2"
+            >
+              <span className="w-4 h-4 rounded-full bg-muted border border-border" />
+              {color}
+              <X className="h-3 w-3" />
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2 mt-2">
+          <Input
+            placeholder="Cor customizada (ex: Vinho)"
+            value={customColor}
+            onChange={(e) => setCustomColor(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomColor())}
+            className="max-w-xs"
+          />
+          <Button type="button" variant="outline" size="sm" onClick={addCustomColor}>
+            <Plus className="h-4 w-4 mr-1" />
+            Adicionar
+          </Button>
+        </div>
       </div>
 
       {/* Variant Details */}
       {sortedVariants.length > 0 && (
         <div className="space-y-3 pt-4 border-t">
-          <Label>Estoque por tamanho</Label>
+          <Label>Estoque por variação</Label>
           {sortedVariants.map((variant) => (
-            <div key={variant.size} className="flex items-center gap-4 p-3 bg-secondary/50 rounded-lg">
-              <span className="font-medium w-12">{variant.size}</span>
+            <div key={`${variant.size}-${variant.color || 'no-color'}`} className="flex items-center gap-4 p-3 bg-secondary/50 rounded-lg flex-wrap">
+              <div className="flex items-center gap-2 min-w-[100px]">
+                <span className="font-medium">{variant.size}</span>
+                {variant.color && (
+                  <>
+                    <span className="text-muted-foreground">/</span>
+                    <span 
+                      className="w-4 h-4 rounded-full border border-border" 
+                      style={{ backgroundColor: getColorDisplay(variant.color) }}
+                    />
+                    <span className="text-sm">{variant.color}</span>
+                  </>
+                )}
+              </div>
               
-              <div className="flex-1 flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground">Estoque:</Label>
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground whitespace-nowrap">Estoque:</Label>
                 <Input
                   type="number"
                   min={0}
                   value={variant.stock_qty}
-                  onChange={(e) => updateVariant(variant.size, { 
+                  onChange={(e) => updateVariant(variant.size, variant.color, { 
                     stock_qty: Math.max(0, parseInt(e.target.value) || 0) 
                   })}
                   className="w-20"
                 />
               </div>
 
-              <div className="flex-1 flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Label className="text-sm text-muted-foreground">SKU:</Label>
                 <Input
                   placeholder="Opcional"
                   value={variant.sku || ''}
-                  onChange={(e) => updateVariant(variant.size, { sku: e.target.value })}
+                  onChange={(e) => updateVariant(variant.size, variant.color, { sku: e.target.value })}
                   className="w-32"
                 />
               </div>
-
-              {!DEFAULT_SIZES.includes(variant.size) && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onChange(variants.filter(v => v.size !== variant.size))}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
             </div>
           ))}
         </div>
