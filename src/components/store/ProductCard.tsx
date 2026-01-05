@@ -257,54 +257,64 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="space-y-2 pt-2" onClick={(e) => e.stopPropagation()}>
             {/* Colors */}
             {colors.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {colors.map((color) => (
-                  <button
-                    key={color}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setSelectedColor(color);
-                      setSelectedSize(null);
-                    }}
-                    className={cn(
-                      "w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 transition-all touch-manipulation",
-                      selectedColor === color ? "ring-2 ring-offset-2 ring-primary scale-110" : "ring-0"
-                    )}
-                    style={{ 
-                      backgroundColor: getColorHex(color),
-                      borderColor: color.toLowerCase() === 'branco' ? '#e5e7eb' : getColorHex(color)
-                    }}
-                    title={color}
-                  />
-                ))}
+              <div className="space-y-1.5">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Cor: {selectedColor && <span className="text-foreground capitalize">{selectedColor}</span>}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {colors.map((color) => (
+                    <button
+                      key={color}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setSelectedColor(color);
+                        setSelectedSize(null);
+                      }}
+                      className={cn(
+                        "w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 transition-all touch-manipulation",
+                        selectedColor === color ? "ring-2 ring-offset-2 ring-primary scale-110" : "ring-0"
+                      )}
+                      style={{ 
+                        backgroundColor: getColorHex(color),
+                        borderColor: color.toLowerCase() === 'branco' ? '#e5e7eb' : getColorHex(color)
+                      }}
+                      title={color}
+                    />
+                  ))}
+                </div>
               </div>
             )}
 
             {/* Sizes */}
-            <div className="flex flex-wrap gap-2">
-              {sizes.map((size) => {
-                const available = isSizeAvailable(size);
-                return (
-                  <button
-                    key={size}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (available) setSelectedSize(size);
-                    }}
-                    disabled={!available}
-                    className={cn(
-                      "min-w-[44px] h-10 sm:min-w-[48px] sm:h-11 px-3 text-sm font-medium rounded-lg border-2 transition-all touch-manipulation",
-                      selectedSize === size 
-                        ? "bg-primary text-primary-foreground border-primary scale-105" 
-                        : available
-                          ? "bg-background border-border hover:border-primary active:scale-95"
-                          : "bg-muted text-muted-foreground border-transparent line-through cursor-not-allowed opacity-50"
-                    )}
-                  >
-                    {size}
-                  </button>
-                );
-              })}
+            <div className="space-y-1.5">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Tamanho: {selectedSize && <span className="text-foreground">{selectedSize}</span>}
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {sizes.map((size) => {
+                  const available = isSizeAvailable(size);
+                  return (
+                    <button
+                      key={size}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (available) setSelectedSize(size);
+                      }}
+                      disabled={!available}
+                      className={cn(
+                        "min-w-[44px] h-10 sm:min-w-[48px] sm:h-11 px-3 text-sm font-medium rounded-lg border-2 transition-all touch-manipulation",
+                        selectedSize === size 
+                          ? "bg-primary text-primary-foreground border-primary scale-105" 
+                          : available
+                            ? "bg-background border-border hover:border-primary active:scale-95"
+                            : "bg-muted text-muted-foreground border-transparent line-through cursor-not-allowed opacity-50"
+                      )}
+                    >
+                      {size}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Quantity + Add to Cart */}
