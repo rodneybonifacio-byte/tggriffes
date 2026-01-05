@@ -103,6 +103,7 @@ export type Database = {
           customer_whatsapp: string | null
           dest_cep: string | null
           id: string
+          order_number: number | null
           seller_user_id: string | null
           shipping_deadline_days: number | null
           shipping_price_cents: number | null
@@ -118,6 +119,7 @@ export type Database = {
           customer_whatsapp?: string | null
           dest_cep?: string | null
           id?: string
+          order_number?: number | null
           seller_user_id?: string | null
           shipping_deadline_days?: number | null
           shipping_price_cents?: number | null
@@ -133,6 +135,7 @@ export type Database = {
           customer_whatsapp?: string | null
           dest_cep?: string | null
           id?: string
+          order_number?: number | null
           seller_user_id?: string | null
           shipping_deadline_days?: number | null
           shipping_price_cents?: number | null
