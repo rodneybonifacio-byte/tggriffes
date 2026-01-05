@@ -7,10 +7,8 @@ import { WhatsAppButton } from '@/components/store/WhatsAppButton';
 import { useProductBySlug } from '@/hooks/useProducts';
 import { formatPrice } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Minus, Plus, Loader2, Check, ShoppingCart } from 'lucide-react';
+import { ChevronLeft, Minus, Plus, Loader2, ShoppingCart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/hooks/useCart';
@@ -100,9 +98,8 @@ const ProductPage = () => {
   const { toast } = useToast();
   const { addItem } = useCart();
 
-  const [selectedColor, setSelectedColor] = useState<string | null>(null);
-  // Track quantities per size
-  const [sizeQuantities, setSizeQuantities] = useState<Record<string, number>>({});
+  // Track quantities per color+size combination (key: "color|size")
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   // Get unique colors and sizes
   const colors = useMemo(() => {
@@ -125,55 +122,55 @@ const ProductPage = () => {
     });
   }, [product?.product_variants]);
 
-  // Set default color when product loads
-  useMemo(() => {
-    if (colors.length > 0 && !selectedColor) {
-      setSelectedColor(colors[0]);
-    }
-  }, [colors, selectedColor]);
-
-  // Get variant for a specific size
-  const getVariant = (size: string) => {
+  // Get variant for a specific color and size
+  const getVariant = (color: string | null, size: string) => {
     if (!product?.product_variants) return null;
     return product.product_variants.find(v => 
-      v.size === size && 
-      (colors.length === 0 || v.color === selectedColor)
+      v.size === size && v.color === color
     );
   };
 
-  // Check if a size is available for the selected color
-  const isSizeAvailable = (size: string) => {
-    const variant = getVariant(size);
+  // Check if a color+size is available
+  const isVariantAvailable = (color: string | null, size: string) => {
+    const variant = getVariant(color, size);
     return variant && variant.stock_qty > 0;
   };
 
-  // Get stock for a size
-  const getStockForSize = (size: string) => {
-    const variant = getVariant(size);
+  // Get stock for a color+size
+  const getStock = (color: string | null, size: string) => {
+    const variant = getVariant(color, size);
     return variant?.stock_qty || 0;
   };
 
-  // Handle quantity change for a size
-  const handleQuantityChange = (size: string, delta: number) => {
-    const currentQty = sizeQuantities[size] || 0;
-    const maxStock = getStockForSize(size);
+  // Create key for quantities map
+  const getKey = (color: string | null, size: string) => `${color || ''}|${size}`;
+
+  // Handle quantity change
+  const handleQuantityChange = (color: string | null, size: string, delta: number) => {
+    const key = getKey(color, size);
+    const currentQty = quantities[key] || 0;
+    const maxStock = getStock(color, size);
     const newQty = Math.max(0, Math.min(maxStock, currentQty + delta));
-    setSizeQuantities(prev => ({ ...prev, [size]: newQty }));
+    setQuantities(prev => ({ ...prev, [key]: newQty }));
   };
 
   // Calculate totals
-  const totalPieces = Object.values(sizeQuantities).reduce((sum, qty) => sum + qty, 0);
+  const totalPieces = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
   const totalPrice = totalPieces * (product?.price_cents || 0);
 
   // Get selected items for cart
   const getSelectedItems = () => {
-    return Object.entries(sizeQuantities)
+    return Object.entries(quantities)
       .filter(([_, qty]) => qty > 0)
-      .map(([size, qty]) => ({
-        size,
-        quantity: qty,
-        variant: getVariant(size),
-      }));
+      .map(([key, qty]) => {
+        const [color, size] = key.split('|');
+        return {
+          color: color || null,
+          size,
+          quantity: qty,
+          variant: getVariant(color || null, size),
+        };
+      });
   };
 
   const totalStock = product?.product_variants?.reduce((sum, v) => sum + v.stock_qty, 0) || 0;
@@ -219,44 +216,6 @@ const ProductPage = () => {
               <p className="text-muted-foreground">{product.description}</p>
             )}
 
-            {/* Color Selector */}
-            {colors.length > 0 && (
-              <div className="space-y-3">
-                <Label className="font-medium">
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Cor: {selectedColor && <span className="text-foreground capitalize">{selectedColor}</span>}
-                  </span>
-                </Label>
-                <div className="flex flex-wrap gap-3">
-                  {colors.map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => {
-                        setSelectedColor(color);
-                        setSizeQuantities({});
-                      }}
-                      className={cn(
-                        "relative w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 transition-all touch-manipulation flex items-center justify-center",
-                        selectedColor === color ? "ring-2 ring-offset-2 ring-green-500 scale-110" : "ring-0"
-                      )}
-                      style={{ 
-                        backgroundColor: getColorHex(color),
-                        borderColor: isLightColor(getColorHex(color)) ? '#1f2937' : getColorHex(color)
-                      }}
-                      title={color}
-                    >
-                      {selectedColor === color && (
-                        <Check className={cn(
-                          "h-5 w-5",
-                          isLightColor(getColorHex(color)) ? "text-gray-800" : "text-white"
-                        )} strokeWidth={3} />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Instruction */}
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
               <p className="text-sm text-amber-800">
@@ -264,10 +223,16 @@ const ProductPage = () => {
               </p>
             </div>
 
-            {/* Size Grid Table */}
+            {/* Size Grid Table with Colors as Rows */}
             <div className="border rounded-lg overflow-hidden">
-              {/* Header */}
-              <div className="grid border-b bg-muted/30" style={{ gridTemplateColumns: `repeat(${sizes.length}, 1fr)` }}>
+              {/* Header - Sizes */}
+              <div 
+                className="grid border-b bg-muted/30" 
+                style={{ gridTemplateColumns: colors.length > 0 ? `60px repeat(${sizes.length}, 1fr)` : `repeat(${sizes.length}, 1fr)` }}
+              >
+                {colors.length > 0 && (
+                  <div className="py-3 border-r" />
+                )}
                 {sizes.map((size) => (
                   <div key={size} className="text-center py-3 font-medium text-sm border-r last:border-r-0">
                     {size}
@@ -275,54 +240,76 @@ const ProductPage = () => {
                 ))}
               </div>
               
-              {/* Buttons Row */}
-              <div className="grid" style={{ gridTemplateColumns: `repeat(${sizes.length}, 1fr)` }}>
-                {sizes.map((size) => {
-                  const available = isSizeAvailable(size);
-                  const currentQty = sizeQuantities[size] || 0;
-                  const stock = getStockForSize(size);
-                  
-                  return (
-                    <div 
-                      key={size} 
-                      className={cn(
-                        "flex flex-col items-center justify-center py-4 border-r last:border-r-0 min-h-[80px]",
-                        !available && "bg-muted/50"
-                      )}
-                    >
-                      {available ? (
-                        currentQty > 0 ? (
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleQuantityChange(size, -1)}
-                              className="w-8 h-8 rounded-full border flex items-center justify-center hover:bg-secondary transition-colors"
-                            >
-                              <Minus className="h-3 w-3" />
-                            </button>
-                            <span className="w-8 text-center font-semibold">{currentQty}</span>
-                            <button
-                              onClick={() => handleQuantityChange(size, 1)}
-                              disabled={currentQty >= stock}
-                              className="w-8 h-8 rounded-full border flex items-center justify-center hover:bg-secondary transition-colors disabled:opacity-50"
-                            >
-                              <Plus className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => handleQuantityChange(size, 1)}
-                            className="w-10 h-10 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-primary hover:bg-primary/5 transition-all"
-                          >
-                            <Plus className="h-4 w-4 text-muted-foreground" />
-                          </button>
-                        )
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
+              {/* Rows - One per color (or single row if no colors) */}
+              {(colors.length > 0 ? colors : [null]).map((color) => (
+                <div 
+                  key={color || 'default'} 
+                  className="grid border-b last:border-b-0"
+                  style={{ gridTemplateColumns: colors.length > 0 ? `60px repeat(${sizes.length}, 1fr)` : `repeat(${sizes.length}, 1fr)` }}
+                >
+                  {/* Color swatch */}
+                  {colors.length > 0 && color && (
+                    <div className="flex items-center justify-center py-4 border-r">
+                      <div 
+                        className="w-8 h-8 rounded-full border-2"
+                        style={{ 
+                          backgroundColor: getColorHex(color),
+                          borderColor: isLightColor(getColorHex(color)) ? '#1f2937' : getColorHex(color)
+                        }}
+                        title={color}
+                      />
                     </div>
-                  );
-                })}
-              </div>
+                  )}
+                  
+                  {/* Size buttons for this color */}
+                  {sizes.map((size) => {
+                    const available = isVariantAvailable(color, size);
+                    const key = getKey(color, size);
+                    const currentQty = quantities[key] || 0;
+                    const stock = getStock(color, size);
+                    
+                    return (
+                      <div 
+                        key={size} 
+                        className={cn(
+                          "flex flex-col items-center justify-center py-4 border-r last:border-r-0 min-h-[70px]",
+                          !available && "bg-muted/50"
+                        )}
+                      >
+                        {available ? (
+                          currentQty > 0 ? (
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                onClick={() => handleQuantityChange(color, size, -1)}
+                                className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-secondary transition-colors"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </button>
+                              <span className="w-6 text-center font-semibold text-sm">{currentQty}</span>
+                              <button
+                                onClick={() => handleQuantityChange(color, size, 1)}
+                                disabled={currentQty >= stock}
+                                className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-secondary transition-colors disabled:opacity-50"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleQuantityChange(color, size, 1)}
+                              className="w-9 h-9 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-primary hover:bg-primary/5 transition-all"
+                            >
+                              <Plus className="h-4 w-4 text-muted-foreground" />
+                            </button>
+                          )
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
 
             {/* Order Summary */}
@@ -347,7 +334,7 @@ const ProductPage = () => {
                       productName: product.name,
                       variantId: item.variant.id,
                       size: item.size,
-                      color: selectedColor,
+                      color: item.color,
                       quantity: item.quantity,
                       unitPriceCents: product.price_cents,
                       imageUrl: product.main_image_url,
@@ -358,7 +345,7 @@ const ProductPage = () => {
                   title: 'Adicionado ao carrinho!',
                   description: `${totalPieces} ${totalPieces === 1 ? 'peça' : 'peças'} de ${product.name}`,
                 });
-                setSizeQuantities({});
+                setQuantities({});
               }}
             >
               <ShoppingCart className="h-5 w-5 mr-2" />
