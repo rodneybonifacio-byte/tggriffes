@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
@@ -271,15 +271,22 @@ export function ProductCard({ product }: ProductCardProps) {
                         setSelectedSize(null);
                       }}
                       className={cn(
-                        "w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 transition-all touch-manipulation",
-                        selectedColor === color ? "ring-2 ring-offset-2 ring-primary scale-110" : "ring-0"
+                        "relative w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 transition-all touch-manipulation flex items-center justify-center",
+                        selectedColor === color ? "ring-2 ring-offset-2 ring-green-500 scale-110" : "ring-0"
                       )}
                       style={{ 
                         backgroundColor: getColorHex(color),
                         borderColor: color.toLowerCase() === 'branco' ? '#e5e7eb' : getColorHex(color)
                       }}
                       title={color}
-                    />
+                    >
+                      {selectedColor === color && (
+                        <Check className={cn(
+                          "h-5 w-5",
+                          ['branco', 'amarelo', 'bege'].includes(color.toLowerCase()) ? "text-gray-800" : "text-white"
+                        )} strokeWidth={3} />
+                      )}
+                    </button>
                   ))}
                 </div>
               </div>
