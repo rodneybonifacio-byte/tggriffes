@@ -370,7 +370,9 @@ const ProductPage = () => {
                 style={{ gridTemplateColumns: colors.length > 0 ? `60px repeat(${sizes.length}, 1fr)` : `repeat(${sizes.length}, 1fr)` }}
               >
                 {colors.length > 0 && (
-                  <div className="py-3 border-r" />
+                  <div className="py-3 border-r flex items-center justify-center text-xs text-muted-foreground font-medium">
+                    Cor
+                  </div>
                 )}
                 {sizes.map((size) => (
                   <div key={size} className="text-center py-3 font-medium text-sm border-r last:border-r-0">
