@@ -16,6 +16,7 @@ interface OrderItem {
 }
 
 interface OrderData {
+  orderNumber?: number;
   customerName: string;
   customerWhatsapp: string;
   destCep: string;
@@ -28,7 +29,6 @@ interface OrderData {
   orderDate: string;
   logoUrl?: string;
   siteUrl?: string;
-  orderId?: string;
 }
 
 function formatPrice(cents: number): string {
@@ -90,13 +90,14 @@ function generateOrderHTML(order: OrderData): string {
     .join("");
 
   const logoUrl = resolveAssetUrl(order.logoUrl, order.siteUrl);
+  const orderNumberLabel = order.orderNumber ? `#${order.orderNumber}` : "";
 
   return `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Pedido - TG GRIFFES</title>
+  <title>Pedido ${orderNumberLabel} - TG GRIFFES</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; padding: 40px; background: #f5f5f5; }
     .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
@@ -104,6 +105,7 @@ function generateOrderHTML(order: OrderData): string {
     .header img { max-height: 60px; margin-bottom: 10px; }
     .header h1 { margin: 0; font-size: 24px; letter-spacing: 2px; }
     .header p { margin: 10px 0 0; opacity: 0.8; font-size: 14px; }
+    .order-number { font-size: 18px; font-weight: bold; margin-top: 8px; }
     .content { padding: 30px; }
     .section { margin-bottom: 25px; }
     .section-title { font-size: 14px; font-weight: bold; color: #333; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
@@ -124,6 +126,7 @@ function generateOrderHTML(order: OrderData): string {
     <div class="header">
       ${logoUrl ? `<img src="${logoUrl}" alt="Logo" />` : "<h1>TG GRIFFES</h1>"}
       <p>Confirmação de Pedido</p>
+      ${order.orderNumber ? `<div class="order-number">Pedido ${orderNumberLabel}</div>` : ""}
     </div>
 
     <div class="content">
@@ -204,8 +207,8 @@ serve(async (req) => {
     const orderData: OrderData = await req.json();
 
     console.log("[generate-order-pdf] start", {
+      orderNumber: orderData.orderNumber,
       customerName: orderData.customerName,
-      destCep: orderData.destCep,
       items: orderData.items?.length ?? 0,
     });
 
@@ -215,14 +218,9 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const customerSlug = (orderData.customerName || "cliente")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "")
-      .slice(0, 24);
-
-    const filePath = `orders/${timestamp}-${customerSlug}.html`;
+    // Use order number for cleaner file naming
+    const orderNum = orderData.orderNumber || Date.now();
+    const filePath = `pedido-${orderNum}.html`;
 
     console.log("[generate-order-pdf] uploading", { bucket: "order-pdfs", filePath });
 
@@ -232,7 +230,7 @@ serve(async (req) => {
       .from("order-pdfs")
       .upload(filePath, bytes, {
         contentType: "text/html; charset=utf-8",
-        upsert: false,
+        upsert: true,
       });
 
     if (uploadError) {
@@ -250,8 +248,8 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         pdfUrl,
-        filePath,
-        message: "PDF HTML generated and uploaded successfully",
+        orderNumber: orderData.orderNumber,
+        message: "PDF generated successfully",
       }),
       {
         headers: {
