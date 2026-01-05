@@ -61,7 +61,17 @@ const AdminProductForm = () => {
       setWidthCm(product.width_cm ? Number(product.width_cm) : undefined);
       setHeightCm(product.height_cm ? Number(product.height_cm) : undefined);
       setMainImage(product.main_image_url || '');
-      setImages(product.product_images?.map(i => i.image_url) || []);
+      
+      // Load images - from product_images table OR fallback to main_image_url
+      const productImages = product.product_images?.map(i => i.image_url) || [];
+      if (productImages.length > 0) {
+        setImages(productImages);
+      } else if (product.main_image_url) {
+        setImages([product.main_image_url]);
+      } else {
+        setImages([]);
+      }
+      
       setVariants(product.product_variants?.map(v => ({
         size: v.size, stock_qty: v.stock_qty, sku: v.sku || undefined, color: v.color || undefined, id: v.id
       })) || []);
@@ -111,6 +121,38 @@ const AdminProductForm = () => {
       } else {
         const newProduct = await createProduct(productData);
         productId = newProduct.id;
+      }
+
+      // Save images
+      if (productId) {
+        // Delete existing images that are no longer in the list
+        if (isEditing && product?.product_images) {
+          for (const existingImage of product.product_images) {
+            const stillExists = images.includes(existingImage.image_url);
+            if (!stillExists) {
+              await supabase.from('product_images').delete().eq('id', existingImage.id);
+            }
+          }
+        }
+        
+        // Add new images
+        const existingUrls = product?.product_images?.map(i => i.image_url) || [];
+        for (let i = 0; i < images.length; i++) {
+          const imageUrl = images[i];
+          if (!existingUrls.includes(imageUrl)) {
+            await supabase.from('product_images').insert({
+              product_id: productId,
+              image_url: imageUrl,
+              sort_order: i,
+            });
+          } else {
+            // Update sort order for existing images
+            await supabase.from('product_images')
+              .update({ sort_order: i })
+              .eq('product_id', productId)
+              .eq('image_url', imageUrl);
+          }
+        }
       }
 
       // Save variants
