@@ -100,9 +100,9 @@ const ProductPage = () => {
   const { toast } = useToast();
   const { addItem } = useCart();
 
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  // Track quantities per size
+  const [sizeQuantities, setSizeQuantities] = useState<Record<string, number>>({});
 
   // Get unique colors and sizes
   const colors = useMemo(() => {
@@ -132,73 +132,52 @@ const ProductPage = () => {
     }
   }, [colors, selectedColor]);
 
-  // Check if a size is available for the selected color
-  const isSizeAvailable = (size: string) => {
-    if (!product?.product_variants) return false;
-    const variant = product.product_variants.find(v => 
+  // Get variant for a specific size
+  const getVariant = (size: string) => {
+    if (!product?.product_variants) return null;
+    return product.product_variants.find(v => 
       v.size === size && 
       (colors.length === 0 || v.color === selectedColor)
     );
+  };
+
+  // Check if a size is available for the selected color
+  const isSizeAvailable = (size: string) => {
+    const variant = getVariant(size);
     return variant && variant.stock_qty > 0;
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <StoreHeader />
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!product) {
-    return (
-      <div className="min-h-screen bg-background">
-        <StoreHeader />
-        <div className="container py-20 text-center">
-          <h1 className="font-display text-2xl font-bold mb-2">Produto não encontrado</h1>
-          <p className="text-muted-foreground mb-4">O produto que você está procurando não existe ou foi removido.</p>
-          <Link to="/">
-            <Button>Voltar para o catálogo</Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const selectedVariant = product.product_variants?.find(v => 
-    v.size === selectedSize && 
-    (colors.length === 0 || v.color === selectedColor)
-  );
-  const maxQuantity = selectedVariant?.stock_qty || 0;
-  const totalStock = product.product_variants?.reduce((sum, v) => sum + v.stock_qty, 0) || 0;
-  const isOutOfStock = totalStock === 0;
-
-  const subtotal = product.price_cents * quantity;
-
-  const canAddToCart = selectedSize && quantity > 0 && !isOutOfStock && selectedVariant;
-
-  const handleAddToCart = () => {
-    if (!canAddToCart || !selectedVariant) return;
-    
-    addItem({
-      productId: product.id,
-      productName: product.name,
-      variantId: selectedVariant.id,
-      size: selectedSize,
-      color: selectedColor,
-      quantity,
-      unitPriceCents: product.price_cents,
-      imageUrl: product.main_image_url,
-    });
-    
-    toast({
-      title: 'Adicionado ao carrinho!',
-      description: `${product.name} (${selectedSize}${selectedColor ? ` - ${selectedColor}` : ''}) x${quantity}`,
-    });
+  // Get stock for a size
+  const getStockForSize = (size: string) => {
+    const variant = getVariant(size);
+    return variant?.stock_qty || 0;
   };
+
+  // Handle quantity change for a size
+  const handleQuantityChange = (size: string, delta: number) => {
+    const currentQty = sizeQuantities[size] || 0;
+    const maxStock = getStockForSize(size);
+    const newQty = Math.max(0, Math.min(maxStock, currentQty + delta));
+    setSizeQuantities(prev => ({ ...prev, [size]: newQty }));
+  };
+
+  // Calculate totals
+  const totalPieces = Object.values(sizeQuantities).reduce((sum, qty) => sum + qty, 0);
+  const totalPrice = totalPieces * (product?.price_cents || 0);
+
+  // Get selected items for cart
+  const getSelectedItems = () => {
+    return Object.entries(sizeQuantities)
+      .filter(([_, qty]) => qty > 0)
+      .map(([size, qty]) => ({
+        size,
+        quantity: qty,
+        variant: getVariant(size),
+      }));
+  };
+
+  const totalStock = product?.product_variants?.reduce((sum, v) => sum + v.stock_qty, 0) || 0;
+  const isOutOfStock = totalStock === 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -254,7 +233,7 @@ const ProductPage = () => {
                       key={color}
                       onClick={() => {
                         setSelectedColor(color);
-                        setSelectedSize(null);
+                        setSizeQuantities({});
                       }}
                       className={cn(
                         "relative w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 transition-all touch-manipulation flex items-center justify-center",
@@ -278,95 +257,117 @@ const ProductPage = () => {
               </div>
             )}
 
-            {/* Size Selector */}
-            <div className="space-y-3">
-              <Label className="font-medium">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Tamanho: {selectedSize && <span className="text-foreground">{selectedSize}</span>}
-                </span>
-                {selectedSize && selectedVariant && (
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    ({selectedVariant.stock_qty} em estoque)
-                  </span>
-                )}
-              </Label>
-              <div className="flex flex-wrap gap-2">
+            {/* Instruction */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+              <p className="text-sm text-amber-800">
+                <span className="font-semibold">ATENÇÃO!</span> Aperte no + para incluir a quantidade de peças desejadas.
+              </p>
+            </div>
+
+            {/* Size Grid Table */}
+            <div className="border rounded-lg overflow-hidden">
+              {/* Header */}
+              <div className="grid border-b bg-muted/30" style={{ gridTemplateColumns: `repeat(${sizes.length}, 1fr)` }}>
+                {sizes.map((size) => (
+                  <div key={size} className="text-center py-3 font-medium text-sm border-r last:border-r-0">
+                    {size}
+                  </div>
+                ))}
+              </div>
+              
+              {/* Buttons Row */}
+              <div className="grid" style={{ gridTemplateColumns: `repeat(${sizes.length}, 1fr)` }}>
                 {sizes.map((size) => {
                   const available = isSizeAvailable(size);
+                  const currentQty = sizeQuantities[size] || 0;
+                  const stock = getStockForSize(size);
+                  
                   return (
-                    <button
-                      key={size}
-                      onClick={() => available && setSelectedSize(size)}
-                      disabled={!available}
+                    <div 
+                      key={size} 
                       className={cn(
-                        "min-w-[52px] h-12 sm:min-w-[56px] sm:h-14 px-4 text-base font-medium rounded-lg border-2 transition-all touch-manipulation",
-                        selectedSize === size 
-                          ? "bg-primary text-primary-foreground border-primary scale-105" 
-                          : available
-                            ? "bg-background border-border hover:border-primary active:scale-95"
-                            : "bg-muted text-muted-foreground border-transparent line-through cursor-not-allowed opacity-50"
+                        "flex flex-col items-center justify-center py-4 border-r last:border-r-0 min-h-[80px]",
+                        !available && "bg-muted/50"
                       )}
                     >
-                      {size}
-                    </button>
+                      {available ? (
+                        currentQty > 0 ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleQuantityChange(size, -1)}
+                              className="w-8 h-8 rounded-full border flex items-center justify-center hover:bg-secondary transition-colors"
+                            >
+                              <Minus className="h-3 w-3" />
+                            </button>
+                            <span className="w-8 text-center font-semibold">{currentQty}</span>
+                            <button
+                              onClick={() => handleQuantityChange(size, 1)}
+                              disabled={currentQty >= stock}
+                              className="w-8 h-8 rounded-full border flex items-center justify-center hover:bg-secondary transition-colors disabled:opacity-50"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleQuantityChange(size, 1)}
+                            className="w-10 h-10 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-primary hover:bg-primary/5 transition-all"
+                          >
+                            <Plus className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        )
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </div>
                   );
                 })}
               </div>
             </div>
 
-            {/* Quantity */}
-            <div className="space-y-3">
-              <Label className="font-medium">Quantidade</Label>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  disabled={quantity <= 1}
-                  onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                >
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <Input
-                  type="number"
-                  min={1}
-                  max={maxQuantity || 99}
-                  value={quantity}
-                  onChange={(e) => setQuantity(Math.max(1, Math.min(maxQuantity || 99, parseInt(e.target.value) || 1)))}
-                  className="w-20 text-center"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  disabled={quantity >= maxQuantity}
-                  onClick={() => setQuantity(q => Math.min(maxQuantity || 99, q + 1))}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
             {/* Order Summary */}
-            <div className="border-t pt-6 space-y-2">
-              <div className="flex justify-between font-semibold text-lg">
-                <span>Total</span>
-                <span>{formatPrice(subtotal)}</span>
-              </div>
+            <div className="flex items-center justify-between py-3">
+              <span className="text-muted-foreground">
+                {totalPieces} {totalPieces === 1 ? 'peça' : 'peças'}
+              </span>
+              <span className="text-lg font-semibold">{formatPrice(totalPrice)}</span>
             </div>
 
             {/* CTA Button */}
             <Button
               size="lg"
               className="w-full h-14"
-              disabled={!canAddToCart}
-              onClick={handleAddToCart}
+              disabled={totalPieces === 0 || isOutOfStock}
+              onClick={() => {
+                const items = getSelectedItems();
+                items.forEach(item => {
+                  if (item.variant) {
+                    addItem({
+                      productId: product.id,
+                      productName: product.name,
+                      variantId: item.variant.id,
+                      size: item.size,
+                      color: selectedColor,
+                      quantity: item.quantity,
+                      unitPriceCents: product.price_cents,
+                      imageUrl: product.main_image_url,
+                    });
+                  }
+                });
+                toast({
+                  title: 'Adicionado ao carrinho!',
+                  description: `${totalPieces} ${totalPieces === 1 ? 'peça' : 'peças'} de ${product.name}`,
+                });
+                setSizeQuantities({});
+              }}
             >
               <ShoppingCart className="h-5 w-5 mr-2" />
-              Adicionar ao carrinho
+              Continuar comprando
             </Button>
 
-            {!selectedSize && (
+            {totalPieces === 0 && (
               <p className="text-sm text-muted-foreground text-center">
-                Selecione um tamanho para continuar
+                Selecione a quantidade desejada para continuar
               </p>
             )}
           </div>
