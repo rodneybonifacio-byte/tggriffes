@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
-import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
+import { PDFDocument, rgb, StandardFonts, PDFPage, PDFFont } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,6 +27,7 @@ interface OrderData {
   shippingPriceCents: number;
   shippingDeadlineDays: number;
   totalCents: number;
+  skipShipping?: boolean;
   orderDate: string;
   logoUrl?: string;
   siteUrl?: string;
@@ -57,9 +58,7 @@ function formatCep(cep: string): string {
 
 // Convert webp images to JPEG using wsrv.nl proxy
 function getConvertedImageUrl(url: string): string {
-  // If it's a webp, convert to JPEG using wsrv.nl
   if (url.toLowerCase().includes('.webp')) {
-    // wsrv.nl is a free image CDN that can convert formats
     return `https://wsrv.nl/?url=${encodeURIComponent(url)}&output=jpg&q=85`;
   }
   return url;
@@ -67,7 +66,6 @@ function getConvertedImageUrl(url: string): string {
 
 async function fetchImageAsBytes(url: string): Promise<{ bytes: Uint8Array; type: string } | null> {
   try {
-    // Convert webp to JPEG if needed
     const convertedUrl = getConvertedImageUrl(url);
     console.log("[generate-order-pdf] fetching image:", convertedUrl);
     
@@ -89,7 +87,6 @@ async function fetchImageAsBytes(url: string): Promise<{ bytes: Uint8Array; type
     
     console.log("[generate-order-pdf] image fetched:", { size: bytes.length, contentType, convertedUrl });
     
-    // Determine type from content-type header or URL
     let type = 'unknown';
     if (contentType.includes('png') || convertedUrl.toLowerCase().includes('.png')) {
       type = 'png';
@@ -117,16 +114,16 @@ function resolveUrl(maybeUrl: string | undefined, siteUrl?: string): string | un
   }
 }
 
+// Constants for layout
+const PAGE_WIDTH = 595;
+const PAGE_HEIGHT = 842;
+const MARGIN = 50;
+const CONTENT_WIDTH = PAGE_WIDTH - (MARGIN * 2);
+const ITEM_HEIGHT = 90; // Height of each item row
+const FOOTER_HEIGHT = 60;
+
 async function generatePDF(order: OrderData): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
-  
-  // A4 dimensions in points (595 x 842)
-  const pageWidth = 595;
-  const pageHeight = 842;
-  const margin = 50;
-  const contentWidth = pageWidth - (margin * 2);
-  
-  const page = pdfDoc.addPage([pageWidth, pageHeight]);
   
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -135,352 +132,403 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
   const gray = rgb(0.45, 0.45, 0.45);
   const lightGray = rgb(0.88, 0.88, 0.88);
   
-  let y = pageHeight - margin;
-  
-  // ========== HEADER SECTION ==========
-  // Logo on the left
+  // Pre-fetch logo image
+  let logoImage: any = null;
   const logoUrl = resolveUrl(order.logoUrl, order.siteUrl);
-  let logoEmbedded = false;
-  
   if (logoUrl) {
     try {
       const imageData = await fetchImageAsBytes(logoUrl);
       if (imageData && (imageData.type === 'png' || imageData.type === 'jpg')) {
-        const logoImage = imageData.type === 'png' 
+        logoImage = imageData.type === 'png' 
           ? await pdfDoc.embedPng(imageData.bytes)
           : await pdfDoc.embedJpg(imageData.bytes);
-        
-        const logoHeight = 50;
-        const logoWidth = (logoImage.width / logoImage.height) * logoHeight;
-        
-        page.drawImage(logoImage, {
-          x: margin,
-          y: y - logoHeight,
-          width: logoWidth,
-          height: logoHeight,
-        });
-        logoEmbedded = true;
       }
     } catch (e) {
       console.log("[generate-order-pdf] logo embed error:", e);
     }
   }
   
-  if (!logoEmbedded) {
-    page.drawText("LOJA ATACADO TG GRIFFES", {
-      x: margin,
-      y: y - 35,
-      size: 20,
-      font: fontBold,
-      color: black,
-    });
-  }
-  
-  // Order number on the right - big and prominent
-  const orderLabel = order.orderNumber ? `Pedido #${order.orderNumber}` : "";
-  if (orderLabel) {
-    const labelWidth = fontBold.widthOfTextAtSize(orderLabel, 18);
-    page.drawText(orderLabel, {
-      x: pageWidth - margin - labelWidth,
-      y: y - 25,
-      size: 18,
-      font: fontBold,
-      color: black,
-    });
-    
-    // Date below
-    const dateWidth = fontRegular.widthOfTextAtSize(order.orderDate, 11);
-    page.drawText(order.orderDate, {
-      x: pageWidth - margin - dateWidth,
-      y: y - 45,
-      size: 11,
-      font: fontRegular,
-      color: gray,
-    });
-  }
-  
-  y -= 80;
-  
-  // Divider line
-  page.drawLine({
-    start: { x: margin, y },
-    end: { x: pageWidth - margin, y },
-    thickness: 1,
-    color: lightGray,
-  });
-  
-  y -= 30;
-  
-  // ========== CUSTOMER SECTION ==========
-  page.drawText("CLIENTE", { x: margin, y, size: 10, font: fontBold, color: gray });
-  y -= 20;
-  
-  page.drawText(order.customerName, { x: margin, y, size: 14, font: fontBold, color: black });
-  y -= 20;
-  
-  page.drawText(`WhatsApp: ${formatPhone(order.customerWhatsapp)}`, {
-    x: margin,
-    y,
-    size: 11,
-    font: fontRegular,
-    color: gray,
-  });
-  
-  page.drawText(`CEP: ${formatCep(order.destCep)}`, {
-    x: margin + 200,
-    y,
-    size: 11,
-    font: fontRegular,
-    color: gray,
-  });
-  
-  y -= 30;
-  
-  // Divider
-  page.drawLine({
-    start: { x: margin, y },
-    end: { x: pageWidth - margin, y },
-    thickness: 1,
-    color: lightGray,
-  });
-  
-  y -= 30;
-  
-  // ========== ITEMS SECTION ==========
-  page.drawText("ITENS DO PEDIDO", { x: margin, y, size: 10, font: fontBold, color: gray });
-  y -= 25;
-  
+  // Pre-fetch all product images
+  const productImages: Map<string, any> = new Map();
   for (const item of order.items) {
-    const rowStartY = y;
-    const imgSize = 60;
-    
-    // Draw item background
-    page.drawRectangle({
-      x: margin,
-      y: rowStartY - imgSize - 10,
-      width: contentWidth,
-      height: imgSize + 20,
-      color: rgb(0.97, 0.97, 0.97),
-      borderColor: lightGray,
-      borderWidth: 0.5,
-    });
-    
-    // Try to embed product image
     const productImageUrl = resolveUrl(item.imageUrl, order.siteUrl);
-    let imageEmbedded = false;
-    
-    if (productImageUrl) {
+    if (productImageUrl && !productImages.has(productImageUrl)) {
       try {
         const imageData = await fetchImageAsBytes(productImageUrl);
         if (imageData && (imageData.type === 'png' || imageData.type === 'jpg')) {
-          const productImage = imageData.type === 'png'
+          const img = imageData.type === 'png'
             ? await pdfDoc.embedPng(imageData.bytes)
             : await pdfDoc.embedJpg(imageData.bytes);
-          
-          page.drawImage(productImage, {
-            x: margin + 10,
-            y: rowStartY - imgSize - 5,
-            width: imgSize,
-            height: imgSize,
-          });
-          imageEmbedded = true;
+          productImages.set(productImageUrl, img);
           console.log("[generate-order-pdf] product image embedded successfully");
         }
       } catch (e) {
         console.log("[generate-order-pdf] product image error:", e);
       }
     }
+  }
+  
+  // Calculate how many items fit per page
+  const headerHeight = 180; // Header + customer info
+  const totalsHeight = 150; // Totals section
+  const availableHeightFirstPage = PAGE_HEIGHT - MARGIN - headerHeight - totalsHeight - FOOTER_HEIGHT;
+  const availableHeightOtherPages = PAGE_HEIGHT - MARGIN * 2 - totalsHeight - FOOTER_HEIGHT;
+  
+  const itemsPerFirstPage = Math.floor(availableHeightFirstPage / ITEM_HEIGHT);
+  const itemsPerOtherPage = Math.floor(availableHeightOtherPages / ITEM_HEIGHT);
+  
+  // Determine total pages needed
+  let totalPages = 1;
+  if (order.items.length > itemsPerFirstPage) {
+    const remainingItems = order.items.length - itemsPerFirstPage;
+    totalPages = 1 + Math.ceil(remainingItems / itemsPerOtherPage);
+  }
+  
+  let currentItemIndex = 0;
+  
+  for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+    const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    let y = PAGE_HEIGHT - MARGIN;
     
-    if (!imageEmbedded) {
-      // Draw placeholder
+    const isFirstPage = pageNum === 1;
+    const isLastPage = pageNum === totalPages;
+    
+    // ========== HEADER SECTION (first page only) ==========
+    if (isFirstPage) {
+      // Logo on the left
+      if (logoImage) {
+        const logoHeight = 50;
+        const logoWidth = (logoImage.width / logoImage.height) * logoHeight;
+        page.drawImage(logoImage, {
+          x: MARGIN,
+          y: y - logoHeight,
+          width: logoWidth,
+          height: logoHeight,
+        });
+      } else {
+        page.drawText("LOJA ATACADO TG GRIFFES", {
+          x: MARGIN,
+          y: y - 35,
+          size: 20,
+          font: fontBold,
+          color: black,
+        });
+      }
+      
+      // Order number on the right
+      const orderLabel = order.orderNumber ? `Pedido #${order.orderNumber}` : "";
+      if (orderLabel) {
+        const labelWidth = fontBold.widthOfTextAtSize(orderLabel, 18);
+        page.drawText(orderLabel, {
+          x: PAGE_WIDTH - MARGIN - labelWidth,
+          y: y - 25,
+          size: 18,
+          font: fontBold,
+          color: black,
+        });
+        
+        const dateWidth = fontRegular.widthOfTextAtSize(order.orderDate, 11);
+        page.drawText(order.orderDate, {
+          x: PAGE_WIDTH - MARGIN - dateWidth,
+          y: y - 45,
+          size: 11,
+          font: fontRegular,
+          color: gray,
+        });
+      }
+      
+      y -= 80;
+      
+      // Divider line
+      page.drawLine({
+        start: { x: MARGIN, y },
+        end: { x: PAGE_WIDTH - MARGIN, y },
+        thickness: 1,
+        color: lightGray,
+      });
+      
+      y -= 30;
+      
+      // ========== CUSTOMER SECTION ==========
+      page.drawText("CLIENTE", { x: MARGIN, y, size: 10, font: fontBold, color: gray });
+      y -= 20;
+      
+      page.drawText(order.customerName, { x: MARGIN, y, size: 14, font: fontBold, color: black });
+      y -= 20;
+      
+      page.drawText(`WhatsApp: ${formatPhone(order.customerWhatsapp)}`, {
+        x: MARGIN,
+        y,
+        size: 11,
+        font: fontRegular,
+        color: gray,
+      });
+      
+      if (order.destCep) {
+        page.drawText(`CEP: ${formatCep(order.destCep)}`, {
+          x: MARGIN + 200,
+          y,
+          size: 11,
+          font: fontRegular,
+          color: gray,
+        });
+      }
+      
+      y -= 30;
+      
+      // Divider
+      page.drawLine({
+        start: { x: MARGIN, y },
+        end: { x: PAGE_WIDTH - MARGIN, y },
+        thickness: 1,
+        color: lightGray,
+      });
+      
+      y -= 30;
+    } else {
+      // Continuation header for other pages
+      const continueText = `Pedido #${order.orderNumber || ''} - Página ${pageNum}/${totalPages}`;
+      page.drawText(continueText, {
+        x: MARGIN,
+        y: y - 20,
+        size: 12,
+        font: fontBold,
+        color: black,
+      });
+      y -= 50;
+    }
+    
+    // ========== ITEMS SECTION ==========
+    if (isFirstPage || pageNum > 1) {
+      page.drawText("ITENS DO PEDIDO", { x: MARGIN, y, size: 10, font: fontBold, color: gray });
+      y -= 25;
+    }
+    
+    const itemsThisPage = isFirstPage ? itemsPerFirstPage : itemsPerOtherPage;
+    const endIndex = Math.min(currentItemIndex + itemsThisPage, order.items.length);
+    
+    for (let i = currentItemIndex; i < endIndex; i++) {
+      const item = order.items[i];
+      const rowStartY = y;
+      const imgSize = 60;
+      
+      // Draw item background
       page.drawRectangle({
-        x: margin + 10,
-        y: rowStartY - imgSize - 5,
-        width: imgSize,
-        height: imgSize,
-        color: rgb(0.9, 0.9, 0.9),
+        x: MARGIN,
+        y: rowStartY - imgSize - 10,
+        width: CONTENT_WIDTH,
+        height: imgSize + 20,
+        color: rgb(0.97, 0.97, 0.97),
         borderColor: lightGray,
-        borderWidth: 1,
+        borderWidth: 0.5,
       });
       
-      const placeholderText = "SEM";
-      const placeholderWidth = fontRegular.widthOfTextAtSize(placeholderText, 10);
-      page.drawText(placeholderText, {
-        x: margin + 10 + (imgSize - placeholderWidth) / 2,
-        y: rowStartY - imgSize / 2 - 2,
+      // Product image
+      const productImageUrl = resolveUrl(item.imageUrl, order.siteUrl);
+      const productImg = productImageUrl ? productImages.get(productImageUrl) : null;
+      
+      if (productImg) {
+        page.drawImage(productImg, {
+          x: MARGIN + 10,
+          y: rowStartY - imgSize - 5,
+          width: imgSize,
+          height: imgSize,
+        });
+      } else {
+        // Draw placeholder
+        page.drawRectangle({
+          x: MARGIN + 10,
+          y: rowStartY - imgSize - 5,
+          width: imgSize,
+          height: imgSize,
+          color: rgb(0.9, 0.9, 0.9),
+          borderColor: lightGray,
+          borderWidth: 1,
+        });
+        
+        const placeholderText = "SEM";
+        const placeholderWidth = fontRegular.widthOfTextAtSize(placeholderText, 10);
+        page.drawText(placeholderText, {
+          x: MARGIN + 10 + (imgSize - placeholderWidth) / 2,
+          y: rowStartY - imgSize / 2 - 2,
+          size: 10,
+          font: fontRegular,
+          color: gray,
+        });
+        
+        const placeholderText2 = "FOTO";
+        const placeholderWidth2 = fontRegular.widthOfTextAtSize(placeholderText2, 10);
+        page.drawText(placeholderText2, {
+          x: MARGIN + 10 + (imgSize - placeholderWidth2) / 2,
+          y: rowStartY - imgSize / 2 - 15,
+          size: 10,
+          font: fontRegular,
+          color: gray,
+        });
+      }
+      
+      const textX = MARGIN + imgSize + 25;
+      
+      // Product name
+      const productText = item.productName.length > 40 
+        ? item.productName.substring(0, 37) + "..." 
+        : item.productName;
+      
+      page.drawText(productText, {
+        x: textX,
+        y: rowStartY - 22,
+        size: 12,
+        font: fontBold,
+        color: black,
+      });
+      
+      // Size and color info
+      const colorText = item.color || '-';
+      const variantText = `Cor: ${colorText} | Tamanho: ${item.size}`;
+      page.drawText(variantText, {
+        x: textX,
+        y: rowStartY - 40,
         size: 10,
         font: fontRegular,
         color: gray,
       });
       
-      const placeholderText2 = "FOTO";
-      const placeholderWidth2 = fontRegular.widthOfTextAtSize(placeholderText2, 10);
-      page.drawText(placeholderText2, {
-        x: margin + 10 + (imgSize - placeholderWidth2) / 2,
-        y: rowStartY - imgSize / 2 - 15,
+      // Price info
+      const unitPriceText = formatPrice(item.unitPriceCents);
+      const qtyText = `×${item.quantity}`;
+      const lineTotalText = formatPrice(item.unitPriceCents * item.quantity);
+      
+      const priceLayout = `${unitPriceText}  ${qtyText}`;
+      page.drawText(priceLayout, {
+        x: textX,
+        y: rowStartY - 58,
         size: 10,
         font: fontRegular,
         color: gray,
+      });
+      
+      // Line total (right aligned)
+      const lineTotalWidth = fontBold.widthOfTextAtSize(lineTotalText, 13);
+      page.drawText(lineTotalText, {
+        x: PAGE_WIDTH - MARGIN - 15 - lineTotalWidth,
+        y: rowStartY - 35,
+        size: 13,
+        font: fontBold,
+        color: black,
+      });
+      
+      y = rowStartY - imgSize - 25;
+      currentItemIndex++;
+    }
+    
+    // ========== TOTALS SECTION (last page only) ==========
+    if (isLastPage) {
+      y -= 15;
+      
+      // Divider before totals
+      page.drawLine({
+        start: { x: MARGIN, y },
+        end: { x: PAGE_WIDTH - MARGIN, y },
+        thickness: 1,
+        color: lightGray,
+      });
+      
+      y -= 30;
+      
+      const totalsLabelX = PAGE_WIDTH - MARGIN - 220;
+      const totalsValueX = PAGE_WIDTH - MARGIN - 10;
+      
+      // Subtotal
+      const itemsCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+      page.drawText(`Subtotal (${itemsCount} ${itemsCount === 1 ? 'item' : 'itens'})`, {
+        x: totalsLabelX,
+        y,
+        size: 11,
+        font: fontRegular,
+        color: gray,
+      });
+      const subtotalText = formatPrice(order.subtotalCents);
+      const subtotalWidth = fontRegular.widthOfTextAtSize(subtotalText, 11);
+      page.drawText(subtotalText, {
+        x: totalsValueX - subtotalWidth,
+        y,
+        size: 11,
+        font: fontRegular,
+        color: black,
+      });
+      
+      y -= 22;
+      
+      // Shipping
+      const shippingLabel = order.skipShipping ? 'Frete' : `Frete (${order.shippingService})`;
+      page.drawText(shippingLabel, {
+        x: totalsLabelX,
+        y,
+        size: 11,
+        font: fontRegular,
+        color: gray,
+      });
+      const shippingText = order.skipShipping ? 'A combinar' : formatPrice(order.shippingPriceCents);
+      const shippingWidth = fontRegular.widthOfTextAtSize(shippingText, 11);
+      page.drawText(shippingText, {
+        x: totalsValueX - shippingWidth,
+        y,
+        size: 11,
+        font: fontRegular,
+        color: black,
+      });
+      
+      y -= 28;
+      
+      // Total line separator
+      page.drawLine({
+        start: { x: totalsLabelX, y: y + 10 },
+        end: { x: PAGE_WIDTH - MARGIN, y: y + 10 },
+        thickness: 2,
+        color: black,
+      });
+      
+      // TOTAL
+      page.drawText("TOTAL", {
+        x: totalsLabelX,
+        y,
+        size: 16,
+        font: fontBold,
+        color: black,
+      });
+      const totalText = order.skipShipping 
+        ? `${formatPrice(order.subtotalCents)} + Frete` 
+        : formatPrice(order.totalCents);
+      const totalWidth = fontBold.widthOfTextAtSize(totalText, 16);
+      page.drawText(totalText, {
+        x: totalsValueX - totalWidth,
+        y,
+        size: 16,
+        font: fontBold,
+        color: black,
       });
     }
     
-    const textX = margin + imgSize + 25;
-    
-    // Product name
-    const productText = item.productName.length > 40 
-      ? item.productName.substring(0, 37) + "..." 
-      : item.productName;
-    
-    page.drawText(productText, {
-      x: textX,
-      y: rowStartY - 22,
-      size: 12,
-      font: fontBold,
-      color: black,
-    });
-    
-    // Size and color info
-    const colorText = item.color || '-';
-    const variantText = `Cor: ${colorText} | Tamanho: ${item.size}`;
-    page.drawText(variantText, {
-      x: textX,
-      y: rowStartY - 40,
+    // ========== FOOTER (all pages) ==========
+    const footerY = MARGIN + 20;
+    const footerText = `Loja Atacado TG Griffes • Streetwear Premium${totalPages > 1 ? ` • Página ${pageNum}/${totalPages}` : ''}`;
+    const footerWidth = fontRegular.widthOfTextAtSize(footerText, 10);
+    page.drawText(footerText, {
+      x: (PAGE_WIDTH - footerWidth) / 2,
+      y: footerY,
       size: 10,
       font: fontRegular,
       color: gray,
     });
     
-    // Price, quantity and total on the right side
-    const unitPriceText = formatPrice(item.unitPriceCents);
-    const qtyText = `×${item.quantity}`;
-    const lineTotalText = formatPrice(item.unitPriceCents * item.quantity);
-    
-    // Layout: Unit Price × Qty = Total
-    const priceLayout = `${unitPriceText}  ${qtyText}`;
-    page.drawText(priceLayout, {
-      x: textX,
-      y: rowStartY - 58,
-      size: 10,
-      font: fontRegular,
-      color: gray,
+    // Decorative line above footer
+    page.drawLine({
+      start: { x: MARGIN + 100, y: footerY + 20 },
+      end: { x: PAGE_WIDTH - MARGIN - 100, y: footerY + 20 },
+      thickness: 0.5,
+      color: lightGray,
     });
-    
-    // Line total (right aligned, prominent)
-    const lineTotalWidth = fontBold.widthOfTextAtSize(lineTotalText, 13);
-    page.drawText(lineTotalText, {
-      x: pageWidth - margin - 15 - lineTotalWidth,
-      y: rowStartY - 35,
-      size: 13,
-      font: fontBold,
-      color: black,
-    });
-    
-    y = rowStartY - imgSize - 25;
   }
-  
-  y -= 15;
-  
-  // Divider before totals
-  page.drawLine({
-    start: { x: margin, y },
-    end: { x: pageWidth - margin, y },
-    thickness: 1,
-    color: lightGray,
-  });
-  
-  y -= 30;
-  
-  // ========== TOTALS SECTION ==========
-  const totalsLabelX = pageWidth - margin - 220;
-  const totalsValueX = pageWidth - margin - 10;
-  
-  // Subtotal
-  const itemsCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
-  page.drawText(`Subtotal (${itemsCount} ${itemsCount === 1 ? 'item' : 'itens'})`, {
-    x: totalsLabelX,
-    y,
-    size: 11,
-    font: fontRegular,
-    color: gray,
-  });
-  const subtotalText = formatPrice(order.subtotalCents);
-  const subtotalWidth = fontRegular.widthOfTextAtSize(subtotalText, 11);
-  page.drawText(subtotalText, {
-    x: totalsValueX - subtotalWidth,
-    y,
-    size: 11,
-    font: fontRegular,
-    color: black,
-  });
-  
-  y -= 22;
-  
-  // Shipping
-  const shippingLabel = `Frete (${order.shippingService})`;
-  page.drawText(shippingLabel, {
-    x: totalsLabelX,
-    y,
-    size: 11,
-    font: fontRegular,
-    color: gray,
-  });
-  const shippingText = formatPrice(order.shippingPriceCents);
-  const shippingWidth = fontRegular.widthOfTextAtSize(shippingText, 11);
-  page.drawText(shippingText, {
-    x: totalsValueX - shippingWidth,
-    y,
-    size: 11,
-    font: fontRegular,
-    color: black,
-  });
-  
-  y -= 28;
-  
-  // Total line separator
-  page.drawLine({
-    start: { x: totalsLabelX, y: y + 10 },
-    end: { x: pageWidth - margin, y: y + 10 },
-    thickness: 2,
-    color: black,
-  });
-  
-  // TOTAL
-  page.drawText("TOTAL", {
-    x: totalsLabelX,
-    y,
-    size: 16,
-    font: fontBold,
-    color: black,
-  });
-  const totalText = formatPrice(order.totalCents);
-  const totalWidth = fontBold.widthOfTextAtSize(totalText, 16);
-  page.drawText(totalText, {
-    x: totalsValueX - totalWidth,
-    y,
-    size: 16,
-    font: fontBold,
-    color: black,
-  });
-  
-  // ========== FOOTER ==========
-  const footerY = margin + 20;
-  const footerText = "Loja Atacado TG Griffes • Streetwear Premium";
-  const footerWidth = fontRegular.widthOfTextAtSize(footerText, 10);
-  page.drawText(footerText, {
-    x: (pageWidth - footerWidth) / 2,
-    y: footerY,
-    size: 10,
-    font: fontRegular,
-    color: gray,
-  });
-  
-  // Decorative line above footer
-  page.drawLine({
-    start: { x: margin + 100, y: footerY + 20 },
-    end: { x: pageWidth - margin - 100, y: footerY + 20 },
-    thickness: 0.5,
-    color: lightGray,
-  });
   
   return await pdfDoc.save();
 }
@@ -499,69 +547,65 @@ serve(async (req) => {
       items: orderData.items?.length ?? 0,
       siteUrl: orderData.siteUrl,
       logoUrl: orderData.logoUrl,
+      skipShipping: orderData.skipShipping,
     });
-    
-    // Log each item's image URL for debugging
-    orderData.items?.forEach((item, idx) => {
-      console.log(`[generate-order-pdf] item ${idx}:`, {
-        name: item.productName,
-        imageUrl: item.imageUrl,
+
+    for (let i = 0; i < (orderData.items?.length ?? 0); i++) {
+      console.log(`[generate-order-pdf] item ${i}:`, {
+        name: orderData.items[i].productName,
+        imageUrl: orderData.items[i].imageUrl,
       });
-    });
+    }
 
     const pdfBytes = await generatePDF(orderData);
+    console.log("[generate-order-pdf] PDF generated with", pdfBytes.length, "bytes");
 
+    // Upload to Supabase Storage
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const orderNum = orderData.orderNumber || Date.now();
-    const filePath = `pedido-${orderNum}.pdf`;
-
-    console.log("[generate-order-pdf] uploading PDF", { bucket: "order-pdfs", filePath, size: pdfBytes.length });
+    const fileName = `pedido-${orderData.orderNumber || Date.now()}.pdf`;
+    
+    console.log("[generate-order-pdf] uploading PDF", {
+      bucket: "order-pdfs",
+      filePath: fileName,
+      size: pdfBytes.length,
+    });
 
     const { error: uploadError } = await supabase.storage
       .from("order-pdfs")
-      .upload(filePath, pdfBytes, {
+      .upload(fileName, pdfBytes, {
         contentType: "application/pdf",
         upsert: true,
       });
 
     if (uploadError) {
-      console.error("[generate-order-pdf] uploadError", uploadError);
-      throw new Error(`Upload failed: ${uploadError.message}`);
+      console.error("[generate-order-pdf] upload error:", uploadError);
+      throw uploadError;
     }
 
-    const { data: urlData } = supabase.storage.from("order-pdfs").getPublicUrl(filePath);
+    const { data: publicUrlData } = supabase.storage
+      .from("order-pdfs")
+      .getPublicUrl(fileName);
 
-    const pdfUrl = urlData.publicUrl;
-
-    console.log("[generate-order-pdf] done", { pdfUrl });
+    console.log("[generate-order-pdf] done", { pdfUrl: publicUrlData.publicUrl });
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        pdfUrl,
-        orderNumber: orderData.orderNumber,
-        message: "PDF generated successfully",
-      }),
+      JSON.stringify({ pdfUrl: publicUrlData.publicUrl }),
       {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : "Unknown error";
-    console.error("[generate-order-pdf] fatal", errorMessage);
-
-    return new Response(JSON.stringify({ success: false, error: errorMessage }), {
-      status: 500,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
-    });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("[generate-order-pdf] error:", error);
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 });
