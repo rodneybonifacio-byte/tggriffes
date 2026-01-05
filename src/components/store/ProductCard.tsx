@@ -177,7 +177,7 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <div className="group block animate-fade-in">
       <div 
-        className="relative aspect-square sm:aspect-[3/4] overflow-hidden rounded-xl bg-secondary"
+        className="relative aspect-square overflow-hidden rounded-xl bg-secondary"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
