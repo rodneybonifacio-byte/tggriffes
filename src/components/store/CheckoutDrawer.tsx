@@ -29,6 +29,8 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [showShippingCalculator, setShowShippingCalculator] = useState(false);
+  const [skipShipping, setSkipShipping] = useState(false);
 
   const subtotalCents = totalCents;
   const shippingCents = selectedShipping?.price || 0;
@@ -44,7 +46,7 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   };
 
   const canProceedToShipping = customerName.trim().length >= 2 && customerWhatsapp.replace(/\D/g, '').length >= 10;
-  const canProceedToReview = selectedShipping !== null;
+  const canProceedToReview = selectedShipping !== null || skipShipping;
 
   const generateOrderSummaryText = (orderNumber?: number, pdfUrl?: string) => {
     const itemsList = items.map(item => {
@@ -53,7 +55,8 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
     }).join('\n\n');
 
     const orderLabel = orderNumber ? `#${orderNumber}` : '';
-    const shippingDays = selectedShipping?.deadline === 1 ? '1 dia útil' : `${selectedShipping?.deadline} dias úteis`;
+    const shippingDays = selectedShipping?.deadline === 1 ? '1 dia útil' : 
+      selectedShipping?.deadline ? `${selectedShipping?.deadline} dias úteis` : 'A combinar';
 
     let message = `╔═══════════════════════════╗
        ✨ *NOVO PEDIDO ${orderLabel}* ✨
@@ -77,16 +80,16 @@ ${itemsList}
 
 ┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
 🚚 *ENVIO*
-   ${selectedShipping?.service} • ${shippingDays}
-   Frete: ${formatPrice(shippingCents)}
+   ${skipShipping ? 'A combinar' : `${selectedShipping?.service} • ${shippingDays}`}
+   Frete: ${skipShipping ? 'A combinar' : formatPrice(shippingCents)}
 
 ┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
 💰 *RESUMO FINANCEIRO*
 ┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
    Subtotal: ${formatPrice(subtotalCents)}
-   Frete: ${formatPrice(shippingCents)}
+   Frete: ${skipShipping ? 'A combinar' : formatPrice(shippingCents)}
    
-🏷️ *TOTAL: ${formatPrice(finalTotalCents)}*`;
+🏷️ *TOTAL: ${skipShipping ? formatPrice(subtotalCents) + ' + Frete' : formatPrice(finalTotalCents)}*`;
 
     if (pdfUrl) {
       message += `
@@ -139,10 +142,10 @@ ${itemsList}
           customer_whatsapp: customerWhatsapp.replace(/\D/g, ''),
           dest_cep: destCep,
           subtotal_cents: subtotalCents,
-          shipping_service: selectedShipping?.service,
-          shipping_price_cents: shippingCents,
-          shipping_deadline_days: selectedShipping?.deadline,
-          total_cents: finalTotalCents,
+          shipping_service: skipShipping ? 'A combinar' : selectedShipping?.service,
+          shipping_price_cents: skipShipping ? 0 : shippingCents,
+          shipping_deadline_days: skipShipping ? null : selectedShipping?.deadline,
+          total_cents: skipShipping ? subtotalCents : finalTotalCents,
           status: 'NOVO',
         });
 
@@ -184,10 +187,11 @@ ${itemsList}
           imageUrl: item.imageUrl,
         })),
         subtotalCents,
-        shippingService: selectedShipping?.service || '',
-        shippingPriceCents: shippingCents,
-        shippingDeadlineDays: selectedShipping?.deadline || 0,
-        totalCents: finalTotalCents,
+        shippingService: skipShipping ? 'A combinar' : (selectedShipping?.service || ''),
+        shippingPriceCents: skipShipping ? 0 : shippingCents,
+        shippingDeadlineDays: skipShipping ? 0 : (selectedShipping?.deadline || 0),
+        totalCents: skipShipping ? subtotalCents : finalTotalCents,
+        skipShipping,
         orderDate: new Date().toLocaleDateString('pt-BR'),
         logoUrl,
         siteUrl: baseUrl,
@@ -241,6 +245,8 @@ ${itemsList}
       setDestCep('');
       setSelectedShipping(null);
       setOrderComplete(false);
+      setShowShippingCalculator(false);
+      setSkipShipping(false);
     }
     onOpenChange(false);
   };
@@ -375,28 +381,114 @@ ${itemsList}
                 <span className="font-medium">Entrega</span>
               </div>
 
-              <ShippingCalculator
-                onSelectOption={setSelectedShipping}
-                selectedOption={selectedShipping}
-                onCepChange={handleCepChange}
-              />
+              {!showShippingCalculator && !skipShipping && (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Como deseja prosseguir com o envio?
+                  </p>
+                  
+                  <Button
+                    variant="outline"
+                    className="w-full h-auto py-4 flex flex-col items-start gap-1"
+                    onClick={() => {
+                      setSkipShipping(true);
+                      setSelectedShipping(null);
+                    }}
+                  >
+                    <span className="font-medium">Combinar frete pelo WhatsApp</span>
+                    <span className="text-xs text-muted-foreground font-normal">
+                      Enviar pedido sem calcular frete agora
+                    </span>
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    className="w-full h-auto py-4 flex flex-col items-start gap-1"
+                    onClick={() => setShowShippingCalculator(true)}
+                  >
+                    <span className="font-medium">Calcular frete agora</span>
+                    <span className="text-xs text-muted-foreground font-normal">
+                      Informe seu CEP e escolha a transportadora
+                    </span>
+                  </Button>
+                </div>
+              )}
 
-              {selectedShipping && (
-                <div className="pt-4 space-y-2">
-                  <Separator />
-                  <div className="flex justify-between text-sm pt-2">
-                    <span>Subtotal:</span>
-                    <span>{formatPrice(subtotalCents)}</span>
+              {skipShipping && (
+                <div className="space-y-4">
+                  <div className="bg-secondary/50 rounded-lg p-4 text-center">
+                    <p className="font-medium">Frete a combinar</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      O valor do frete será acordado pelo WhatsApp
+                    </p>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Frete ({selectedShipping.service}):</span>
-                    <span>{formatPrice(shippingCents)}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-semibold pt-2">
-                    <span>Total:</span>
-                    <span>{formatPrice(finalTotalCents)}</span>
+                  
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => {
+                      setSkipShipping(false);
+                      setShowShippingCalculator(true);
+                    }}
+                  >
+                    Quero calcular o frete
+                  </Button>
+                  
+                  <div className="pt-4 space-y-2">
+                    <Separator />
+                    <div className="flex justify-between text-sm pt-2">
+                      <span>Subtotal:</span>
+                      <span>{formatPrice(subtotalCents)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Frete:</span>
+                      <span className="text-muted-foreground">A combinar</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-semibold pt-2">
+                      <span>Total:</span>
+                      <span>{formatPrice(subtotalCents)} + Frete</span>
+                    </div>
                   </div>
                 </div>
+              )}
+
+              {showShippingCalculator && !skipShipping && (
+                <>
+                  <ShippingCalculator
+                    onSelectOption={setSelectedShipping}
+                    selectedOption={selectedShipping}
+                    onCepChange={handleCepChange}
+                  />
+                  
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => {
+                      setShowShippingCalculator(false);
+                      setSelectedShipping(null);
+                    }}
+                  >
+                    Voltar às opções
+                  </Button>
+
+                  {selectedShipping && (
+                    <div className="pt-4 space-y-2">
+                      <Separator />
+                      <div className="flex justify-between text-sm pt-2">
+                        <span>Subtotal:</span>
+                        <span>{formatPrice(subtotalCents)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Frete ({selectedShipping.service}):</span>
+                        <span>{formatPrice(shippingCents)}</span>
+                      </div>
+                      <div className="flex justify-between text-lg font-semibold pt-2">
+                        <span>Total:</span>
+                        <span>{formatPrice(finalTotalCents)}</span>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -420,8 +512,10 @@ ${itemsList}
                 
                 <div>
                   <p className="text-xs text-muted-foreground">Entrega</p>
-                  <p className="font-medium">{selectedShipping?.service} - {selectedShipping?.deadline} dias úteis</p>
-                  <p className="text-sm text-muted-foreground">CEP: {formatCEP(destCep)}</p>
+                  <p className="font-medium">
+                    {skipShipping ? 'A combinar pelo WhatsApp' : `${selectedShipping?.service} - ${selectedShipping?.deadline} dias úteis`}
+                  </p>
+                  {destCep && <p className="text-sm text-muted-foreground">CEP: {formatCEP(destCep)}</p>}
                 </div>
               </div>
 
@@ -448,11 +542,11 @@ ${itemsList}
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Frete:</span>
-                  <span>{formatPrice(shippingCents)}</span>
+                  <span>{skipShipping ? 'A combinar' : formatPrice(shippingCents)}</span>
                 </div>
                 <div className="flex justify-between text-xl font-bold pt-2">
                   <span>Total:</span>
-                  <span>{formatPrice(finalTotalCents)}</span>
+                  <span>{skipShipping ? `${formatPrice(subtotalCents)} + Frete` : formatPrice(finalTotalCents)}</span>
                 </div>
               </div>
 
