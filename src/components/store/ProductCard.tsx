@@ -88,7 +88,7 @@ const findColorHex = (colorName: string): string => {
 };
 
 export function ProductCard({ product }: ProductCardProps) {
-  const { addItem } = useCart();
+  const { addItem, getQuantityForVariant } = useCart();
   const { toast } = useToast();
   
   const variants = product.product_variants || [];
@@ -298,6 +298,8 @@ export function ProductCard({ product }: ProductCardProps) {
                 {/* Size buttons for this color */}
                 {sizes.map((size) => {
                   const available = isVariantAvailable(color, size);
+                  const variant = getVariant(color, size);
+                  const quantityInCart = variant ? getQuantityForVariant(variant.id) : 0;
                   
                   return (
                     <div 
@@ -308,12 +310,21 @@ export function ProductCard({ product }: ProductCardProps) {
                       )}
                     >
                       {available ? (
-                        <button
-                          onClick={(e) => handleAddToCart(e, color, size)}
-                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
-                        >
-                          <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                        </button>
+                        quantityInCart > 0 ? (
+                          <button
+                            onClick={(e) => handleAddToCart(e, color, size)}
+                            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all active:scale-90 active:bg-green-600"
+                          >
+                            {quantityInCart}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => handleAddToCart(e, color, size)}
+                            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
+                          >
+                            <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                          </button>
+                        )
                       ) : (
                         <span className="text-[8px] text-muted-foreground">—</span>
                       )}

@@ -19,6 +19,7 @@ interface CartContextType {
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
+  getQuantityForVariant: (variantId: string) => number;
   totalItems: number;
   totalCents: number;
 }
@@ -70,6 +71,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems([]);
   }, []);
 
+  const getQuantityForVariant = useCallback((variantId: string) => {
+    const item = items.find(i => i.variantId === variantId);
+    return item?.quantity || 0;
+  }, [items]);
+
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalCents = items.reduce((sum, item) => sum + item.unitPriceCents * item.quantity, 0);
 
@@ -81,6 +87,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         removeItem, 
         updateQuantity, 
         clearCart, 
+        getQuantityForVariant,
         totalItems, 
         totalCents 
       }}
