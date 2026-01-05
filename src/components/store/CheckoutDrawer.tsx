@@ -46,13 +46,13 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const canProceedToShipping = customerName.trim().length >= 2 && customerWhatsapp.replace(/\D/g, '').length >= 10;
   const canProceedToReview = selectedShipping !== null;
 
-  const generateOrderSummaryText = () => {
+  const generateOrderSummaryText = (pdfUrl?: string) => {
     const itemsList = items.map(item => {
       const colorText = item.color ? ` (${item.color})` : '';
       return `• ${item.quantity}x ${item.productName} - Tam: ${item.size}${colorText} - ${formatPrice(item.unitPriceCents * item.quantity)}`;
     }).join('\n');
 
-    return `*NOVO PEDIDO - TG GRIFFES*
+    let message = `*NOVO PEDIDO - TG GRIFFES*
 
 👤 *Cliente:* ${customerName}
 📱 *WhatsApp:* ${customerWhatsapp}
@@ -65,6 +65,14 @@ ${itemsList}
 
 💰 *Subtotal:* ${formatPrice(subtotalCents)}
 💰 *Total:* ${formatPrice(finalTotalCents)}`;
+
+    if (pdfUrl) {
+      message += `
+
+📄 *PDF do Pedido:* ${pdfUrl}`;
+    }
+
+    return message;
   };
 
   const handleFinalize = async () => {
@@ -147,37 +155,31 @@ ${itemsList}
         siteUrl: baseUrl,
       };
 
-      const { data: pdfResponse } = await supabase.functions.invoke('generate-order-pdf', {
+      const { data: pdfResponse, error: pdfError } = await supabase.functions.invoke('generate-order-pdf', {
         body: orderData,
       });
 
-      // 4. Generate message and open WhatsApp
-      const message = generateOrderSummaryText();
+      if (pdfError) {
+        console.error('PDF generation error:', pdfError);
+      }
+
+      // 4. Generate message with PDF URL and open WhatsApp
+      const pdfUrl = pdfResponse?.pdfUrl;
+      const message = generateOrderSummaryText(pdfUrl);
       const whatsappNumber = settings.seller_whatsapp.replace(/\D/g, '');
       const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
       
-      // Use window.location to avoid popup blocker - WhatsApp is most important
-      window.location.href = whatsappUrl;
-
-      // 5. Open PDF in new tab after a small delay (if available)
-      if (pdfResponse?.html) {
-        setTimeout(() => {
-          const pdfWindow = window.open('', '_blank');
-          if (pdfWindow) {
-            pdfWindow.document.write(pdfResponse.html);
-            pdfWindow.document.close();
-          }
-        }, 500);
-      }
-
-      // 6. Clear cart and show success
+      // 5. Clear cart and show success
       setOrderComplete(true);
       clearCart();
 
       toast({
         title: 'Pedido enviado!',
-        description: 'O resumo foi aberto no WhatsApp e o PDF está pronto.',
+        description: 'O resumo foi aberto no WhatsApp com o link do PDF.',
       });
+
+      // Use window.location to redirect to WhatsApp
+      window.location.href = whatsappUrl;
 
     } catch (error) {
       console.error('Error finalizing order:', error);
