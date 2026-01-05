@@ -3,10 +3,9 @@ import { Link } from 'react-router-dom';
 import { Product } from '@/hooks/useProducts';
 import { formatPrice } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
@@ -65,31 +64,26 @@ const isLightColor = (hex: string): boolean => {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  // Calculate luminance
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return luminance > 0.7;
 };
 
 // Try to find color by partial match
 const findColorHex = (colorName: string): string => {
-  // Normalize: lowercase, remove accents, remove spaces
   const normalized = colorName
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '');
   
-  // Direct match
   if (COLOR_MAP[normalized]) return COLOR_MAP[normalized];
   
-  // Partial match - check if color name contains a known color
   for (const [key, value] of Object.entries(COLOR_MAP)) {
     if (normalized.includes(key) || key.includes(normalized)) {
       return value;
     }
   }
   
-  // Default gray for unknown colors
   return '#888888';
 };
 
@@ -136,10 +130,6 @@ export function ProductCard({ product }: ProductCardProps) {
     });
   }, [variants]);
 
-  const [selectedColor, setSelectedColor] = useState<string | null>(colors[0] || null);
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState(1);
-
   const handlePrevImage = (e?: React.MouseEvent) => {
     e?.preventDefault();
     e?.stopPropagation();
@@ -173,66 +163,40 @@ export function ProductCard({ product }: ProductCardProps) {
     touchStartX.current = null;
   };
 
-  // Get available variant based on selection
-  const selectedVariant = useMemo(() => {
-    if (!selectedSize) return null;
-    return variants.find(v => 
-      v.size === selectedSize && 
-      (colors.length === 0 || v.color === selectedColor)
-    );
-  }, [variants, selectedSize, selectedColor, colors.length]);
+  // Get variant for a specific color and size
+  const getVariant = (color: string | null, size: string) => {
+    return variants.find(v => v.size === size && v.color === color);
+  };
 
-  const availableStock = selectedVariant?.stock_qty || 0;
-
-  // Check if a size is available for the selected color
-  const isSizeAvailable = (size: string) => {
-    const variant = variants.find(v => 
-      v.size === size && 
-      (colors.length === 0 || v.color === selectedColor)
-    );
+  // Check if a color+size is available
+  const isVariantAvailable = (color: string | null, size: string) => {
+    const variant = getVariant(color, size);
     return variant && variant.stock_qty > 0;
   };
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  // Add to cart directly
+  const handleAddToCart = (e: React.MouseEvent, color: string | null, size: string) => {
     e.preventDefault();
     e.stopPropagation();
-
-    if (!selectedVariant) {
-      toast({
-        title: 'Selecione o tamanho',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (quantity > availableStock) {
-      toast({
-        title: 'Quantidade indisponível',
-        description: `Apenas ${availableStock} unidades em estoque.`,
-        variant: 'destructive',
-      });
-      return;
-    }
-
+    
+    const variant = getVariant(color, size);
+    if (!variant) return;
+    
     addItem({
       productId: product.id,
       productName: product.name,
-      variantId: selectedVariant.id,
-      size: selectedVariant.size,
-      color: selectedVariant.color,
-      quantity,
+      variantId: variant.id,
+      size: size,
+      color: color,
+      quantity: 1,
       unitPriceCents: product.price_cents,
       imageUrl: product.main_image_url,
     });
-
+    
     toast({
-      title: 'Adicionado ao carrinho!',
-      description: `${quantity}x ${product.name} - Tam: ${selectedSize}`,
+      title: 'Adicionado!',
+      description: `${product.name} - ${size}${color ? ` (${color})` : ''}`,
     });
-
-    // Reset selection
-    setSelectedSize(null);
-    setQuantity(1);
   };
 
   const getColorHex = (colorName: string) => {
@@ -308,7 +272,7 @@ export function ProductCard({ product }: ProductCardProps) {
         )}
       </div>
       
-      <div className="mt-2 space-y-1.5">
+      <div className="mt-2 space-y-2">
         <Link to={`/produto/${product.slug}`}>
           <h3 className="text-xs sm:text-sm font-medium line-clamp-2 group-hover:text-primary/80 transition-colors">
             {product.name}
@@ -318,112 +282,71 @@ export function ProductCard({ product }: ProductCardProps) {
           {formatPrice(product.price_cents)}
         </p>
 
-        {!isOutOfStock && (
-          <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-            {/* Colors */}
-            {colors.length > 0 && (
-              <div className="space-y-1">
-                <span className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Cor: {selectedColor && <span className="text-foreground capitalize">{selectedColor}</span>}
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {colors.map((color) => (
-                    <button
-                      key={color}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setSelectedColor(color);
-                        setSelectedSize(null);
-                      }}
-                      className={cn(
-                        "relative w-7 h-7 sm:w-9 sm:h-9 rounded-full border-2 transition-all touch-manipulation flex items-center justify-center",
-                        selectedColor === color ? "ring-2 ring-offset-1 ring-green-500 scale-110" : "ring-0"
-                      )}
+        {!isOutOfStock && sizes.length > 0 && (
+          <div className="border rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Header - Sizes */}
+            <div 
+              className="grid border-b bg-muted/30" 
+              style={{ gridTemplateColumns: colors.length > 0 ? `36px repeat(${sizes.length}, 1fr)` : `repeat(${sizes.length}, 1fr)` }}
+            >
+              {colors.length > 0 && (
+                <div className="py-1.5 border-r" />
+              )}
+              {sizes.map((size) => (
+                <div key={size} className="text-center py-1.5 font-medium text-[10px] sm:text-xs border-r last:border-r-0">
+                  {size}
+                </div>
+              ))}
+            </div>
+            
+            {/* Rows - One per color (or single row if no colors) */}
+            {(colors.length > 0 ? colors : [null]).map((color) => (
+              <div 
+                key={color || 'default'} 
+                className="grid border-b last:border-b-0"
+                style={{ gridTemplateColumns: colors.length > 0 ? `36px repeat(${sizes.length}, 1fr)` : `repeat(${sizes.length}, 1fr)` }}
+              >
+                {/* Color swatch */}
+                {colors.length > 0 && color && (
+                  <div className="flex items-center justify-center py-2 border-r">
+                    <div 
+                      className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border"
                       style={{ 
                         backgroundColor: getColorHex(color),
                         borderColor: isLightColor(getColorHex(color)) ? '#1f2937' : getColorHex(color)
                       }}
                       title={color}
-                    >
-                      {selectedColor === color && (
-                        <Check className={cn(
-                          "h-3.5 w-3.5 sm:h-4 sm:w-4",
-                          ['branco', 'amarelo', 'bege'].includes(color.toLowerCase()) ? "text-gray-800" : "text-white"
-                        )} strokeWidth={3} />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Sizes */}
-            <div className="space-y-1">
-              <span className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Tamanho: {selectedSize && <span className="text-foreground">{selectedSize}</span>}
-              </span>
-              <div className="flex flex-wrap gap-1">
+                    />
+                  </div>
+                )}
+                
+                {/* Size buttons for this color */}
                 {sizes.map((size) => {
-                  const available = isSizeAvailable(size);
+                  const available = isVariantAvailable(color, size);
+                  
                   return (
-                    <button
-                      key={size}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (available) setSelectedSize(size);
-                      }}
-                      disabled={!available}
+                    <div 
+                      key={size} 
                       className={cn(
-                        "min-w-[32px] h-8 sm:min-w-[40px] sm:h-9 px-2 text-xs sm:text-sm font-medium rounded-md border transition-all touch-manipulation",
-                        selectedSize === size 
-                          ? "bg-primary text-primary-foreground border-primary" 
-                          : available
-                            ? "bg-background border-border hover:border-primary active:scale-95"
-                            : "bg-muted text-muted-foreground border-transparent line-through cursor-not-allowed opacity-50"
+                        "flex items-center justify-center py-2 border-r last:border-r-0",
+                        !available && "bg-muted/50"
                       )}
                     >
-                      {size}
-                    </button>
+                      {available ? (
+                        <button
+                          onClick={(e) => handleAddToCart(e, color, size)}
+                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90"
+                        >
+                          <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">—</span>
+                      )}
+                    </div>
                   );
                 })}
               </div>
-            </div>
-
-            {/* Quantity + Add to Cart */}
-            {selectedSize && (
-              <div className="flex items-center gap-1.5 pt-1">
-                <div className="flex items-center border rounded">
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setQuantity(Math.max(1, quantity - 1));
-                    }}
-                    className="p-1 hover:bg-secondary"
-                  >
-                    <Minus className="h-3 w-3" />
-                  </button>
-                  <span className="px-1.5 text-xs sm:text-sm min-w-[20px] text-center">{quantity}</span>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setQuantity(Math.min(availableStock, quantity + 1));
-                    }}
-                    className="p-1 hover:bg-secondary"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </button>
-                </div>
-                <Button
-                  size="sm"
-                  className="flex-1 gap-1 h-8 text-xs sm:text-sm"
-                  onClick={handleAddToCart}
-                >
-                  <ShoppingCart className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                  <span className="hidden sm:inline">Adicionar</span>
-                  <span className="sm:hidden">Add</span>
-                </Button>
-              </div>
-            )}
+            ))}
           </div>
         )}
       </div>
