@@ -243,9 +243,9 @@ export function ProductCard({ product }: ProductCardProps) {
         )}
       </div>
       
-      <div className="mt-3 space-y-2">
+      <div className="mt-2 space-y-1.5">
         <Link to={`/produto/${product.slug}`}>
-          <h3 className="text-sm font-medium line-clamp-2 group-hover:text-primary/80 transition-colors">
+          <h3 className="text-xs sm:text-sm font-medium line-clamp-2 group-hover:text-primary/80 transition-colors">
             {product.name}
           </h3>
         </Link>
@@ -257,11 +257,11 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="space-y-2 pt-2" onClick={(e) => e.stopPropagation()}>
             {/* Colors */}
             {colors.length > 0 && (
-              <div className="space-y-1.5">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <div className="space-y-1">
+                <span className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   Cor: {selectedColor && <span className="text-foreground capitalize">{selectedColor}</span>}
                 </span>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {colors.map((color) => (
                     <button
                       key={color}
@@ -271,8 +271,8 @@ export function ProductCard({ product }: ProductCardProps) {
                         setSelectedSize(null);
                       }}
                       className={cn(
-                        "relative w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 transition-all touch-manipulation flex items-center justify-center",
-                        selectedColor === color ? "ring-2 ring-offset-2 ring-green-500 scale-110" : "ring-0"
+                        "relative w-7 h-7 sm:w-9 sm:h-9 rounded-full border-2 transition-all touch-manipulation flex items-center justify-center",
+                        selectedColor === color ? "ring-2 ring-offset-1 ring-green-500 scale-110" : "ring-0"
                       )}
                       style={{ 
                         backgroundColor: getColorHex(color),
@@ -282,7 +282,7 @@ export function ProductCard({ product }: ProductCardProps) {
                     >
                       {selectedColor === color && (
                         <Check className={cn(
-                          "h-5 w-5",
+                          "h-3.5 w-3.5 sm:h-4 sm:w-4",
                           ['branco', 'amarelo', 'bege'].includes(color.toLowerCase()) ? "text-gray-800" : "text-white"
                         )} strokeWidth={3} />
                       )}
@@ -293,11 +293,11 @@ export function ProductCard({ product }: ProductCardProps) {
             )}
 
             {/* Sizes */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            <div className="space-y-1">
+              <span className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 Tamanho: {selectedSize && <span className="text-foreground">{selectedSize}</span>}
               </span>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1">
                 {sizes.map((size) => {
                   const available = isSizeAvailable(size);
                   return (
@@ -309,9 +309,9 @@ export function ProductCard({ product }: ProductCardProps) {
                       }}
                       disabled={!available}
                       className={cn(
-                        "min-w-[44px] h-10 sm:min-w-[48px] sm:h-11 px-3 text-sm font-medium rounded-lg border-2 transition-all touch-manipulation",
+                        "min-w-[32px] h-8 sm:min-w-[40px] sm:h-9 px-2 text-xs sm:text-sm font-medium rounded-md border transition-all touch-manipulation",
                         selectedSize === size 
-                          ? "bg-primary text-primary-foreground border-primary scale-105" 
+                          ? "bg-primary text-primary-foreground border-primary" 
                           : available
                             ? "bg-background border-border hover:border-primary active:scale-95"
                             : "bg-muted text-muted-foreground border-transparent line-through cursor-not-allowed opacity-50"
@@ -326,7 +326,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
             {/* Quantity + Add to Cart */}
             {selectedSize && (
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex items-center gap-1.5 pt-1">
                 <div className="flex items-center border rounded">
                   <button
                     onClick={(e) => {
@@ -337,7 +337,7 @@ export function ProductCard({ product }: ProductCardProps) {
                   >
                     <Minus className="h-3 w-3" />
                   </button>
-                  <span className="px-2 text-sm min-w-[24px] text-center">{quantity}</span>
+                  <span className="px-1.5 text-xs sm:text-sm min-w-[20px] text-center">{quantity}</span>
                   <button
                     onClick={(e) => {
                       e.preventDefault();
@@ -350,11 +350,12 @@ export function ProductCard({ product }: ProductCardProps) {
                 </div>
                 <Button
                   size="sm"
-                  className="flex-1 gap-1"
+                  className="flex-1 gap-1 h-8 text-xs sm:text-sm"
                   onClick={handleAddToCart}
                 >
-                  <ShoppingCart className="h-3.5 w-3.5" />
-                  Adicionar
+                  <ShoppingCart className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                  <span className="hidden sm:inline">Adicionar</span>
+                  <span className="sm:hidden">Add</span>
                 </Button>
               </div>
             )}
