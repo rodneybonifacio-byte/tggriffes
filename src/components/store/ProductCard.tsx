@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, TouchEvent } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Product } from '@/hooks/useProducts';
 import { formatPrice } from '@/lib/utils';
@@ -109,7 +109,6 @@ export function ProductCard({ product }: ProductCardProps) {
   }, [product.main_image_url, images]);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const touchStartX = useRef<number | null>(null);
 
   // Get unique colors and sizes
   const colors = useMemo(() => {
@@ -130,37 +129,16 @@ export function ProductCard({ product }: ProductCardProps) {
     });
   }, [variants]);
 
-  const handlePrevImage = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
+  const handlePrevImage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
   };
 
-  const handleNextImage = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
+  const handleNextImage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
-  };
-
-  // Touch handlers for swipe
-  const handleTouchStart = (e: TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = (e: TouchEvent) => {
-    if (touchStartX.current === null || allImages.length <= 1) return;
-    
-    const touchEndX = e.changedTouches[0].clientX;
-    const diff = touchStartX.current - touchEndX;
-    
-    if (Math.abs(diff) > 50) {
-      if (diff > 0) {
-        handleNextImage();
-      } else {
-        handlePrevImage();
-      }
-    }
-    touchStartX.current = null;
   };
 
   // Get variant for a specific color and size
@@ -204,13 +182,10 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   return (
-    <div className="group block animate-fade-in bg-card rounded-xl border border-border/50 p-2 pb-3 shadow-sm">
-      <div 
-        className="relative aspect-square overflow-hidden rounded-xl bg-secondary"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        <Link to={`/produto/${product.slug}`}>
+    <div className="group block animate-fade-in bg-card rounded-xl border border-border/50 p-1.5 pb-2 shadow-sm">
+      {/* Image - clickable to product page */}
+      <Link to={`/produto/${product.slug}`} className="block">
+        <div className="relative aspect-square overflow-hidden rounded-lg bg-secondary">
           {allImages.length > 0 ? (
             <img
               src={allImages[currentImageIndex]}
@@ -220,80 +195,80 @@ export function ProductCard({ product }: ProductCardProps) {
             />
           ) : (
             <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-              <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
           )}
-        </Link>
-        
-        {/* Navigation arrows */}
-        {allImages.length > 1 && (
-          <>
-            <button
-              onClick={handlePrevImage}
-              className="absolute left-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              onClick={handleNextImage}
-              className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-            
-            {/* Dots indicator */}
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-              {allImages.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setCurrentImageIndex(idx);
-                  }}
-                  className={cn(
-                    "w-1.5 h-1.5 rounded-full transition-all",
-                    idx === currentImageIndex ? "bg-white w-3" : "bg-white/60"
-                  )}
-                />
-              ))}
+          
+          {/* Navigation arrows - only on desktop hover */}
+          {allImages.length > 1 && (
+            <>
+              <button
+                onClick={handlePrevImage}
+                className="absolute left-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background hidden sm:flex"
+              >
+                <ChevronLeft className="h-3 w-3" />
+              </button>
+              <button
+                onClick={handleNextImage}
+                className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background hidden sm:flex"
+              >
+                <ChevronRight className="h-3 w-3" />
+              </button>
+              
+              {/* Dots indicator */}
+              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-0.5">
+                {allImages.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setCurrentImageIndex(idx);
+                    }}
+                    className={cn(
+                      "w-1 h-1 rounded-full transition-all",
+                      idx === currentImageIndex ? "bg-white w-2" : "bg-white/60"
+                    )}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+          
+          {isOutOfStock && (
+            <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+              <Badge variant="secondary" className="bg-background text-[10px]">
+                Esgotado
+              </Badge>
             </div>
-          </>
-        )}
-        
-        {isOutOfStock && (
-          <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
-            <Badge variant="secondary" className="bg-background">
-              Esgotado
-            </Badge>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </Link>
       
-      <div className="mt-2 space-y-2">
+      <div className="mt-1.5 space-y-1">
         <Link to={`/produto/${product.slug}`}>
-          <h3 className="text-xs sm:text-sm font-medium line-clamp-2 group-hover:text-primary/80 transition-colors">
+          <h3 className="text-[11px] sm:text-xs font-medium line-clamp-2 leading-tight group-hover:text-primary/80 transition-colors">
             {product.name}
           </h3>
         </Link>
-        <p className="text-sm font-semibold">
+        <p className="text-xs sm:text-sm font-semibold">
           {formatPrice(product.price_cents)}
         </p>
 
         {!isOutOfStock && sizes.length > 0 && (
-          <div className="border rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="border rounded-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
             {/* Header - Sizes */}
             <div 
               className="grid border-b bg-muted/30" 
-              style={{ gridTemplateColumns: colors.length > 0 ? `36px repeat(${sizes.length}, 1fr)` : `repeat(${sizes.length}, 1fr)` }}
+              style={{ gridTemplateColumns: colors.length > 0 ? `28px repeat(${sizes.length}, 1fr)` : `repeat(${sizes.length}, 1fr)` }}
             >
               {colors.length > 0 && (
-                <div className="py-1.5 border-r" />
+                <div className="py-1 border-r" />
               )}
               {sizes.map((size) => (
-                <div key={size} className="text-center py-1.5 font-medium text-[10px] sm:text-xs border-r last:border-r-0">
+                <div key={size} className="text-center py-1 font-medium text-[9px] sm:text-[10px] border-r last:border-r-0">
                   {size}
                 </div>
               ))}
@@ -304,13 +279,13 @@ export function ProductCard({ product }: ProductCardProps) {
               <div 
                 key={color || 'default'} 
                 className="grid border-b last:border-b-0"
-                style={{ gridTemplateColumns: colors.length > 0 ? `36px repeat(${sizes.length}, 1fr)` : `repeat(${sizes.length}, 1fr)` }}
+                style={{ gridTemplateColumns: colors.length > 0 ? `28px repeat(${sizes.length}, 1fr)` : `repeat(${sizes.length}, 1fr)` }}
               >
                 {/* Color swatch */}
                 {colors.length > 0 && color && (
-                  <div className="flex items-center justify-center py-2 border-r">
+                  <div className="flex items-center justify-center py-1.5 border-r">
                     <div 
-                      className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border"
+                      className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border"
                       style={{ 
                         backgroundColor: getColorHex(color),
                         borderColor: isLightColor(getColorHex(color)) ? '#1f2937' : getColorHex(color)
@@ -328,19 +303,19 @@ export function ProductCard({ product }: ProductCardProps) {
                     <div 
                       key={size} 
                       className={cn(
-                        "flex items-center justify-center py-2 border-r last:border-r-0",
+                        "flex items-center justify-center py-1.5 border-r last:border-r-0",
                         !available && "bg-muted/50"
                       )}
                     >
                       {available ? (
                         <button
                           onClick={(e) => handleAddToCart(e, color, size)}
-                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90"
+                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
                         >
-                          <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                         </button>
                       ) : (
-                        <span className="text-[10px] text-muted-foreground">—</span>
+                        <span className="text-[8px] text-muted-foreground">—</span>
                       )}
                     </div>
                   );
