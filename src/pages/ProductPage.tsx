@@ -1,14 +1,14 @@
-import { useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useMemo, useRef, useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { StoreHeader } from '@/components/store/StoreHeader';
 import { ProductGallery } from '@/components/store/ProductGallery';
 
 import { WhatsAppButton } from '@/components/store/WhatsAppButton';
-import { useProductBySlug } from '@/hooks/useProducts';
+import { useProductBySlug, useProducts } from '@/hooks/useProducts';
 import { formatPrice } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Plus, Loader2, ArrowLeft } from 'lucide-react';
+import { ChevronLeft, Plus, Loader2, ArrowLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/hooks/useCart';
@@ -95,8 +95,67 @@ const getColorHex = (colorName: string) => {
 const ProductPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const { data: product, isLoading } = useProductBySlug(slug);
+  const { data: allProducts } = useProducts({ status: 'active' });
   const { toast } = useToast();
   const { addItem } = useCart();
+  const navigate = useNavigate();
+  
+  // Swipe navigation
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+  const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null);
+  
+  // Get current product index and neighbors
+  const currentIndex = useMemo(() => {
+    if (!allProducts || !product) return -1;
+    return allProducts.findIndex(p => p.id === product.id);
+  }, [allProducts, product]);
+  
+  const prevProduct = currentIndex > 0 ? allProducts?.[currentIndex - 1] : null;
+  const nextProduct = currentIndex >= 0 && currentIndex < (allProducts?.length || 0) - 1 
+    ? allProducts?.[currentIndex + 1] 
+    : null;
+  
+  // Touch handlers for swipe
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchEndX.current = null;
+  };
+  
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+  
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+    
+    const diff = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50;
+    
+    if (Math.abs(diff) > minSwipeDistance) {
+      if (diff > 0 && nextProduct) {
+        // Swipe left - go to next
+        setSwipeDirection('left');
+        setTimeout(() => {
+          navigate(`/produto/${nextProduct.slug}`);
+        }, 150);
+      } else if (diff < 0 && prevProduct) {
+        // Swipe right - go to previous
+        setSwipeDirection('right');
+        setTimeout(() => {
+          navigate(`/produto/${prevProduct.slug}`);
+        }, 150);
+      }
+    }
+    
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+  
+  // Reset swipe direction when product changes
+  useEffect(() => {
+    setSwipeDirection(null);
+  }, [slug]);
 
   // Get unique colors and sizes
   const colors = useMemo(() => {
@@ -187,18 +246,60 @@ const ProductPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div 
+      className="min-h-screen bg-background"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <StoreHeader />
 
-      <main className="container py-6">
-        {/* Breadcrumb */}
-        <Link 
-          to="/" 
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-6"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Voltar ao catálogo
-        </Link>
+      <main className={cn(
+        "container py-6 transition-all duration-150",
+        swipeDirection === 'left' && "opacity-50 translate-x-[-20px]",
+        swipeDirection === 'right' && "opacity-50 translate-x-[20px]"
+      )}>
+        {/* Navigation header */}
+        <div className="flex items-center justify-between mb-6">
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Voltar ao catálogo
+          </Link>
+          
+          {/* Navigation arrows */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => prevProduct && navigate(`/produto/${prevProduct.slug}`)}
+              disabled={!prevProduct}
+              className={cn(
+                "p-2 rounded-full border transition-colors",
+                prevProduct 
+                  ? "hover:bg-muted active:scale-95" 
+                  : "opacity-30 cursor-not-allowed"
+              )}
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <span className="text-sm text-muted-foreground">
+              {currentIndex >= 0 ? `${currentIndex + 1}/${allProducts?.length || 0}` : ''}
+            </span>
+            <button
+              onClick={() => nextProduct && navigate(`/produto/${nextProduct.slug}`)}
+              disabled={!nextProduct}
+              className={cn(
+                "p-2 rounded-full border transition-colors",
+                nextProduct 
+                  ? "hover:bg-muted active:scale-95" 
+                  : "opacity-30 cursor-not-allowed"
+              )}
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Gallery */}
