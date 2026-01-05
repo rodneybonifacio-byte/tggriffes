@@ -48,31 +48,59 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
 
   const generateOrderSummaryText = (orderNumber?: number, pdfUrl?: string) => {
     const itemsList = items.map(item => {
-      const colorText = item.color ? ` (${item.color})` : '';
-      return `• ${item.quantity}x ${item.productName} - Tam: ${item.size}${colorText} - ${formatPrice(item.unitPriceCents * item.quantity)}`;
-    }).join('\n');
+      const colorText = item.color ? ` • ${item.color}` : '';
+      return `   ▸ ${item.quantity}x ${item.productName}\n      Tam: ${item.size}${colorText}\n      ${formatPrice(item.unitPriceCents * item.quantity)}`;
+    }).join('\n\n');
 
     const orderLabel = orderNumber ? `#${orderNumber}` : '';
+    const shippingDays = selectedShipping?.deadline === 1 ? '1 dia útil' : `${selectedShipping?.deadline} dias úteis`;
 
-    let message = `*NOVO PEDIDO ${orderLabel} - TG GRIFFES*
+    let message = `━━━━━━━━━━━━━━━━━━━━━
+✨ *NOVO PEDIDO ${orderLabel}* ✨
+      *TG GRIFFES*
+━━━━━━━━━━━━━━━━━━━━━
 
-👤 *Cliente:* ${customerName}
-📱 *WhatsApp:* ${customerWhatsapp}
-📍 *CEP:* ${formatCEP(destCep)}
+👤 *Cliente*
+${customerName}
 
-📦 *Itens:*
+📱 *WhatsApp*
+${customerWhatsapp}
+
+📍 *CEP de Entrega*
+${formatCEP(destCep)}
+
+━━━━━━━━━━━━━━━━━━━━━
+📦 *ITENS DO PEDIDO*
+━━━━━━━━━━━━━━━━━━━━━
+
 ${itemsList}
 
-🚚 *Frete:* ${selectedShipping?.service} (${selectedShipping?.deadline} dias) - ${formatPrice(shippingCents)}
+━━━━━━━━━━━━━━━━━━━━━
+🚚 *ENVIO*
+${selectedShipping?.service} • ${shippingDays}
+Frete: ${formatPrice(shippingCents)}
 
-💰 *Subtotal:* ${formatPrice(subtotalCents)}
-💰 *Total:* ${formatPrice(finalTotalCents)}`;
+━━━━━━━━━━━━━━━━━━━━━
+💵 *RESUMO*
+━━━━━━━━━━━━━━━━━━━━━
+Subtotal: ${formatPrice(subtotalCents)}
+Frete: ${formatPrice(shippingCents)}
+
+💰 *TOTAL: ${formatPrice(finalTotalCents)}*`;
 
     if (pdfUrl) {
       message += `
 
-📄 *PDF do Pedido:* ${pdfUrl}`;
+━━━━━━━━━━━━━━━━━━━━━
+📄 *DETALHES DO PEDIDO*
+${pdfUrl}
+━━━━━━━━━━━━━━━━━━━━━`;
     }
+
+    message += `
+
+_Obrigado pela preferência!_ 🙏
+*TG GRIFFES* | Streetwear Premium`;
 
     return message;
   };
