@@ -55,57 +55,35 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
     }).join('\n\n');
 
     const orderLabel = orderNumber ? `#${orderNumber}` : '';
-    const shippingDays = selectedShipping?.deadline === 1 ? '1 dia útil' : 
-      selectedShipping?.deadline ? `${selectedShipping?.deadline} dias úteis` : 'A combinar';
 
-    let message = `╔═══════════════════════════╗
-       ✨ *NOVO PEDIDO ${orderLabel}* ✨
-    *LOJA ATACADO TG GRIFFES*
-╚═══════════════════════════╝
+    let message = `   ✨ NOVO PEDIDO ${orderLabel} ✨
 
-👤 *CLIENTE*
+👤 CLIENTE
    ${customerName}
 
-📱 *WHATSAPP*
+📱 WHATSAPP
    ${customerWhatsapp}
 
-📍 *CEP DE ENTREGA*
-   ${formatCEP(destCep)}
-
 ┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
-📦 *ITENS DO PEDIDO*
+📦 ITENS DO PEDIDO
 ┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
 
 ${itemsList}
 
 ┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
-🚚 *ENVIO*
-   ${skipShipping ? 'A combinar' : `${selectedShipping?.service} • ${shippingDays}`}
-   Frete: ${skipShipping ? 'A combinar' : formatPrice(shippingCents)}
-
-┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
-💰 *RESUMO FINANCEIRO*
+💰 RESUMO FINANCEIRO
 ┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
    Subtotal: ${formatPrice(subtotalCents)}
    Frete: ${skipShipping ? 'A combinar' : formatPrice(shippingCents)}
    
-🏷️ *TOTAL: ${skipShipping ? formatPrice(subtotalCents) + ' + Frete' : formatPrice(finalTotalCents)}*`;
+🏷️ TOTAL: ${skipShipping ? formatPrice(subtotalCents) + ' + Frete' : formatPrice(finalTotalCents)}`;
 
     if (pdfUrl) {
       message += `
 
-┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
-📄 *DETALHES DO PEDIDO*
-🔗 ${pdfUrl}`;
+📄 PDF do Pedido:
+${pdfUrl}`;
     }
-
-    message += `
-
-╔═══════════════════════════╗
-  🙏 _Obrigado pela preferência!_
-   *LOJA ATACADO TG GRIFFES*
-        Streetwear Premium ✨
-╚═══════════════════════════╝`;
 
     return message;
   };
