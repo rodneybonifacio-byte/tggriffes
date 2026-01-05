@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,6 +28,7 @@ interface OrderData {
   orderDate: string;
   logoUrl?: string;
   siteUrl?: string;
+  orderId?: string;
 }
 
 function formatPrice(cents: number): string {
@@ -186,13 +188,45 @@ serve(async (req) => {
     // Generate HTML
     const html = generateOrderHTML(orderData);
     
-    // For now, return HTML that can be printed/saved as PDF by the browser
-    // In production, you could use a PDF generation service
+    // Create Supabase client with service role for storage upload
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Generate unique filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const customerSlug = orderData.customerName.toLowerCase().replace(/\s+/g, '-').slice(0, 20);
+    const fileName = `pedido-${customerSlug}-${timestamp}.html`;
+    
+    console.log('Uploading to storage:', fileName);
+    
+    // Upload HTML to storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('order-pdfs')
+      .upload(fileName, html, {
+        contentType: 'text/html',
+        upsert: false,
+      });
+    
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw new Error(`Failed to upload: ${uploadError.message}`);
+    }
+    
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('order-pdfs')
+      .getPublicUrl(fileName);
+    
+    const pdfUrl = urlData.publicUrl;
+    console.log('PDF URL:', pdfUrl);
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
         html,
-        message: 'PDF HTML generated successfully'
+        pdfUrl,
+        message: 'PDF generated and uploaded successfully'
       }),
       { 
         headers: { 
