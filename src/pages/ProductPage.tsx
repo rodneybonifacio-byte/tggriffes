@@ -1,14 +1,14 @@
-import { useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useMemo, useRef, TouchEvent } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { StoreHeader } from '@/components/store/StoreHeader';
 import { ProductGallery } from '@/components/store/ProductGallery';
 
 import { WhatsAppButton } from '@/components/store/WhatsAppButton';
-import { useProductBySlug } from '@/hooks/useProducts';
+import { useProductBySlug, useProducts } from '@/hooks/useProducts';
 import { formatPrice } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Plus, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Loader2, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/hooks/useCart';
@@ -94,9 +94,47 @@ const getColorHex = (colorName: string) => {
 
 const ProductPage = () => {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { data: product, isLoading } = useProductBySlug(slug);
+  const { data: allProducts } = useProducts({ status: 'active' });
   const { toast } = useToast();
   const { addItem } = useCart();
+  
+  const touchStartX = useRef<number | null>(null);
+
+  // Find prev/next products for navigation
+  const { prevProduct, nextProduct } = useMemo(() => {
+    if (!allProducts || !slug) return { prevProduct: null, nextProduct: null };
+    const currentIndex = allProducts.findIndex(p => p.slug === slug);
+    if (currentIndex === -1) return { prevProduct: null, nextProduct: null };
+    
+    return {
+      prevProduct: currentIndex > 0 ? allProducts[currentIndex - 1] : null,
+      nextProduct: currentIndex < allProducts.length - 1 ? allProducts[currentIndex + 1] : null,
+    };
+  }, [allProducts, slug]);
+
+  // Swipe handlers for product navigation
+  const handleTouchStart = (e: TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: TouchEvent) => {
+    if (touchStartX.current === null) return;
+    
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = touchStartX.current - touchEndX;
+    
+    // Swipe left = next, swipe right = prev
+    if (Math.abs(diff) > 80) {
+      if (diff > 0 && nextProduct) {
+        navigate(`/produto/${nextProduct.slug}`);
+      } else if (diff < 0 && prevProduct) {
+        navigate(`/produto/${prevProduct.slug}`);
+      }
+    }
+    touchStartX.current = null;
+  };
 
   // Get unique colors and sizes
   const colors = useMemo(() => {
@@ -159,7 +197,11 @@ const ProductPage = () => {
   const isOutOfStock = totalStock === 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div 
+      className="min-h-screen bg-background"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <StoreHeader />
 
       <main className="container py-6">
@@ -271,6 +313,54 @@ const ProductPage = () => {
                 </div>
               ))}
             </div>
+
+            {/* Continuar comprando button */}
+            <Link to="/">
+              <Button variant="outline" size="lg" className="w-full gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Continuar comprando
+              </Button>
+            </Link>
+
+            {/* Product Navigation (Mobile) */}
+            <div className="flex items-center justify-between gap-4 lg:hidden">
+              {prevProduct ? (
+                <Link 
+                  to={`/produto/${prevProduct.slug}`}
+                  className="flex-1 flex items-center gap-2 p-3 border rounded-lg hover:bg-secondary transition-colors"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Anterior</p>
+                    <p className="text-sm font-medium truncate">{prevProduct.name}</p>
+                  </div>
+                </Link>
+              ) : (
+                <div className="flex-1" />
+              )}
+              
+              {nextProduct ? (
+                <Link 
+                  to={`/produto/${nextProduct.slug}`}
+                  className="flex-1 flex items-center justify-end gap-2 p-3 border rounded-lg hover:bg-secondary transition-colors text-right"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Próximo</p>
+                    <p className="text-sm font-medium truncate">{nextProduct.name}</p>
+                  </div>
+                  <ChevronRight className="h-5 w-5" />
+                </Link>
+              ) : (
+                <div className="flex-1" />
+              )}
+            </div>
+
+            {/* Swipe hint (mobile) */}
+            {(prevProduct || nextProduct) && (
+              <p className="text-xs text-center text-muted-foreground lg:hidden">
+                ← Deslize para navegar entre produtos →
+              </p>
+            )}
           </div>
         </div>
       </main>
