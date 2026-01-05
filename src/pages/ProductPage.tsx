@@ -28,10 +28,70 @@ const COLOR_MAP: Record<string, string> = {
   marrom: '#78350f',
   cinza: '#6b7280',
   bege: '#d4a574',
+  vinho: '#722f37',
+  bordo: '#800020',
+  burgundy: '#800020',
+  navy: '#000080',
+  marinho: '#000080',
+  creme: '#fffdd0',
+  offwhite: '#faf9f6',
+  'off-white': '#faf9f6',
+  caramelo: '#a0522d',
+  mostarda: '#e4a010',
+  oliva: '#808000',
+  coral: '#ff7f50',
+  salmao: '#fa8072',
+  salmon: '#fa8072',
+  turquesa: '#40e0d0',
+  aqua: '#00ffff',
+  lilas: '#c8a2c8',
+  lavanda: '#e6e6fa',
+  grafite: '#474747',
+  chumbo: '#4a4a4a',
+  nude: '#e3bc9a',
+  terracota: '#e2725b',
+  pessego: '#ffcba4',
+  menta: '#98ff98',
+  oceano: '#1e90ff',
+  jeans: '#4169e1',
+  cafe: '#6f4e37',
+  chocolate: '#7b3f00',
+  ouro: '#ffd700',
+  prata: '#c0c0c0',
+  bronze: '#cd7f32',
+  cobre: '#b87333',
+};
+
+// Check if a color is light (needs dark border)
+const isLightColor = (hex: string): boolean => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.7;
+};
+
+// Try to find color by partial match
+const findColorHex = (colorName: string): string => {
+  const normalized = colorName
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '');
+  
+  if (COLOR_MAP[normalized]) return COLOR_MAP[normalized];
+  
+  for (const [key, value] of Object.entries(COLOR_MAP)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return value;
+    }
+  }
+  
+  return '#888888';
 };
 
 const getColorHex = (colorName: string) => {
-  return COLOR_MAP[colorName.toLowerCase()] || '#888888';
+  return findColorHex(colorName);
 };
 
 const ProductPage = () => {
@@ -206,14 +266,14 @@ const ProductPage = () => {
                       )}
                       style={{ 
                         backgroundColor: getColorHex(color),
-                        borderColor: color.toLowerCase() === 'branco' ? '#e5e7eb' : getColorHex(color)
+                        borderColor: isLightColor(getColorHex(color)) ? '#1f2937' : getColorHex(color)
                       }}
                       title={color}
                     >
                       {selectedColor === color && (
                         <Check className={cn(
                           "h-5 w-5",
-                          ['branco', 'amarelo', 'bege'].includes(color.toLowerCase()) ? "text-gray-800" : "text-white"
+                          isLightColor(getColorHex(color)) ? "text-gray-800" : "text-white"
                         )} strokeWidth={3} />
                       )}
                     </button>
