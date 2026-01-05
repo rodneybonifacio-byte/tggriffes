@@ -158,6 +158,34 @@ const ProductPage = () => {
   const totalStock = product?.product_variants?.reduce((sum, v) => sum + v.stock_qty, 0) || 0;
   const isOutOfStock = totalStock === 0;
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <StoreHeader />
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  // Not found state
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-background">
+        <StoreHeader />
+        <div className="container py-20 text-center">
+          <h1 className="font-display text-2xl font-bold mb-2">Produto não encontrado</h1>
+          <p className="text-muted-foreground mb-4">O produto que você está procurando não existe ou foi removido.</p>
+          <Link to="/">
+            <Button>Voltar para o catálogo</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <StoreHeader />
