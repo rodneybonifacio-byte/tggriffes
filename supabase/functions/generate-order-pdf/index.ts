@@ -24,6 +24,8 @@ interface OrderData {
   shippingDeadlineDays: number;
   totalCents: number;
   orderDate: string;
+  logoUrl?: string;
+  siteUrl?: string;
 }
 
 function formatPrice(cents: number): string {
@@ -72,6 +74,7 @@ function generateOrderHTML(order: OrderData): string {
     body { font-family: Arial, sans-serif; margin: 0; padding: 40px; background: #f5f5f5; }
     .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
     .header { background: #000; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .header img { max-height: 60px; margin-bottom: 10px; }
     .header h1 { margin: 0; font-size: 24px; letter-spacing: 2px; }
     .header p { margin: 10px 0 0; opacity: 0.8; font-size: 14px; }
     .content { padding: 30px; }
@@ -92,7 +95,7 @@ function generateOrderHTML(order: OrderData): string {
 <body>
   <div class="container">
     <div class="header">
-      <h1>TG GRIFFES</h1>
+      ${order.logoUrl ? `<img src="${order.logoUrl}" alt="Logo" />` : '<h1>TG GRIFFES</h1>'}
       <p>Confirmação de Pedido</p>
     </div>
     

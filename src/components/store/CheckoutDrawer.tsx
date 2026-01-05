@@ -118,6 +118,10 @@ ${itemsList}
       if (itemsError) throw itemsError;
 
       // 3. Generate PDF
+      // Get the base URL for the logo
+      const baseUrl = window.location.origin;
+      const logoUrl = `${baseUrl}/logo.png`;
+
       const orderData = {
         customerName,
         customerWhatsapp: customerWhatsapp.replace(/\D/g, ''),
@@ -135,6 +139,8 @@ ${itemsList}
         shippingDeadlineDays: selectedShipping?.deadline || 0,
         totalCents: finalTotalCents,
         orderDate: new Date().toLocaleDateString('pt-BR'),
+        logoUrl,
+        siteUrl: baseUrl,
       };
 
       const { data: pdfResponse } = await supabase.functions.invoke('generate-order-pdf', {
