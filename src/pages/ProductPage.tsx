@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { StoreHeader } from '@/components/store/StoreHeader';
 import { ProductGallery } from '@/components/store/ProductGallery';
-import { ShippingCalculator, ShippingOption } from '@/components/store/ShippingCalculator';
+
 import { WhatsAppButton } from '@/components/store/WhatsAppButton';
 import { useProductBySlug } from '@/hooks/useProducts';
 import { formatPrice } from '@/lib/utils';
@@ -103,8 +103,6 @@ const ProductPage = () => {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
-  const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null);
-  const [cep, setCep] = useState('');
 
   // Get unique colors and sizes
   const colors = useMemo(() => {
@@ -179,8 +177,6 @@ const ProductPage = () => {
   const isOutOfStock = totalStock === 0;
 
   const subtotal = product.price_cents * quantity;
-  const shippingCost = selectedShipping?.price || 0;
-  const total = subtotal + shippingCost;
 
   const canAddToCart = selectedSize && quantity > 0 && !isOutOfStock && selectedVariant;
 
@@ -349,31 +345,11 @@ const ProductPage = () => {
               </div>
             </div>
 
-            {/* Shipping Calculator */}
-            <div className="border-t pt-6">
-              <ShippingCalculator
-                weightGrams={product.weight_grams}
-                selectedOption={selectedShipping}
-                onSelectOption={setSelectedShipping}
-                onCepChange={setCep}
-              />
-            </div>
-
             {/* Order Summary */}
             <div className="border-t pt-6 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal</span>
-                <span>{formatPrice(subtotal)}</span>
-              </div>
-              {selectedShipping && (
-                <div className="flex justify-between text-sm">
-                  <span>Frete ({selectedShipping.service})</span>
-                  <span>{formatPrice(shippingCost)}</span>
-                </div>
-              )}
-              <div className="flex justify-between font-semibold text-lg border-t pt-2">
+              <div className="flex justify-between font-semibold text-lg">
                 <span>Total</span>
-                <span>{formatPrice(total)}</span>
+                <span>{formatPrice(subtotal)}</span>
               </div>
             </div>
 
