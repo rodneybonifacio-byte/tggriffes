@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +13,6 @@ interface OrderItem {
   color: string | null;
   quantity: number;
   unitPriceCents: number;
-  imageUrl?: string;
 }
 
 interface OrderData {
@@ -27,8 +27,6 @@ interface OrderData {
   shippingDeadlineDays: number;
   totalCents: number;
   orderDate: string;
-  logoUrl?: string;
-  siteUrl?: string;
 }
 
 function formatPrice(cents: number): string {
@@ -54,148 +52,206 @@ function formatCep(cep: string): string {
   return cep;
 }
 
-function resolveAssetUrl(maybeUrl: string | undefined, siteUrl?: string): string | undefined {
-  if (!maybeUrl) return undefined;
-  if (/^https?:\/\//i.test(maybeUrl)) return maybeUrl;
-  if (!siteUrl) return maybeUrl;
-
-  try {
-    return new URL(maybeUrl, siteUrl).toString();
-  } catch {
-    return maybeUrl;
+async function generatePDF(order: OrderData): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595, 842]); // A4
+  const { width, height } = page.getSize();
+  
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  
+  const black = rgb(0, 0, 0);
+  const gray = rgb(0.4, 0.4, 0.4);
+  const lightGray = rgb(0.95, 0.95, 0.95);
+  
+  let y = height - 50;
+  const margin = 50;
+  const contentWidth = width - margin * 2;
+  
+  // Header background
+  page.drawRectangle({
+    x: 0,
+    y: height - 100,
+    width: width,
+    height: 100,
+    color: black,
+  });
+  
+  // Store name
+  page.drawText("TG GRIFFES", {
+    x: margin,
+    y: height - 50,
+    size: 24,
+    font: fontBold,
+    color: rgb(1, 1, 1),
+  });
+  
+  // Order number
+  const orderLabel = order.orderNumber ? `Pedido #${order.orderNumber}` : "Confirmação de Pedido";
+  page.drawText(orderLabel, {
+    x: margin,
+    y: height - 75,
+    size: 14,
+    font: fontRegular,
+    color: rgb(0.8, 0.8, 0.8),
+  });
+  
+  // Date on the right
+  const dateText = order.orderDate;
+  const dateWidth = fontRegular.widthOfTextAtSize(dateText, 12);
+  page.drawText(dateText, {
+    x: width - margin - dateWidth,
+    y: height - 50,
+    size: 12,
+    font: fontRegular,
+    color: rgb(0.8, 0.8, 0.8),
+  });
+  
+  y = height - 130;
+  
+  // Customer section
+  page.drawText("DADOS DO CLIENTE", {
+    x: margin,
+    y,
+    size: 12,
+    font: fontBold,
+    color: black,
+  });
+  y -= 25;
+  
+  // Customer info box
+  page.drawRectangle({
+    x: margin,
+    y: y - 60,
+    width: contentWidth,
+    height: 80,
+    color: lightGray,
+    borderColor: rgb(0.9, 0.9, 0.9),
+    borderWidth: 1,
+  });
+  
+  page.drawText("Nome:", { x: margin + 15, y: y - 5, size: 10, font: fontRegular, color: gray });
+  page.drawText(order.customerName, { x: margin + 15, y: y - 20, size: 12, font: fontBold, color: black });
+  
+  page.drawText("WhatsApp:", { x: margin + 200, y: y - 5, size: 10, font: fontRegular, color: gray });
+  page.drawText(formatPhone(order.customerWhatsapp), { x: margin + 200, y: y - 20, size: 12, font: fontBold, color: black });
+  
+  page.drawText("CEP de Entrega:", { x: margin + 15, y: y - 40, size: 10, font: fontRegular, color: gray });
+  page.drawText(formatCep(order.destCep), { x: margin + 15, y: y - 55, size: 12, font: fontBold, color: black });
+  
+  y -= 100;
+  
+  // Items section
+  page.drawText("ITENS DO PEDIDO", {
+    x: margin,
+    y,
+    size: 12,
+    font: fontBold,
+    color: black,
+  });
+  y -= 25;
+  
+  // Table header
+  page.drawRectangle({
+    x: margin,
+    y: y - 15,
+    width: contentWidth,
+    height: 20,
+    color: lightGray,
+  });
+  
+  page.drawText("Produto", { x: margin + 10, y: y - 10, size: 10, font: fontBold, color: gray });
+  page.drawText("Tam.", { x: margin + 250, y: y - 10, size: 10, font: fontBold, color: gray });
+  page.drawText("Qtd", { x: margin + 310, y: y - 10, size: 10, font: fontBold, color: gray });
+  page.drawText("Unit.", { x: margin + 360, y: y - 10, size: 10, font: fontBold, color: gray });
+  page.drawText("Total", { x: margin + 430, y: y - 10, size: 10, font: fontBold, color: gray });
+  
+  y -= 30;
+  
+  // Items
+  for (const item of order.items) {
+    const productText = item.productName.length > 30 
+      ? item.productName.substring(0, 27) + "..." 
+      : item.productName;
+    const sizeText = item.size + (item.color ? ` (${item.color})` : "");
+    const lineTotal = item.unitPriceCents * item.quantity;
+    
+    page.drawText(productText, { x: margin + 10, y, size: 10, font: fontRegular, color: black });
+    page.drawText(sizeText.substring(0, 12), { x: margin + 250, y, size: 10, font: fontRegular, color: black });
+    page.drawText(String(item.quantity), { x: margin + 310, y, size: 10, font: fontRegular, color: black });
+    page.drawText(formatPrice(item.unitPriceCents), { x: margin + 360, y, size: 10, font: fontRegular, color: black });
+    page.drawText(formatPrice(lineTotal), { x: margin + 430, y, size: 10, font: fontBold, color: black });
+    
+    y -= 20;
+    
+    // Draw separator line
+    page.drawLine({
+      start: { x: margin, y: y + 5 },
+      end: { x: width - margin, y: y + 5 },
+      thickness: 0.5,
+      color: rgb(0.9, 0.9, 0.9),
+    });
   }
-}
-
-function generateOrderHTML(order: OrderData): string {
-  const itemsHtml = order.items
-    .map((item) => {
-      const imageUrl = resolveAssetUrl(item.imageUrl, order.siteUrl);
-      return `
-    <tr>
-      <td style="padding: 12px; border-bottom: 1px solid #eee; width: 60px;">
-        ${imageUrl
-          ? `<img src="${imageUrl}" alt="${item.productName}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" />`
-          : '<div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 4px;"></div>'}
-      </td>
-      <td style="padding: 12px; border-bottom: 1px solid #eee;">
-        <strong>${item.productName}</strong><br>
-        <span style="color: #666; font-size: 12px;">Tam: ${item.size}${item.color ? ` • Cor: ${item.color}` : ""}</span>
-      </td>
-      <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-      <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">${formatPrice(item.unitPriceCents)}</td>
-      <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">${formatPrice(item.unitPriceCents * item.quantity)}</td>
-    </tr>
-  `;
-    })
-    .join("");
-
-  const logoUrl = resolveAssetUrl(order.logoUrl, order.siteUrl);
-  const orderNumberLabel = order.orderNumber ? `#${order.orderNumber}` : "";
-
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Pedido ${orderNumberLabel} - TG GRIFFES</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 40px; background: #f5f5f5; }
-    .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    .header { background: #000; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-    .header img { max-height: 60px; margin-bottom: 10px; }
-    .header h1 { margin: 0; font-size: 24px; letter-spacing: 2px; }
-    .header p { margin: 10px 0 0; opacity: 0.8; font-size: 14px; }
-    .order-number { font-size: 18px; font-weight: bold; margin-top: 8px; }
-    .content { padding: 30px; }
-    .section { margin-bottom: 25px; }
-    .section-title { font-size: 14px; font-weight: bold; color: #333; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-    .info-item { background: #f9f9f9; padding: 12px; border-radius: 6px; }
-    .info-label { font-size: 11px; color: #666; text-transform: uppercase; }
-    .info-value { font-size: 14px; font-weight: 500; margin-top: 4px; }
-    table { width: 100%; border-collapse: collapse; }
-    th { background: #f5f5f5; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; color: #666; }
-    .totals { background: #f9f9f9; padding: 20px; border-radius: 6px; }
-    .total-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
-    .total-row.final { font-size: 18px; font-weight: bold; border-top: 2px solid #000; padding-top: 10px; margin-top: 10px; }
-    .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; border-top: 1px solid #eee; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      ${logoUrl ? `<img src="${logoUrl}" alt="Logo" />` : "<h1>TG GRIFFES</h1>"}
-      <p>Confirmação de Pedido</p>
-      ${order.orderNumber ? `<div class="order-number">Pedido ${orderNumberLabel}</div>` : ""}
-    </div>
-
-    <div class="content">
-      <div class="section">
-        <div class="section-title">Dados do Cliente</div>
-        <div class="info-grid">
-          <div class="info-item">
-            <div class="info-label">Nome</div>
-            <div class="info-value">${order.customerName}</div>
-          </div>
-          <div class="info-item">
-            <div class="info-label">WhatsApp</div>
-            <div class="info-value">${formatPhone(order.customerWhatsapp)}</div>
-          </div>
-          <div class="info-item">
-            <div class="info-label">CEP de Entrega</div>
-            <div class="info-value">${formatCep(order.destCep)}</div>
-          </div>
-          <div class="info-item">
-            <div class="info-label">Data do Pedido</div>
-            <div class="info-value">${order.orderDate}</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-title">Itens do Pedido</div>
-        <table>
-          <thead>
-            <tr>
-              <th style="width: 60px;">Foto</th>
-              <th>Produto</th>
-              <th style="text-align: center;">Qtd</th>
-              <th style="text-align: right;">Unit.</th>
-              <th style="text-align: right;">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemsHtml}
-          </tbody>
-        </table>
-      </div>
-
-      <div class="section">
-        <div class="totals">
-          <div class="total-row">
-            <span>Subtotal</span>
-            <span>${formatPrice(order.subtotalCents)}</span>
-          </div>
-          <div class="total-row">
-            <span>Frete (${order.shippingService} - ${order.shippingDeadlineDays} dias úteis)</span>
-            <span>${formatPrice(order.shippingPriceCents)}</span>
-          </div>
-          <div class="total-row final">
-            <span>Total</span>
-            <span>${formatPrice(order.totalCents)}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="footer">
-      <p>Obrigado por comprar conosco!</p>
-      <p>TG GRIFFES • Streetwear Premium</p>
-    </div>
-  </div>
-</body>
-</html>
-  `;
+  
+  y -= 20;
+  
+  // Totals section
+  page.drawRectangle({
+    x: margin + 280,
+    y: y - 80,
+    width: contentWidth - 280,
+    height: 90,
+    color: lightGray,
+  });
+  
+  const totalsX = margin + 295;
+  const valuesX = width - margin - 15;
+  
+  // Subtotal
+  page.drawText("Subtotal:", { x: totalsX, y: y - 15, size: 11, font: fontRegular, color: gray });
+  const subtotalText = formatPrice(order.subtotalCents);
+  const subtotalWidth = fontRegular.widthOfTextAtSize(subtotalText, 11);
+  page.drawText(subtotalText, { x: valuesX - subtotalWidth, y: y - 15, size: 11, font: fontRegular, color: black });
+  
+  // Shipping
+  const shippingLabel = `Frete (${order.shippingService} - ${order.shippingDeadlineDays} dias):`;
+  page.drawText(shippingLabel, { x: totalsX, y: y - 35, size: 11, font: fontRegular, color: gray });
+  const shippingText = formatPrice(order.shippingPriceCents);
+  const shippingWidth = fontRegular.widthOfTextAtSize(shippingText, 11);
+  page.drawText(shippingText, { x: valuesX - shippingWidth, y: y - 35, size: 11, font: fontRegular, color: black });
+  
+  // Separator line
+  page.drawLine({
+    start: { x: totalsX, y: y - 50 },
+    end: { x: width - margin - 10, y: y - 50 },
+    thickness: 1,
+    color: black,
+  });
+  
+  // Total
+  page.drawText("TOTAL:", { x: totalsX, y: y - 70, size: 14, font: fontBold, color: black });
+  const totalText = formatPrice(order.totalCents);
+  const totalWidth = fontBold.widthOfTextAtSize(totalText, 14);
+  page.drawText(totalText, { x: valuesX - totalWidth, y: y - 70, size: 14, font: fontBold, color: black });
+  
+  // Footer
+  page.drawText("Obrigado por comprar conosco!", {
+    x: margin,
+    y: 60,
+    size: 11,
+    font: fontRegular,
+    color: gray,
+  });
+  
+  page.drawText("TG GRIFFES • Streetwear Premium", {
+    x: margin,
+    y: 40,
+    size: 10,
+    font: fontRegular,
+    color: gray,
+  });
+  
+  return await pdfDoc.save();
 }
 
 serve(async (req) => {
@@ -212,24 +268,21 @@ serve(async (req) => {
       items: orderData.items?.length ?? 0,
     });
 
-    const html = generateOrderHTML(orderData);
+    const pdfBytes = await generatePDF(orderData);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Use order number for cleaner file naming
     const orderNum = orderData.orderNumber || Date.now();
-    const filePath = `pedido-${orderNum}.html`;
+    const filePath = `pedido-${orderNum}.pdf`;
 
-    console.log("[generate-order-pdf] uploading", { bucket: "order-pdfs", filePath });
-
-    const bytes = new TextEncoder().encode(html);
+    console.log("[generate-order-pdf] uploading PDF", { bucket: "order-pdfs", filePath });
 
     const { error: uploadError } = await supabase.storage
       .from("order-pdfs")
-      .upload(filePath, bytes, {
-        contentType: "text/html; charset=utf-8",
+      .upload(filePath, pdfBytes, {
+        contentType: "application/pdf",
         upsert: true,
       });
 
