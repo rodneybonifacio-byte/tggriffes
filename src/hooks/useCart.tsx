@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { ProductVariant } from './useProducts';
 
 export interface CartItem {
@@ -24,10 +24,34 @@ interface CartContextType {
   totalCents: number;
 }
 
+const CART_STORAGE_KEY = 'tg-cart';
+
+const getStoredCart = (): CartItem[] => {
+  try {
+    const stored = localStorage.getItem(CART_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveCart = (items: CartItem[]) => {
+  try {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    // Ignore storage errors
+  }
+};
+
 const CartContext = createContext<CartContextType | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[]>(() => getStoredCart());
+
+  // Save cart to localStorage whenever it changes
+  useEffect(() => {
+    saveCart(items);
+  }, [items]);
 
   const addItem = useCallback((item: Omit<CartItem, 'id'>) => {
     setItems(prev => {
