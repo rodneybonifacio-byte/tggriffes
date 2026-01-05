@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,43 @@ import { Loader2, Package, Truck, User, FileText, CheckCircle } from 'lucide-rea
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
+const CHECKOUT_STORAGE_KEY = 'tg-checkout-state';
+
+interface CheckoutState {
+  step: 'info' | 'shipping' | 'review';
+  customerName: string;
+  customerWhatsapp: string;
+  destCep: string;
+  selectedShipping: ShippingOption | null;
+  showShippingCalculator: boolean;
+  skipShipping: boolean;
+}
+
+const getStoredState = (): Partial<CheckoutState> => {
+  try {
+    const stored = localStorage.getItem(CHECKOUT_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+};
+
+const saveState = (state: CheckoutState) => {
+  try {
+    localStorage.setItem(CHECKOUT_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Ignore storage errors
+  }
+};
+
+const clearStoredState = () => {
+  try {
+    localStorage.removeItem(CHECKOUT_STORAGE_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+};
+
 interface CheckoutDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -22,15 +59,30 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const { data: settings } = useStoreSettings();
   const { toast } = useToast();
   
-  const [step, setStep] = useState<'info' | 'shipping' | 'review'>('info');
-  const [customerName, setCustomerName] = useState('');
-  const [customerWhatsapp, setCustomerWhatsapp] = useState('');
-  const [destCep, setDestCep] = useState('');
-  const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null);
+  const storedState = getStoredState();
+  
+  const [step, setStep] = useState<'info' | 'shipping' | 'review'>(storedState.step || 'info');
+  const [customerName, setCustomerName] = useState(storedState.customerName || '');
+  const [customerWhatsapp, setCustomerWhatsapp] = useState(storedState.customerWhatsapp || '');
+  const [destCep, setDestCep] = useState(storedState.destCep || '');
+  const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(storedState.selectedShipping || null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
-  const [showShippingCalculator, setShowShippingCalculator] = useState(false);
-  const [skipShipping, setSkipShipping] = useState(false);
+  const [showShippingCalculator, setShowShippingCalculator] = useState(storedState.showShippingCalculator || false);
+  const [skipShipping, setSkipShipping] = useState(storedState.skipShipping || false);
+
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    saveState({
+      step,
+      customerName,
+      customerWhatsapp,
+      destCep,
+      selectedShipping,
+      showShippingCalculator,
+      skipShipping,
+    });
+  }, [step, customerName, customerWhatsapp, destCep, selectedShipping, showShippingCalculator, skipShipping]);
 
   const subtotalCents = totalCents;
   const shippingCents = selectedShipping?.price || 0;
@@ -191,9 +243,10 @@ ${pdfUrl}`;
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodedMessage}`;
       
-      // 5. Clear cart and show success
+      // 5. Clear cart, storage and show success
       setOrderComplete(true);
       clearCart();
+      clearStoredState();
 
       toast({
         title: 'Pedido enviado!',
@@ -225,6 +278,7 @@ ${pdfUrl}`;
       setOrderComplete(false);
       setShowShippingCalculator(false);
       setSkipShipping(false);
+      clearStoredState();
     }
     onOpenChange(false);
   };
