@@ -46,13 +46,15 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const canProceedToShipping = customerName.trim().length >= 2 && customerWhatsapp.replace(/\D/g, '').length >= 10;
   const canProceedToReview = selectedShipping !== null;
 
-  const generateOrderSummaryText = (pdfUrl?: string) => {
+  const generateOrderSummaryText = (orderNumber?: number, pdfUrl?: string) => {
     const itemsList = items.map(item => {
       const colorText = item.color ? ` (${item.color})` : '';
       return `• ${item.quantity}x ${item.productName} - Tam: ${item.size}${colorText} - ${formatPrice(item.unitPriceCents * item.quantity)}`;
     }).join('\n');
 
-    let message = `*NOVO PEDIDO - TG GRIFFES*
+    const orderLabel = orderNumber ? `#${orderNumber}` : '';
+
+    let message = `*NOVO PEDIDO ${orderLabel} - TG GRIFFES*
 
 👤 *Cliente:* ${customerName}
 📱 *WhatsApp:* ${customerWhatsapp}
@@ -88,15 +90,21 @@ ${itemsList}
     setIsSubmitting(true);
 
     try {
-      // 1. Save order intent to database
-      // NOTE: We must NOT request the inserted row (no `.select()`), because public users can't read
-      // from `order_intents` due to RLS. Requesting "return=representation" triggers a SELECT and fails.
+      // 1. Get next order number using RPC
+      const { data: orderNumberData, error: orderNumberError } = await supabase
+        .rpc('get_next_order_number');
+      
+      if (orderNumberError) throw orderNumberError;
+      const orderNumber = orderNumberData as number;
+
+      // 2. Save order intent to database
       const orderIntentId = crypto.randomUUID();
 
       const { error: orderError } = await supabase
         .from('order_intents')
         .insert({
           id: orderIntentId,
+          order_number: orderNumber,
           customer_name: customerName,
           customer_whatsapp: customerWhatsapp.replace(/\D/g, ''),
           dest_cep: destCep,
@@ -110,7 +118,7 @@ ${itemsList}
 
       if (orderError) throw orderError;
 
-      // 2. Save order items
+      // 3. Save order items
       const orderItems = items.map(item => ({
         order_intent_id: orderIntentId,
         product_id: item.productId,
@@ -128,12 +136,12 @@ ${itemsList}
 
       if (itemsError) throw itemsError;
 
-      // 3. Generate PDF
-      // Get the base URL for the logo
+      // 4. Generate PDF
       const baseUrl = window.location.origin;
       const logoUrl = `${baseUrl}/logo.png`;
 
       const orderData = {
+        orderNumber,
         customerName,
         customerWhatsapp: customerWhatsapp.replace(/\D/g, ''),
         destCep,
@@ -163,9 +171,9 @@ ${itemsList}
         console.error('PDF generation error:', pdfError);
       }
 
-      // 4. Generate message with PDF URL and open WhatsApp
+      // 5. Generate message with PDF URL and open WhatsApp
       const pdfUrl = pdfResponse?.pdfUrl;
-      const message = generateOrderSummaryText(pdfUrl);
+      const message = generateOrderSummaryText(orderNumber, pdfUrl);
       const whatsappNumber = settings.seller_whatsapp.replace(/\D/g, '');
       const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
       

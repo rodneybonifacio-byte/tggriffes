@@ -363,6 +363,7 @@ export type Database = {
     }
     Functions: {
       generate_slug: { Args: { name: string }; Returns: string }
+      get_next_order_number: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
