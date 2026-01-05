@@ -109,6 +109,8 @@ export function ProductCard({ product }: ProductCardProps) {
   }, [product.main_image_url, images]);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  // Track which cell is expanded to show +/- controls (format: "color|size")
+  const [expandedCell, setExpandedCell] = useState<string | null>(null);
 
   // Get unique colors and sizes
   const colors = useMemo(() => {
@@ -325,6 +327,8 @@ export function ProductCard({ product }: ProductCardProps) {
                   const available = isVariantAvailable(color, size);
                   const variant = getVariant(color, size);
                   const quantityInCart = variant ? getQuantityForVariant(variant.id) : 0;
+                  const cellKey = `${color || ''}|${size}`;
+                  const isExpanded = expandedCell === cellKey;
                   
                   return (
                     <div 
@@ -336,26 +340,49 @@ export function ProductCard({ product }: ProductCardProps) {
                     >
                       {available ? (
                         quantityInCart > 0 ? (
-                          <div className="flex items-center gap-0.5">
+                          isExpanded ? (
+                            // Expanded: show +/- controls
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                onClick={(e) => {
+                                  handleRemoveFromCart(e, color, size);
+                                  // Close if quantity becomes 0
+                                  const newQty = quantityInCart - 1;
+                                  if (newQty <= 0) setExpandedCell(null);
+                                }}
+                                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                              >
+                                <Minus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                              </button>
+                              <span className="w-4 text-center text-[10px] sm:text-xs font-bold text-green-600">
+                                {quantityInCart}
+                              </span>
+                              <button
+                                onClick={(e) => handleAddToCart(e, color, size)}
+                                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
+                              >
+                                <Plus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            // Collapsed: show quantity badge
                             <button
-                              onClick={(e) => handleRemoveFromCart(e, color, size)}
-                              className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setExpandedCell(cellKey);
+                              }}
+                              className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all active:scale-90"
                             >
-                              <Minus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                            </button>
-                            <span className="w-4 text-center text-[10px] sm:text-xs font-bold text-green-600">
                               {quantityInCart}
-                            </span>
-                            <button
-                              onClick={(e) => handleAddToCart(e, color, size)}
-                              className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
-                            >
-                              <Plus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                             </button>
-                          </div>
+                          )
                         ) : (
                           <button
-                            onClick={(e) => handleAddToCart(e, color, size)}
+                            onClick={(e) => {
+                              handleAddToCart(e, color, size);
+                              // Don't expand, just show the badge
+                            }}
                             className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
                           >
                             <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
