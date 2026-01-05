@@ -299,118 +299,122 @@ export function ProductCard({ product }: ProductCardProps) {
 
         {!isOutOfStock && sizes.length > 0 && (
           <div className="border rounded-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            {/* Header - Sizes */}
+            {/* Single row with sizes */}
             <div 
-              className="grid border-b bg-muted/30" 
-              style={{ gridTemplateColumns: colors.length > 0 ? `28px repeat(${sizes.length}, 1fr)` : `repeat(${sizes.length}, 1fr)` }}
+              className="grid" 
+              style={{ gridTemplateColumns: `repeat(${sizes.length}, 1fr)` }}
             >
-              {colors.length > 0 && (
-                <div className="py-1 border-r flex items-center justify-center text-[8px] text-muted-foreground font-medium">
-                  Cor
-                </div>
-              )}
-              {sizes.map((size) => (
-                <div key={size} className="text-center py-1 font-medium text-[9px] sm:text-[10px] border-r last:border-r-0">
-                  {size}
-                </div>
-              ))}
-            </div>
-            
-            {/* Rows - One per color (or single row if no colors) */}
-            {(colors.length > 0 ? colors : [null]).map((color) => (
-              <div 
-                key={color || 'default'} 
-                className="grid border-b last:border-b-0"
-                style={{ gridTemplateColumns: colors.length > 0 ? `28px repeat(${sizes.length}, 1fr)` : `repeat(${sizes.length}, 1fr)` }}
-              >
-                {/* Color swatch */}
-                {colors.length > 0 && color && (
-                  <div className="flex items-center justify-center py-1.5 border-r">
-                    <div 
-                      className="w-4 h-4 sm:w-5 sm:h-5 rounded-full border"
-                      style={{ 
-                        backgroundColor: getColorHex(color),
-                        borderColor: isLightColor(getColorHex(color)) ? '#1f2937' : getColorHex(color)
-                      }}
-                      title={color}
-                    />
-                  </div>
-                )}
+              {sizes.map((size) => {
+                // Get any available variant for this size (ignore color for now)
+                const variant = variants.find(v => v.size === size && v.stock_qty > 0);
+                const available = !!variant;
+                const quantityInCart = variant ? getQuantityForVariant(variant.id) : 0;
+                const cellKey = `${size}`;
+                const isExpanded = expandedCell === cellKey;
                 
-                {/* Size buttons for this color */}
-                {sizes.map((size) => {
-                  const available = isVariantAvailable(color, size);
-                  const variant = getVariant(color, size);
-                  const quantityInCart = variant ? getQuantityForVariant(variant.id) : 0;
-                  const cellKey = `${color || ''}|${size}`;
-                  const isExpanded = expandedCell === cellKey;
+                // For add to cart, use the first available variant with this size
+                const handleAdd = (e: React.MouseEvent) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!variant) return;
                   
-                  return (
-                    <div 
-                      key={size} 
-                      className={cn(
-                        "flex items-center justify-center py-1.5 border-r last:border-r-0",
-                        !available && "bg-muted/50"
-                      )}
-                    >
-                      {available ? (
-                        quantityInCart > 0 ? (
-                          isExpanded ? (
-                            // Expanded: show +/- controls
-                            <div className="flex items-center gap-0.5">
-                              <button
-                                onClick={(e) => {
-                                  handleRemoveFromCart(e, color, size);
-                                  // Close if quantity becomes 0
-                                  const newQty = quantityInCart - 1;
-                                  if (newQty <= 0) setExpandedCell(null);
-                                }}
-                                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
-                              >
-                                <Minus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                              </button>
-                              <span className="w-4 text-center text-[10px] sm:text-xs font-bold text-green-600">
-                                {quantityInCart}
-                              </span>
-                              <button
-                                onClick={(e) => handleAddToCart(e, color, size)}
-                                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
-                              >
-                                <Plus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                              </button>
-                            </div>
-                          ) : (
-                            // Collapsed: show quantity badge
+                  addItem({
+                    productId: product.id,
+                    productName: product.name,
+                    variantId: variant.id,
+                    size: size,
+                    color: variant.color,
+                    quantity: 1,
+                    unitPriceCents: product.price_cents,
+                    imageUrl: product.main_image_url,
+                  });
+                  
+                  toast({
+                    title: 'Adicionado!',
+                    description: `${product.name} - ${size}`,
+                  });
+                };
+                
+                const handleRemove = (e: React.MouseEvent) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!variant) return;
+                  
+                  const cartItem = items.find(i => i.variantId === variant.id);
+                  if (!cartItem) return;
+                  
+                  if (cartItem.quantity <= 1) {
+                    removeItem(cartItem.id);
+                  } else {
+                    updateQuantity(cartItem.id, cartItem.quantity - 1);
+                  }
+                  
+                  toast({
+                    title: 'Removido',
+                    description: `${product.name} - ${size}`,
+                  });
+                };
+                
+                return (
+                  <div 
+                    key={size} 
+                    className={cn(
+                      "flex flex-col items-center justify-center py-1.5 border-r last:border-r-0",
+                      !available && "bg-muted/50"
+                    )}
+                  >
+                    <span className="text-[9px] sm:text-[10px] font-medium mb-1">{size}</span>
+                    {available ? (
+                      quantityInCart > 0 ? (
+                        isExpanded ? (
+                          <div className="flex items-center gap-0.5">
                             <button
                               onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setExpandedCell(cellKey);
+                                handleRemove(e);
+                                const newQty = quantityInCart - 1;
+                                if (newQty <= 0) setExpandedCell(null);
                               }}
-                              className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all active:scale-90"
+                              className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
                             >
-                              {quantityInCart}
+                              <Minus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                             </button>
-                          )
+                            <span className="w-4 text-center text-[10px] sm:text-xs font-bold text-green-600">
+                              {quantityInCart}
+                            </span>
+                            <button
+                              onClick={handleAdd}
+                              className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
+                            >
+                              <Plus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                            </button>
+                          </div>
                         ) : (
                           <button
                             onClick={(e) => {
-                              handleAddToCart(e, color, size);
-                              // Don't expand, just show the badge
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setExpandedCell(cellKey);
                             }}
-                            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
+                            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all active:scale-90"
                           >
-                            <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                            {quantityInCart}
                           </button>
                         )
                       ) : (
-                        <span className="text-[8px] text-muted-foreground">—</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+                        <button
+                          onClick={handleAdd}
+                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
+                        >
+                          <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        </button>
+                      )
+                    ) : (
+                      <span className="text-[8px] text-muted-foreground">—</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
