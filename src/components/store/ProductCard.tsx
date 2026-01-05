@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Product } from '@/hooks/useProducts';
 import { formatPrice } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -88,8 +88,11 @@ const findColorHex = (colorName: string): string => {
 };
 
 export function ProductCard({ product }: ProductCardProps) {
+  const navigate = useNavigate();
   const { addItem, getQuantityForVariant, items, updateQuantity, removeItem } = useCart();
   const { toast } = useToast();
+
+  const openProduct = () => navigate(`/produto/${product.slug}`);
   
   const variants = product.product_variants || [];
   const images = product.product_images || [];
@@ -208,76 +211,88 @@ export function ProductCard({ product }: ProductCardProps) {
 
   return (
     <div className="group block animate-fade-in bg-card rounded-xl border border-border/50 p-1.5 pb-2 shadow-sm">
-      {/* Image - clickable to product page */}
-      <Link to={`/produto/${product.slug}`} className="block">
-        <div className="relative aspect-square overflow-hidden rounded-lg bg-secondary">
-          {allImages.length > 0 ? (
-            <img
-              src={allImages[currentImageIndex]}
-              alt={product.name}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-              draggable={false}
-            />
-          ) : (
-            <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-              <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
+      {/* Image - clickable to product page (iOS-safe) */}
+      <div
+        role="link"
+        tabIndex={0}
+        aria-label={`Abrir ${product.name}`}
+        onClick={openProduct}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openProduct();
+          }
+        }}
+        className="relative aspect-square overflow-hidden rounded-lg bg-secondary cursor-pointer"
+      >
+
+        {allImages.length > 0 ? (
+          <img
+            src={allImages[currentImageIndex]}
+            alt={product.name}
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            draggable={false}
+          />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+            <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
+
+        {/* Navigation arrows - only on desktop hover */}
+        {allImages.length > 1 && (
+          <>
+            <button
+              onClick={handlePrevImage}
+              className="absolute z-20 left-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background hidden sm:flex"
+            >
+              <ChevronLeft className="h-3 w-3" />
+            </button>
+            <button
+              onClick={handleNextImage}
+              className="absolute z-20 right-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background hidden sm:flex"
+            >
+              <ChevronRight className="h-3 w-3" />
+            </button>
+
+            {/* Dots indicator */}
+            <div className="absolute z-20 bottom-1.5 left-1/2 -translate-x-1/2 flex gap-0.5">
+              {allImages.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setCurrentImageIndex(idx);
+                  }}
+                  className={cn(
+                    "w-1 h-1 rounded-full transition-all",
+                    idx === currentImageIndex ? "bg-white w-2" : "bg-white/60"
+                  )}
+                />
+              ))}
             </div>
-          )}
-          
-          {/* Navigation arrows - only on desktop hover */}
-          {allImages.length > 1 && (
-            <>
-              <button
-                onClick={handlePrevImage}
-                className="absolute left-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background hidden sm:flex"
-              >
-                <ChevronLeft className="h-3 w-3" />
-              </button>
-              <button
-                onClick={handleNextImage}
-                className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background hidden sm:flex"
-              >
-                <ChevronRight className="h-3 w-3" />
-              </button>
-              
-              {/* Dots indicator */}
-              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-0.5">
-                {allImages.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setCurrentImageIndex(idx);
-                    }}
-                    className={cn(
-                      "w-1 h-1 rounded-full transition-all",
-                      idx === currentImageIndex ? "bg-white w-2" : "bg-white/60"
-                    )}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-          
-          {isOutOfStock && (
-            <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
-              <Badge variant="secondary" className="bg-background text-[10px]">
-                Esgotado
-              </Badge>
-            </div>
-          )}
-        </div>
-      </Link>
+          </>
+        )}
+
+        {isOutOfStock && (
+          <div className="pointer-events-none absolute z-20 inset-0 bg-background/60 flex items-center justify-center">
+            <Badge variant="secondary" className="bg-background text-[10px]">
+              Esgotado
+            </Badge>
+          </div>
+        )}
+      </div>
       
       <div className="mt-1.5 space-y-1">
-        <Link to={`/produto/${product.slug}`}>
+        <button type="button" onClick={openProduct} className="text-left w-full">
           <h3 className="text-[11px] sm:text-xs font-medium line-clamp-2 leading-tight group-hover:text-primary/80 transition-colors">
             {product.name}
           </h3>
-        </Link>
+        </button>
         <p className="text-xs sm:text-sm font-semibold">
           {formatPrice(product.price_cents)}
         </p>
