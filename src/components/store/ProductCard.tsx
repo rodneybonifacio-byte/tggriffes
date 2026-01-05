@@ -257,7 +257,7 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="space-y-2 pt-2" onClick={(e) => e.stopPropagation()}>
             {/* Colors */}
             {colors.length > 0 && (
-              <div className="flex gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {colors.map((color) => (
                   <button
                     key={color}
@@ -267,8 +267,8 @@ export function ProductCard({ product }: ProductCardProps) {
                       setSelectedSize(null);
                     }}
                     className={cn(
-                      "w-6 h-6 rounded-full border-2 transition-all",
-                      selectedColor === color ? "ring-2 ring-offset-1 ring-primary" : "ring-0"
+                      "w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 transition-all touch-manipulation",
+                      selectedColor === color ? "ring-2 ring-offset-2 ring-primary scale-110" : "ring-0"
                     )}
                     style={{ 
                       backgroundColor: getColorHex(color),
@@ -281,7 +281,7 @@ export function ProductCard({ product }: ProductCardProps) {
             )}
 
             {/* Sizes */}
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-2">
               {sizes.map((size) => {
                 const available = isSizeAvailable(size);
                 return (
@@ -293,12 +293,12 @@ export function ProductCard({ product }: ProductCardProps) {
                     }}
                     disabled={!available}
                     className={cn(
-                      "px-2 py-1 text-xs rounded border transition-all",
+                      "min-w-[44px] h-10 sm:min-w-[48px] sm:h-11 px-3 text-sm font-medium rounded-lg border-2 transition-all touch-manipulation",
                       selectedSize === size 
-                        ? "bg-primary text-primary-foreground border-primary" 
+                        ? "bg-primary text-primary-foreground border-primary scale-105" 
                         : available
-                          ? "bg-background border-border hover:border-primary"
-                          : "bg-muted text-muted-foreground border-transparent line-through cursor-not-allowed"
+                          ? "bg-background border-border hover:border-primary active:scale-95"
+                          : "bg-muted text-muted-foreground border-transparent line-through cursor-not-allowed opacity-50"
                     )}
                   >
                     {size}
