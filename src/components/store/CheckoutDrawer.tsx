@@ -171,9 +171,9 @@ ${itemsList}
         console.error('PDF generation error:', pdfError);
       }
 
-      // 5. Generate message with PDF URL and open WhatsApp
-      const pdfUrl = pdfResponse?.pdfUrl;
-      const message = generateOrderSummaryText(orderNumber, pdfUrl);
+      // 5. Generate message with clean PDF URL and open WhatsApp
+      const cleanPdfUrl = `${window.location.origin}/pedidos/pdf/${orderNumber}`;
+      const message = generateOrderSummaryText(orderNumber, cleanPdfUrl);
       const whatsappNumber = settings.seller_whatsapp.replace(/\D/g, '');
       const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
       
