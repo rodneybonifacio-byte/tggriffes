@@ -2,3 +2,6 @@ project_id = "dvqeitcliexenhnfradm"
 
 [functions.generate-order-pdf]
 verify_jwt = false
+
+[functions.calculate-shipping]
+verify_jwt = false
