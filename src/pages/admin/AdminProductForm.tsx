@@ -63,7 +63,7 @@ const AdminProductForm = () => {
       setMainImage(product.main_image_url || '');
       setImages(product.product_images?.map(i => i.image_url) || []);
       setVariants(product.product_variants?.map(v => ({
-        size: v.size, stock_qty: v.stock_qty, sku: v.sku || undefined, id: v.id
+        size: v.size, stock_qty: v.stock_qty, sku: v.sku || undefined, color: v.color || undefined, id: v.id
       })) || []);
     }
   }, [product]);
@@ -115,11 +115,31 @@ const AdminProductForm = () => {
 
       // Save variants
       if (productId) {
+        // Delete existing variants that are no longer in the list
+        if (isEditing && product?.product_variants) {
+          for (const existingVariant of product.product_variants) {
+            const stillExists = variants.some(v => v.id === existingVariant.id);
+            if (!stillExists) {
+              await deleteVariant(existingVariant.id);
+            }
+          }
+        }
+        
         for (const variant of variants) {
-          if ((variant as any).id) {
-            await supabase.from('product_variants').update({ stock_qty: variant.stock_qty, sku: variant.sku || null }).eq('id', (variant as any).id);
+          if (variant.id) {
+            await supabase.from('product_variants').update({ 
+              stock_qty: variant.stock_qty, 
+              sku: variant.sku || null,
+              color: variant.color || null 
+            }).eq('id', variant.id);
           } else {
-            await createVariant({ product_id: productId, size: variant.size, stock_qty: variant.stock_qty, sku: variant.sku || null });
+            await createVariant({ 
+              product_id: productId, 
+              size: variant.size, 
+              stock_qty: variant.stock_qty, 
+              sku: variant.sku || null,
+              color: variant.color || null
+            });
           }
         }
       }
