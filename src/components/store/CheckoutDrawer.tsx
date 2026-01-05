@@ -205,7 +205,9 @@ ${itemsList}
       const cleanPdfUrl = `${window.location.origin}/pedidos/pdf/${orderNumber}`;
       const message = generateOrderSummaryText(orderNumber, cleanPdfUrl);
       const whatsappNumber = settings.seller_whatsapp.replace(/\D/g, '');
-      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+      // Use encodeURIComponent which properly handles UTF-8 emojis
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodedMessage}`;
       
       // 5. Clear cart and show success
       setOrderComplete(true);
