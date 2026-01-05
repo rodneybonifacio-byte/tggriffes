@@ -1,8 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { StoreHeader } from '@/components/store/StoreHeader';
 import { ProductGallery } from '@/components/store/ProductGallery';
-import { SizeSelector } from '@/components/store/SizeSelector';
 import { ShippingCalculator, ShippingOption } from '@/components/store/ShippingCalculator';
 import { WhatsAppButton } from '@/components/store/WhatsAppButton';
 import { useProductBySlug } from '@/hooks/useProducts';
@@ -13,8 +12,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Minus, Plus, Copy, Loader2 } from 'lucide-react';
+import { ChevronLeft, Minus, Plus, Copy, Loader2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+
+const COLOR_MAP: Record<string, string> = {
+  preto: '#000000',
+  branco: '#FFFFFF',
+  azul: '#2563eb',
+  vermelho: '#dc2626',
+  verde: '#16a34a',
+  amarelo: '#eab308',
+  rosa: '#ec4899',
+  roxo: '#9333ea',
+  laranja: '#f97316',
+  marrom: '#78350f',
+  cinza: '#6b7280',
+  bege: '#d4a574',
+};
+
+const getColorHex = (colorName: string) => {
+  return COLOR_MAP[colorName.toLowerCase()] || '#888888';
+};
 
 const ProductPage = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -25,10 +44,49 @@ const ProductPage = () => {
   const { toast } = useToast();
 
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null);
   const [cep, setCep] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Get unique colors and sizes
+  const colors = useMemo(() => {
+    if (!product?.product_variants) return [];
+    const uniqueColors = [...new Set(product.product_variants.map(v => v.color).filter(Boolean))];
+    return uniqueColors as string[];
+  }, [product?.product_variants]);
+
+  const sizes = useMemo(() => {
+    if (!product?.product_variants) return [];
+    const sizeOrder = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG'];
+    const uniqueSizes = [...new Set(product.product_variants.map(v => v.size))];
+    return uniqueSizes.sort((a, b) => {
+      const indexA = sizeOrder.indexOf(a.toUpperCase());
+      const indexB = sizeOrder.indexOf(b.toUpperCase());
+      if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+  }, [product?.product_variants]);
+
+  // Set default color when product loads
+  useMemo(() => {
+    if (colors.length > 0 && !selectedColor) {
+      setSelectedColor(colors[0]);
+    }
+  }, [colors, selectedColor]);
+
+  // Check if a size is available for the selected color
+  const isSizeAvailable = (size: string) => {
+    if (!product?.product_variants) return false;
+    const variant = product.product_variants.find(v => 
+      v.size === size && 
+      (colors.length === 0 || v.color === selectedColor)
+    );
+    return variant && variant.stock_qty > 0;
+  };
 
   if (isLoading) {
     return (
@@ -56,7 +114,10 @@ const ProductPage = () => {
     );
   }
 
-  const selectedVariant = product.product_variants?.find(v => v.size === selectedSize);
+  const selectedVariant = product.product_variants?.find(v => 
+    v.size === selectedSize && 
+    (colors.length === 0 || v.color === selectedColor)
+  );
   const maxQuantity = selectedVariant?.stock_qty || 0;
   const totalStock = product.product_variants?.reduce((sum, v) => sum + v.stock_qty, 0) || 0;
   const isOutOfStock = totalStock === 0;
@@ -68,9 +129,10 @@ const ProductPage = () => {
   const canOrder = selectedSize && quantity > 0 && !isOutOfStock;
 
   const generateOrderMessage = () => {
+    const colorText = selectedColor ? ` (${selectedColor})` : '';
     let message = `Olá! Quero comprar:\n\n`;
     message += `• Produto: ${product.name}\n`;
-    message += `• Tamanho: ${selectedSize} | Qtd: ${quantity}\n`;
+    message += `• Tamanho: ${selectedSize}${colorText} | Qtd: ${quantity}\n`;
     message += `• Subtotal: ${formatPrice(subtotal)}\n`;
     
     if (selectedShipping) {
@@ -180,21 +242,78 @@ const ProductPage = () => {
               <p className="text-muted-foreground">{product.description}</p>
             )}
 
+            {/* Color Selector */}
+            {colors.length > 0 && (
+              <div className="space-y-3">
+                <Label className="font-medium">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Cor: {selectedColor && <span className="text-foreground capitalize">{selectedColor}</span>}
+                  </span>
+                </Label>
+                <div className="flex flex-wrap gap-3">
+                  {colors.map((color) => (
+                    <button
+                      key={color}
+                      onClick={() => {
+                        setSelectedColor(color);
+                        setSelectedSize(null);
+                      }}
+                      className={cn(
+                        "relative w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 transition-all touch-manipulation flex items-center justify-center",
+                        selectedColor === color ? "ring-2 ring-offset-2 ring-green-500 scale-110" : "ring-0"
+                      )}
+                      style={{ 
+                        backgroundColor: getColorHex(color),
+                        borderColor: color.toLowerCase() === 'branco' ? '#e5e7eb' : getColorHex(color)
+                      }}
+                      title={color}
+                    >
+                      {selectedColor === color && (
+                        <Check className={cn(
+                          "h-5 w-5",
+                          ['branco', 'amarelo', 'bege'].includes(color.toLowerCase()) ? "text-gray-800" : "text-white"
+                        )} strokeWidth={3} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Size Selector */}
             <div className="space-y-3">
               <Label className="font-medium">
-                Tamanho
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Tamanho: {selectedSize && <span className="text-foreground">{selectedSize}</span>}
+                </span>
                 {selectedSize && selectedVariant && (
                   <span className="ml-2 text-sm font-normal text-muted-foreground">
                     ({selectedVariant.stock_qty} em estoque)
                   </span>
                 )}
               </Label>
-              <SizeSelector
-                variants={product.product_variants || []}
-                selectedSize={selectedSize}
-                onSelect={setSelectedSize}
-              />
+              <div className="flex flex-wrap gap-2">
+                {sizes.map((size) => {
+                  const available = isSizeAvailable(size);
+                  return (
+                    <button
+                      key={size}
+                      onClick={() => available && setSelectedSize(size)}
+                      disabled={!available}
+                      className={cn(
+                        "min-w-[52px] h-12 sm:min-w-[56px] sm:h-14 px-4 text-base font-medium rounded-lg border-2 transition-all touch-manipulation",
+                        selectedSize === size 
+                          ? "bg-primary text-primary-foreground border-primary scale-105" 
+                          : available
+                            ? "bg-background border-border hover:border-primary active:scale-95"
+                            : "bg-muted text-muted-foreground border-transparent line-through cursor-not-allowed opacity-50"
+                      )}
+                    >
+                      {size}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Quantity */}
