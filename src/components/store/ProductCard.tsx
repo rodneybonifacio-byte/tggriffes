@@ -359,33 +359,33 @@ export function ProductCard({ product }: ProductCardProps) {
                   <div 
                     key={size} 
                     className={cn(
-                      "flex flex-col items-center justify-center py-1.5 border-r last:border-r-0",
+                      "flex flex-col items-center justify-center py-2.5 border-r last:border-r-0",
                       !available && "bg-muted/50"
                     )}
                   >
-                    <span className="text-[9px] sm:text-[10px] font-medium mb-1">{size}</span>
+                    <span className="text-[11px] sm:text-xs font-medium mb-1.5">{size}</span>
                     {available ? (
                       quantityInCart > 0 ? (
                         isExpanded ? (
-                          <div className="flex items-center gap-0.5">
+                          <div className="flex items-center gap-1">
                             <button
                               onClick={(e) => {
                                 handleRemove(e);
                                 const newQty = quantityInCart - 1;
                                 if (newQty <= 0) setExpandedCell(null);
                               }}
-                              className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
                             >
-                              <Minus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                              <Minus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </button>
-                            <span className="w-4 text-center text-[10px] sm:text-xs font-bold text-green-600">
+                            <span className="w-5 text-center text-xs sm:text-sm font-bold text-green-600">
                               {quantityInCart}
                             </span>
                             <button
                               onClick={handleAdd}
-                              className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
+                              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
                             >
-                              <Plus className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </button>
                           </div>
                         ) : (
@@ -395,7 +395,7 @@ export function ProductCard({ product }: ProductCardProps) {
                               e.stopPropagation();
                               setExpandedCell(cellKey);
                             }}
-                            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all active:scale-90"
+                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-500 text-white flex items-center justify-center text-xs sm:text-sm font-bold transition-all active:scale-90"
                           >
                             {quantityInCart}
                           </button>
@@ -403,13 +403,13 @@ export function ProductCard({ product }: ProductCardProps) {
                       ) : (
                         <button
                           onClick={handleAdd}
-                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
+                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
                         >
-                          <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                          <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                         </button>
                       )
                     ) : (
-                      <span className="text-[8px] text-muted-foreground">—</span>
+                      <span className="text-[10px] text-muted-foreground">—</span>
                     )}
                   </div>
                 );
