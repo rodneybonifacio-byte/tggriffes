@@ -8,6 +8,7 @@ import {
   Menu,
   ChevronLeft
 } from 'lucide-react';
+import logoImage from '@/assets/logo.png';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/hooks/useAuth';
@@ -39,8 +40,8 @@ export function AdminLayout({ children, title, backHref }: AdminLayoutProps) {
   const NavContent = () => (
     <nav className="flex flex-col h-full">
       <div className="p-6 border-b">
-        <Link to="/" className="font-display text-xl font-bold">
-          TGGRIFFES
+        <Link to="/" className="block">
+          <img src={logoImage} alt="Logo" className="h-10 w-auto" />
         </Link>
         <p className="text-sm text-muted-foreground mt-1">Painel Admin</p>
       </div>
