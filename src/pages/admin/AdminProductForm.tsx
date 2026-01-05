@@ -1,0 +1,206 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { AdminLayout } from '@/components/admin/AdminLayout';
+import { AdminGuard } from '@/components/admin/AdminGuard';
+import { ImageUpload } from '@/components/admin/ImageUpload';
+import { VariantEditor, VariantData } from '@/components/admin/VariantEditor';
+import { useProduct, useCategories, useCreateProduct, useUpdateProduct, useCreateCategory, useCreateVariant, useDeleteVariant } from '@/hooks/useProducts';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Loader2, Plus } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { generateSlug } from '@/lib/utils';
+
+const AdminProductForm = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const isEditing = id && id !== 'novo';
+  const { toast } = useToast();
+
+  const { data: product, isLoading: isLoadingProduct } = useProduct(isEditing ? id : undefined);
+  const { data: categories = [] } = useCategories();
+  const { mutateAsync: createProduct, isPending: isCreating } = useCreateProduct();
+  const { mutateAsync: updateProduct, isPending: isUpdating } = useUpdateProduct();
+  const { mutateAsync: createCategory } = useCreateCategory();
+  const { mutateAsync: createVariant } = useCreateVariant();
+  const { mutateAsync: deleteVariant } = useDeleteVariant();
+
+  const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
+  const [description, setDescription] = useState('');
+  const [priceCents, setPriceCents] = useState(0);
+  const [categoryId, setCategoryId] = useState<string>('');
+  const [active, setActive] = useState(true);
+  const [weightGrams, setWeightGrams] = useState<number | undefined>();
+  const [lengthCm, setLengthCm] = useState<number | undefined>();
+  const [widthCm, setWidthCm] = useState<number | undefined>();
+  const [heightCm, setHeightCm] = useState<number | undefined>();
+  const [images, setImages] = useState<string[]>([]);
+  const [mainImage, setMainImage] = useState<string>('');
+  const [variants, setVariants] = useState<VariantData[]>([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (product) {
+      setName(product.name);
+      setSlug(product.slug);
+      setDescription(product.description || '');
+      setPriceCents(product.price_cents);
+      setCategoryId(product.category_id || '');
+      setActive(product.active);
+      setWeightGrams(product.weight_grams || undefined);
+      setLengthCm(product.length_cm ? Number(product.length_cm) : undefined);
+      setWidthCm(product.width_cm ? Number(product.width_cm) : undefined);
+      setHeightCm(product.height_cm ? Number(product.height_cm) : undefined);
+      setMainImage(product.main_image_url || '');
+      setImages(product.product_images?.map(i => i.image_url) || []);
+      setVariants(product.product_variants?.map(v => ({
+        size: v.size, stock_qty: v.stock_qty, sku: v.sku || undefined, id: v.id
+      })) || []);
+    }
+  }, [product]);
+
+  const handleNameChange = (value: string) => {
+    setName(value);
+    if (!isEditing) setSlug(generateSlug(value));
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    try {
+      const newCategory = await createCategory({
+        name: newCategoryName.trim(),
+        slug: generateSlug(newCategoryName),
+      });
+      setCategoryId(newCategory.id);
+      setNewCategoryName('');
+      setIsCategoryDialogOpen(false);
+      toast({ title: 'Categoria criada!' });
+    } catch (error) {
+      toast({ title: 'Erro ao criar categoria', variant: 'destructive' });
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || priceCents <= 0 || images.length === 0 || variants.length === 0) {
+      toast({ title: 'Preencha todos os campos obrigatórios', description: 'Nome, preço, pelo menos 1 foto e 1 tamanho são necessários.', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const productData = {
+        name, slug, description, price_cents: priceCents,
+        category_id: categoryId || null, active,
+        weight_grams: weightGrams || null,
+        length_cm: lengthCm || null, width_cm: widthCm || null, height_cm: heightCm || null,
+        main_image_url: mainImage || images[0] || null,
+      };
+
+      let productId = id;
+      if (isEditing && id) {
+        await updateProduct({ id, ...productData });
+      } else {
+        const newProduct = await createProduct(productData);
+        productId = newProduct.id;
+      }
+
+      // Save variants
+      if (productId) {
+        for (const variant of variants) {
+          if ((variant as any).id) {
+            await supabase.from('product_variants').update({ stock_qty: variant.stock_qty, sku: variant.sku || null }).eq('id', (variant as any).id);
+          } else {
+            await createVariant({ product_id: productId, size: variant.size, stock_qty: variant.stock_qty, sku: variant.sku || null });
+          }
+        }
+      }
+
+      toast({ title: isEditing ? 'Produto atualizado!' : 'Produto criado!' });
+      navigate('/admin/produtos');
+    } catch (error) {
+      toast({ title: 'Erro ao salvar produto', variant: 'destructive' });
+    }
+  };
+
+  if (isEditing && isLoadingProduct) {
+    return <AdminGuard><AdminLayout title="Carregando..."><div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin" /></div></AdminLayout></AdminGuard>;
+  }
+
+  return (
+    <AdminGuard>
+      <AdminLayout title={isEditing ? 'Editar Produto' : 'Novo Produto'} backHref="/admin/produtos">
+        <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
+          <Card>
+            <CardHeader><CardTitle>Dados do Produto</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div><Label>Nome *</Label><Input value={name} onChange={(e) => handleNameChange(e.target.value)} required /></div>
+                <div><Label>Slug</Label><Input value={slug} onChange={(e) => setSlug(e.target.value)} /></div>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Categoria</Label>
+                  <div className="flex gap-2">
+                    <Select value={categoryId} onValueChange={setCategoryId}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        {categories.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                    <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+                      <DialogTrigger asChild><Button type="button" variant="outline" size="icon"><Plus className="h-4 w-4" /></Button></DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader><DialogTitle>Nova Categoria</DialogTitle></DialogHeader>
+                        <Input value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} placeholder="Nome da categoria" />
+                        <Button onClick={handleAddCategory}>Criar</Button>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </div>
+                <div><Label>Preço (R$) *</Label><Input type="number" min={0} step={0.01} value={priceCents / 100} onChange={(e) => setPriceCents(Math.round(parseFloat(e.target.value || '0') * 100))} required /></div>
+              </div>
+              <div><Label>Descrição</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} /></div>
+              <div className="flex items-center gap-2"><Switch checked={active} onCheckedChange={setActive} /><Label>Produto ativo</Label></div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Fotos *</CardTitle></CardHeader>
+            <CardContent><ImageUpload images={images} mainImage={mainImage} onImagesChange={setImages} onMainImageChange={setMainImage} /></CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Medidas para Frete</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div><Label>Peso (g)</Label><Input type="number" value={weightGrams || ''} onChange={(e) => setWeightGrams(parseInt(e.target.value) || undefined)} /></div>
+              <div><Label>Comprimento (cm)</Label><Input type="number" value={lengthCm || ''} onChange={(e) => setLengthCm(parseFloat(e.target.value) || undefined)} /></div>
+              <div><Label>Largura (cm)</Label><Input type="number" value={widthCm || ''} onChange={(e) => setWidthCm(parseFloat(e.target.value) || undefined)} /></div>
+              <div><Label>Altura (cm)</Label><Input type="number" value={heightCm || ''} onChange={(e) => setHeightCm(parseFloat(e.target.value) || undefined)} /></div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>Variações e Estoque *</CardTitle></CardHeader>
+            <CardContent><VariantEditor variants={variants} onChange={setVariants} /></CardContent>
+          </Card>
+
+          <div className="flex gap-3">
+            <Button type="submit" disabled={isCreating || isUpdating}>{(isCreating || isUpdating) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}{isEditing ? 'Salvar' : 'Criar Produto'}</Button>
+            <Button type="button" variant="outline" onClick={() => navigate('/admin/produtos')}>Cancelar</Button>
+          </div>
+        </form>
+      </AdminLayout>
+    </AdminGuard>
+  );
+};
+
+export default AdminProductForm;
