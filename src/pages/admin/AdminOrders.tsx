@@ -298,18 +298,35 @@ const AdminOrders = () => {
 
         {/* Order Details Modal */}
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Detalhes do Pedido</DialogTitle>
             </DialogHeader>
             
             {selectedOrder && (
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center gap-3">
                   <span className="text-sm text-muted-foreground">
                     {formatDate(selectedOrder.created_at)}
                   </span>
-                  {getStatusBadge(selectedOrder.status)}
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(selectedOrder.status)}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => generatePdf(selectedOrder)}
+                      disabled={isGeneratingPdf}
+                    >
+                      {isGeneratingPdf ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <FileText className="h-4 w-4 mr-2" />
+                          PDF
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Items */}
@@ -367,8 +384,8 @@ const AdminOrders = () => {
                   </div>
                 </div>
 
-                {/* Status Update + PDF Button */}
-                <div className="pt-2 flex gap-2">
+                {/* Status Update */}
+                <div className="pt-2">
                   <Select 
                     value={selectedOrder.status} 
                     onValueChange={(value) => {
@@ -377,7 +394,7 @@ const AdminOrders = () => {
                     }}
                     disabled={isUpdating}
                   >
-                    <SelectTrigger className="flex-1">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -386,20 +403,6 @@ const AdminOrders = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button
-                    variant="outline"
-                    onClick={() => generatePdf(selectedOrder)}
-                    disabled={isGeneratingPdf}
-                  >
-                    {isGeneratingPdf ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>
-                        <FileText className="h-4 w-4 mr-2" />
-                        PDF
-                      </>
-                    )}
-                  </Button>
                 </div>
               </div>
             )}
