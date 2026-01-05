@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { CartProvider } from "@/hooks/useCart";
 import Index from "./pages/Index";
 import ProductPage from "./pages/ProductPage";
+import PedidoPDF from "./pages/PedidoPDF";
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminProducts from "./pages/admin/AdminProducts";
@@ -29,6 +30,7 @@ const App = () => (
               {/* Public Store */}
               <Route path="/" element={<Index />} />
               <Route path="/produto/:slug" element={<ProductPage />} />
+              <Route path="/pedidos/pdf/:orderNumber" element={<PedidoPDF />} />
               
               {/* Admin */}
               <Route path="/admin/login" element={<AdminLogin />} />
