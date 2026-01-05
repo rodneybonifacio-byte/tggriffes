@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { z } from 'zod';
+import logoImage from '@/assets/logo.png';
 
 const emailSchema = z.string().email('Email inválido');
 const passwordSchema = z.string().min(6, 'A senha deve ter pelo menos 6 caracteres');
@@ -115,7 +116,9 @@ const AdminLogin = () => {
     <div className="min-h-screen flex items-center justify-center p-4 bg-secondary/30">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="font-display text-2xl">TGGRIFFES</CardTitle>
+          <div className="flex justify-center mb-2">
+            <img src={logoImage} alt="Logo" className="h-12 w-auto" />
+          </div>
           <CardDescription>Painel Administrativo</CardDescription>
         </CardHeader>
         <CardContent>
