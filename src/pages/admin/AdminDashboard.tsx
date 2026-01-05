@@ -3,7 +3,7 @@ import { AdminGuard } from '@/components/admin/AdminGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useProducts } from '@/hooks/useProducts';
 import { useOrderIntents } from '@/hooks/useOrders';
-import { Package, ShoppingCart, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Package, ShoppingCart, AlertTriangle, TrendingUp, User } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 
@@ -158,11 +158,17 @@ const AdminDashboard = () => {
                       className="flex items-center justify-between p-2 rounded-lg hover:bg-secondary transition-colors"
                     >
                       <div>
-                        <p className="font-medium">
-                          {formatPrice(order.total_cents)}
+                        <p className="font-medium flex items-center gap-1">
+                          <User className="h-3 w-3 text-muted-foreground" />
+                          {order.customer_name || 'Cliente não informado'}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(order.created_at).toLocaleString('pt-BR')}
+                          {formatPrice(order.total_cents)} • {new Date(order.created_at).toLocaleString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
                         </p>
                       </div>
                       <span className={`text-xs px-2 py-1 rounded-full ${
