@@ -374,8 +374,8 @@ ${pdfUrl}`;
                     }}
                   >
                     <span className="font-medium">Combinar frete pelo WhatsApp</span>
-                    <span className="text-xs text-muted-foreground font-normal">
-                      Enviar pedido sem calcular frete agora
+                    <span className="text-xs text-muted-foreground font-normal leading-tight">
+                      Enviar pedido sem<br />calcular frete agora
                     </span>
                   </Button>
                   
