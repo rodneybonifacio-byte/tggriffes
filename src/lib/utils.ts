@@ -40,6 +40,13 @@ export function formatPhone(phone: string): string {
   return phone;
 }
 
+export function formatWhatsApp(value: string): string {
+  const clean = value.replace(/\D/g, '');
+  if (clean.length <= 2) return clean;
+  if (clean.length <= 7) return `(${clean.slice(0, 2)}) ${clean.slice(2)}`;
+  return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7, 11)}`;
+}
+
 export function getWhatsAppLink(phone: string, message: string): string {
   const cleanPhone = phone.replace(/\D/g, '');
   const encodedMessage = encodeURIComponent(message);
