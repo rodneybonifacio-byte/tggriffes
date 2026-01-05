@@ -367,7 +367,7 @@ ${pdfUrl}`;
                   
                   <Button
                     variant="outline"
-                    className="w-full h-auto py-4 flex flex-col items-start gap-1"
+                    className="w-full h-auto py-4 flex flex-col items-center text-center gap-1"
                     onClick={() => {
                       setSkipShipping(true);
                       setSelectedShipping(null);
@@ -381,7 +381,7 @@ ${pdfUrl}`;
                   
                   <Button
                     variant="outline"
-                    className="w-full h-auto py-4 flex flex-col items-start gap-1"
+                    className="w-full h-auto py-4 flex flex-col items-center text-center gap-1"
                     onClick={() => setShowShippingCalculator(true)}
                   >
                     <span className="font-medium">Calcular frete correio</span>
