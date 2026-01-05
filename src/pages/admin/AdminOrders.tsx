@@ -2,16 +2,19 @@ import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { useOrderIntents, useUpdateOrderStatus } from '@/hooks/useOrders';
+import { useStoreSettings } from '@/hooks/useStoreSettings';
+import { useProducts } from '@/hooks/useProducts';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ShoppingCart, Loader2, Eye, MapPin, Truck } from 'lucide-react';
+import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { OrderIntent } from '@/hooks/useOrders';
+import { supabase } from '@/integrations/supabase/client';
 
 const STATUS_OPTIONS = [
   { value: 'NOVO', label: 'Novo', color: 'bg-primary/10 text-primary' },
@@ -23,10 +26,61 @@ const STATUS_OPTIONS = [
 const AdminOrders = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedOrder, setSelectedOrder] = useState<OrderIntent | null>(null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
   const { data: orders = [], isLoading } = useOrderIntents();
+  const { data: storeSettings } = useStoreSettings();
+  const { data: products = [] } = useProducts();
   const { mutateAsync: updateStatus, isPending: isUpdating } = useUpdateOrderStatus();
   const { toast } = useToast();
+
+  const generatePdf = async (order: OrderIntent) => {
+    setIsGeneratingPdf(true);
+    try {
+      const logoUrl = storeSettings?.store_logo_url || `${window.location.origin}/logo.png`;
+      
+      const items = order.order_intent_items?.map(item => {
+        const product = products.find(p => p.id === item.product_id);
+        return {
+          productName: item.product_name,
+          size: item.size,
+          color: null,
+          quantity: item.qty,
+          unitPriceCents: item.unit_price_cents,
+          imageUrl: product?.main_image_url || undefined,
+        };
+      }) || [];
+
+      const { data, error } = await supabase.functions.invoke('generate-order-pdf', {
+        body: {
+          customerName: order.customer_name || 'Cliente',
+          customerWhatsapp: order.customer_whatsapp || '',
+          items,
+          subtotalCents: order.subtotal_cents,
+          shippingService: order.shipping_service || '',
+          shippingPriceCents: order.shipping_price_cents || 0,
+          shippingDeadlineDays: order.shipping_deadline_days || 0,
+          totalCents: order.total_cents,
+          destCep: order.dest_cep || '',
+          logoUrl,
+        },
+      });
+
+      if (error) throw error;
+
+      // Open PDF in new tab
+      const pdfBlob = new Blob([Uint8Array.from(atob(data.pdf), c => c.charCodeAt(0))], { type: 'application/pdf' });
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfUrl, '_blank');
+      
+      toast({ title: 'PDF gerado com sucesso!' });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({ title: 'Erro ao gerar PDF', variant: 'destructive' });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   const filteredOrders = statusFilter === 'all' 
     ? orders 
@@ -293,8 +347,8 @@ const AdminOrders = () => {
                   </div>
                 </div>
 
-                {/* Status Update */}
-                <div className="pt-2">
+                {/* Status Update + PDF Button */}
+                <div className="pt-2 flex gap-2">
                   <Select 
                     value={selectedOrder.status} 
                     onValueChange={(value) => {
@@ -303,7 +357,7 @@ const AdminOrders = () => {
                     }}
                     disabled={isUpdating}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="flex-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -312,6 +366,20 @@ const AdminOrders = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  <Button
+                    variant="outline"
+                    onClick={() => generatePdf(selectedOrder)}
+                    disabled={isGeneratingPdf}
+                  >
+                    {isGeneratingPdf ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <FileText className="h-4 w-4 mr-2" />
+                        PDF
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             )}
