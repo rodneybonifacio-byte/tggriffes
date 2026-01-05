@@ -62,7 +62,12 @@ const COLOR_MAP: Record<string, string> = {
 
 // Try to find color by partial match
 const findColorHex = (colorName: string): string => {
-  const normalized = colorName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  // Normalize: lowercase, remove accents, remove spaces
+  const normalized = colorName
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '');
   
   // Direct match
   if (COLOR_MAP[normalized]) return COLOR_MAP[normalized];
