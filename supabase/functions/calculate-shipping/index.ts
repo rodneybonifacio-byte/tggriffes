@@ -172,10 +172,10 @@ serve(async (req) => {
     const options = await calculateShipping({
       cepOrigem,
       cepDestino,
-      peso: peso || 300, // Default 300g
-      comprimento: comprimento || 20, // Default 20cm
-      largura: largura || 15, // Default 15cm
-      altura: altura || 5, // Default 5cm
+      peso: peso || 300, // Default 300g por item
+      comprimento: comprimento || 30, // Default 30cm
+      largura: largura || 30, // Default 30cm
+      altura: altura || 2, // Default 2cm
       valorDeclarado: valorDeclarado || 50, // Default R$50
     });
 
