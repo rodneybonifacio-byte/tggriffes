@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,14 +36,20 @@ interface VariantEditorProps {
 export function VariantEditor({ variants, onChange }: VariantEditorProps) {
   const [customSize, setCustomSize] = useState('');
   const [customColor, setCustomColor] = useState('');
-  const [selectedColors, setSelectedColors] = useState<string[]>(() => {
-    const colors = [...new Set(variants.map(v => v.color).filter(Boolean) as string[])];
-    return colors.length > 0 ? colors : [];
-  });
-  const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
-    const sizes = [...new Set(variants.map(v => v.size))];
-    return sizes.length > 0 ? sizes : [];
-  });
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [initialized, setInitialized] = useState(false);
+
+  // Sync selectedColors and selectedSizes when variants change (e.g., on edit load)
+  useEffect(() => {
+    if (variants.length > 0 && !initialized) {
+      const colors = [...new Set(variants.map(v => v.color).filter(Boolean) as string[])];
+      const sizes = [...new Set(variants.map(v => v.size))];
+      setSelectedColors(colors);
+      setSelectedSizes(sizes);
+      setInitialized(true);
+    }
+  }, [variants, initialized]);
 
   // Rebuild variants when sizes or colors change
   const rebuildVariants = (sizes: string[], colors: string[]) => {
