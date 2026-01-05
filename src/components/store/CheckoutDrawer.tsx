@@ -81,9 +81,14 @@ ${itemsList}
 
     try {
       // 1. Save order intent to database
-      const { data: orderIntent, error: orderError } = await supabase
+      // NOTE: We must NOT request the inserted row (no `.select()`), because public users can't read
+      // from `order_intents` due to RLS. Requesting "return=representation" triggers a SELECT and fails.
+      const orderIntentId = crypto.randomUUID();
+
+      const { error: orderError } = await supabase
         .from('order_intents')
         .insert({
+          id: orderIntentId,
           customer_name: customerName,
           customer_whatsapp: customerWhatsapp.replace(/\D/g, ''),
           dest_cep: destCep,
@@ -93,15 +98,13 @@ ${itemsList}
           shipping_deadline_days: selectedShipping?.deadline,
           total_cents: finalTotalCents,
           status: 'NOVO',
-        })
-        .select()
-        .single();
+        });
 
       if (orderError) throw orderError;
 
       // 2. Save order items
       const orderItems = items.map(item => ({
-        order_intent_id: orderIntent.id,
+        order_intent_id: orderIntentId,
         product_id: item.productId,
         variant_id: item.variantId,
         product_name: item.productName,
