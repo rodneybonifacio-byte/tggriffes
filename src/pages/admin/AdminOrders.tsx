@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText } from 'lucide-react';
+import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText, Phone, User } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { OrderIntent } from '@/hooks/useOrders';
@@ -156,9 +156,8 @@ const AdminOrders = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data</TableHead>
+                    <TableHead>Cliente</TableHead>
                     <TableHead>Itens</TableHead>
-                    <TableHead className="text-right">Subtotal</TableHead>
-                    <TableHead className="text-right">Frete</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -171,13 +170,21 @@ const AdminOrders = () => {
                         {formatDate(order.created_at)}
                       </TableCell>
                       <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium flex items-center gap-1">
+                            <User className="h-3 w-3 text-muted-foreground" />
+                            {order.customer_name || 'Não informado'}
+                          </span>
+                          {order.customer_whatsapp && (
+                            <span className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              {order.customer_whatsapp}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         {order.order_intent_items?.length || 0} item(ns)
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatPrice(order.subtotal_cents)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {order.shipping_price_cents ? formatPrice(order.shipping_price_cents) : '-'}
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {formatPrice(order.total_cents)}
@@ -218,16 +225,29 @@ const AdminOrders = () => {
               {filteredOrders.map((order) => (
                 <Card key={order.id}>
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-start justify-between gap-2 mb-2">
                       <div>
-                        <p className="text-sm text-muted-foreground">
-                          {formatDate(order.created_at)}
+                        <p className="font-medium flex items-center gap-1">
+                          <User className="h-3 w-3 text-muted-foreground" />
+                          {order.customer_name || 'Não informado'}
                         </p>
-                        <p className="font-semibold text-lg">
-                          {formatPrice(order.total_cents)}
-                        </p>
+                        {order.customer_whatsapp && (
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {order.customer_whatsapp}
+                          </p>
+                        )}
                       </div>
                       {getStatusBadge(order.status)}
+                    </div>
+
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm text-muted-foreground">
+                        {formatDate(order.created_at)}
+                      </p>
+                      <p className="font-semibold text-lg">
+                        {formatPrice(order.total_cents)}
+                      </p>
                     </div>
 
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
