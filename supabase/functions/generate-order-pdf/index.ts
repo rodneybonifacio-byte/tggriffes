@@ -11,6 +11,7 @@ interface OrderItem {
   color: string | null;
   quantity: number;
   unitPriceCents: number;
+  imageUrl?: string;
 }
 
 interface OrderData {
@@ -54,6 +55,9 @@ function formatCep(cep: string): string {
 function generateOrderHTML(order: OrderData): string {
   const itemsHtml = order.items.map(item => `
     <tr>
+      <td style="padding: 12px; border-bottom: 1px solid #eee; width: 60px;">
+        ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.productName}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" />` : '<div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 4px;"></div>'}
+      </td>
       <td style="padding: 12px; border-bottom: 1px solid #eee;">
         <strong>${item.productName}</strong><br>
         <span style="color: #666; font-size: 12px;">Tam: ${item.size}${item.color ? ` • Cor: ${item.color}` : ''}</span>
@@ -127,6 +131,7 @@ function generateOrderHTML(order: OrderData): string {
         <table>
           <thead>
             <tr>
+              <th style="width: 60px;">Foto</th>
               <th>Produto</th>
               <th style="text-align: center;">Qtd</th>
               <th style="text-align: right;">Unit.</th>

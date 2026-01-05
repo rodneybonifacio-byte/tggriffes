@@ -132,6 +132,7 @@ ${itemsList}
           color: item.color,
           quantity: item.quantity,
           unitPriceCents: item.unitPriceCents,
+          imageUrl: item.imageUrl,
         })),
         subtotalCents,
         shippingService: selectedShipping?.service || '',
