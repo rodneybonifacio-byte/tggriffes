@@ -151,21 +151,24 @@ ${itemsList}
         body: orderData,
       });
 
-      // 4. Open PDF in new tab for printing/saving
-      if (pdfResponse?.html) {
-        const pdfWindow = window.open('', '_blank');
-        if (pdfWindow) {
-          pdfWindow.document.write(pdfResponse.html);
-          pdfWindow.document.close();
-        }
-      }
-
-      // 5. Open WhatsApp with order summary
+      // 4. Generate message and open WhatsApp
       const message = generateOrderSummaryText();
       const whatsappNumber = settings.seller_whatsapp.replace(/\D/g, '');
       const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
       
-      window.open(whatsappUrl, '_blank');
+      // Use window.location to avoid popup blocker - WhatsApp is most important
+      window.location.href = whatsappUrl;
+
+      // 5. Open PDF in new tab after a small delay (if available)
+      if (pdfResponse?.html) {
+        setTimeout(() => {
+          const pdfWindow = window.open('', '_blank');
+          if (pdfWindow) {
+            pdfWindow.document.write(pdfResponse.html);
+            pdfWindow.document.close();
+          }
+        }, 500);
+      }
 
       // 6. Clear cart and show success
       setOrderComplete(true);
