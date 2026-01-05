@@ -5,16 +5,15 @@ import { ProductGallery } from '@/components/store/ProductGallery';
 import { ShippingCalculator, ShippingOption } from '@/components/store/ShippingCalculator';
 import { WhatsAppButton } from '@/components/store/WhatsAppButton';
 import { useProductBySlug } from '@/hooks/useProducts';
-import { useStoreSettings } from '@/hooks/useStoreSettings';
-import { useCreateOrderIntent, useCreateOrderIntentItem } from '@/hooks/useOrders';
-import { formatPrice, getWhatsAppLink } from '@/lib/utils';
+import { formatPrice } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Minus, Plus, Copy, Loader2, Check } from 'lucide-react';
+import { ChevronLeft, Minus, Plus, Loader2, Check, ShoppingCart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useCart } from '@/hooks/useCart';
 
 const COLOR_MAP: Record<string, string> = {
   preto: '#000000',
@@ -38,17 +37,14 @@ const getColorHex = (colorName: string) => {
 const ProductPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const { data: product, isLoading } = useProductBySlug(slug);
-  const { data: settings } = useStoreSettings();
-  const { mutateAsync: createOrderIntent } = useCreateOrderIntent();
-  const { mutateAsync: createOrderItem } = useCreateOrderIntentItem();
   const { toast } = useToast();
+  const { addItem } = useCart();
 
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null);
   const [cep, setCep] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get unique colors and sizes
   const colors = useMemo(() => {
@@ -126,79 +122,25 @@ const ProductPage = () => {
   const shippingCost = selectedShipping?.price || 0;
   const total = subtotal + shippingCost;
 
-  const canOrder = selectedSize && quantity > 0 && !isOutOfStock;
+  const canAddToCart = selectedSize && quantity > 0 && !isOutOfStock && selectedVariant;
 
-  const generateOrderMessage = () => {
-    const colorText = selectedColor ? ` (${selectedColor})` : '';
-    let message = `Olá! Quero comprar:\n\n`;
-    message += `• Produto: ${product.name}\n`;
-    message += `• Tamanho: ${selectedSize}${colorText} | Qtd: ${quantity}\n`;
-    message += `• Subtotal: ${formatPrice(subtotal)}\n`;
+  const handleAddToCart = () => {
+    if (!canAddToCart || !selectedVariant) return;
     
-    if (selectedShipping) {
-      message += `• Frete: ${selectedShipping.service} (${formatPrice(selectedShipping.price)} – ${selectedShipping.deadline} dias)\n`;
-    }
+    addItem({
+      productId: product.id,
+      productName: product.name,
+      variantId: selectedVariant.id,
+      size: selectedSize,
+      color: selectedColor,
+      quantity,
+      unitPriceCents: product.price_cents,
+      imageUrl: product.main_image_url,
+    });
     
-    if (cep) {
-      message += `• CEP: ${cep}\n`;
-    }
-    
-    message += `• Total: ${formatPrice(total)}\n`;
-    message += `\nLink: ${window.location.href}`;
-    
-    return message;
-  };
-
-  const handleWhatsAppOrder = async () => {
-    if (!canOrder || !settings?.seller_whatsapp) return;
-    
-    setIsSubmitting(true);
-    
-    try {
-      // Create order intent
-      const order = await createOrderIntent({
-        dest_cep: cep || null,
-        shipping_service: selectedShipping?.service || null,
-        shipping_price_cents: selectedShipping?.price || null,
-        shipping_deadline_days: selectedShipping?.deadline || null,
-        subtotal_cents: subtotal,
-        total_cents: total,
-        status: 'NOVO',
-      });
-
-      // Create order item
-      await createOrderItem({
-        order_intent_id: order.id,
-        product_id: product.id,
-        variant_id: selectedVariant?.id || null,
-        product_name: product.name,
-        size: selectedSize!,
-        qty: quantity,
-        unit_price_cents: product.price_cents,
-        line_total_cents: subtotal,
-      });
-
-      // Open WhatsApp
-      const message = generateOrderMessage();
-      const link = getWhatsAppLink(settings.seller_whatsapp, message);
-      window.open(link, '_blank');
-    } catch (error) {
-      console.error('Error creating order:', error);
-      // Still open WhatsApp even if order creation fails
-      const message = generateOrderMessage();
-      const link = getWhatsAppLink(settings?.seller_whatsapp || '', message);
-      window.open(link, '_blank');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const copyOrderText = () => {
-    const message = generateOrderMessage();
-    navigator.clipboard.writeText(message);
     toast({
-      title: 'Copiado!',
-      description: 'Texto do pedido copiado para a área de transferência.',
+      title: 'Adicionado ao carrinho!',
+      description: `${product.name} (${selectedSize}${selectedColor ? ` - ${selectedColor}` : ''}) x${quantity}`,
     });
   };
 
@@ -375,35 +317,16 @@ const ProductPage = () => {
               </div>
             </div>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                size="lg"
-                className="flex-1 h-14 bg-whatsapp hover:bg-whatsapp/90 text-whatsapp-foreground"
-                disabled={!canOrder || isSubmitting}
-                onClick={handleWhatsAppOrder}
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                ) : (
-                  <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                  </svg>
-                )}
-                Finalizar pelo WhatsApp
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-14"
-                disabled={!canOrder}
-                onClick={copyOrderText}
-              >
-                <Copy className="h-5 w-5 mr-2" />
-                Copiar pedido
-              </Button>
-            </div>
+            {/* CTA Button */}
+            <Button
+              size="lg"
+              className="w-full h-14"
+              disabled={!canAddToCart}
+              onClick={handleAddToCart}
+            >
+              <ShoppingCart className="h-5 w-5 mr-2" />
+              Adicionar ao carrinho
+            </Button>
 
             {!selectedSize && (
               <p className="text-sm text-muted-foreground text-center">
