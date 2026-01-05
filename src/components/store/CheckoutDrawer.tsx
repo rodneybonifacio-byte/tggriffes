@@ -384,9 +384,9 @@ ${pdfUrl}`;
                     className="w-full h-auto py-4 flex flex-col items-start gap-1"
                     onClick={() => setShowShippingCalculator(true)}
                   >
-                    <span className="font-medium">Calcular frete agora</span>
-                    <span className="text-xs text-muted-foreground font-normal">
-                      Informe seu CEP e escolha a transportadora
+                    <span className="font-medium">Calcular frete correio</span>
+                    <span className="text-xs text-muted-foreground font-normal leading-tight">
+                      Informe seu CEP e escolha<br />a transportadora
                     </span>
                   </Button>
                 </div>
