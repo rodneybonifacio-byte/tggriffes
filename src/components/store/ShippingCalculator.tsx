@@ -56,10 +56,10 @@ export function ShippingCalculator({
         body: {
           cepOrigem: '01001000', // CEP padrão, será substituído pelo da loja
           cepDestino: cleanCep,
-          peso: weightGrams || 300,
-          comprimento: 20,
-          largura: 15,
-          altura: 5,
+          peso: weightGrams || 300, // 300g padrão
+          comprimento: 30, // 30cm padrão
+          largura: 30, // 30cm padrão
+          altura: 2, // 2cm padrão
           valorDeclarado: valorCents ? valorCents / 100 : 50,
         },
       });

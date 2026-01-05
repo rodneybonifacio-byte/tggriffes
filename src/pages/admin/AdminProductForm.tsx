@@ -199,12 +199,27 @@ const AdminProductForm = () => {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Medidas para Frete</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Medidas para Frete</CardTitle>
+              <p className="text-sm text-muted-foreground">Se não preenchido, usa valores padrão: 300g, 30x30x2cm</p>
+            </CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div><Label>Peso (g)</Label><Input type="number" value={weightGrams || ''} onChange={(e) => setWeightGrams(parseInt(e.target.value) || undefined)} /></div>
-              <div><Label>Comprimento (cm)</Label><Input type="number" value={lengthCm || ''} onChange={(e) => setLengthCm(parseFloat(e.target.value) || undefined)} /></div>
-              <div><Label>Largura (cm)</Label><Input type="number" value={widthCm || ''} onChange={(e) => setWidthCm(parseFloat(e.target.value) || undefined)} /></div>
-              <div><Label>Altura (cm)</Label><Input type="number" value={heightCm || ''} onChange={(e) => setHeightCm(parseFloat(e.target.value) || undefined)} /></div>
+              <div>
+                <Label>Peso (g)</Label>
+                <Input type="number" min={1} placeholder="300" value={weightGrams || ''} onChange={(e) => setWeightGrams(parseInt(e.target.value) || undefined)} />
+              </div>
+              <div>
+                <Label>Comprimento (cm)</Label>
+                <Input type="number" min={1} placeholder="30" value={lengthCm || ''} onChange={(e) => setLengthCm(parseFloat(e.target.value) || undefined)} />
+              </div>
+              <div>
+                <Label>Largura (cm)</Label>
+                <Input type="number" min={1} placeholder="30" value={widthCm || ''} onChange={(e) => setWidthCm(parseFloat(e.target.value) || undefined)} />
+              </div>
+              <div>
+                <Label>Altura (cm)</Label>
+                <Input type="number" min={1} placeholder="2" value={heightCm || ''} onChange={(e) => setHeightCm(parseFloat(e.target.value) || undefined)} />
+              </div>
             </CardContent>
           </Card>
 
