@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Truck, Loader2 } from 'lucide-react';
 import { formatCEP, validateCEP, formatPrice } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface ShippingOption {
   service: string;
@@ -13,26 +14,15 @@ export interface ShippingOption {
 
 interface ShippingCalculatorProps {
   weightGrams?: number | null;
+  valorCents?: number | null;
   onSelectOption?: (option: ShippingOption) => void;
   selectedOption?: ShippingOption | null;
   onCepChange?: (cep: string) => void;
 }
 
-// Mock shipping calculation (replace with BRHUB API integration)
-function mockCalculateShipping(cep: string): Promise<ShippingOption[]> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        { service: 'PAC', price: 1990, deadline: 8 },
-        { service: 'SEDEX', price: 2990, deadline: 3 },
-        { service: 'SEDEX 10', price: 4990, deadline: 1 },
-      ]);
-    }, 1000);
-  });
-}
-
 export function ShippingCalculator({ 
   weightGrams, 
+  valorCents,
   onSelectOption, 
   selectedOption,
   onCepChange 
@@ -41,6 +31,7 @@ export function ShippingCalculator({
   const [isLoading, setIsLoading] = useState(false);
   const [options, setOptions] = useState<ShippingOption[]>([]);
   const [error, setError] = useState('');
+  const [warning, setWarning] = useState('');
 
   const handleCepChange = (value: string) => {
     const formatted = formatCEP(value);
@@ -57,13 +48,43 @@ export function ShippingCalculator({
     }
 
     setError('');
+    setWarning('');
     setIsLoading(true);
     
     try {
-      const results = await mockCalculateShipping(cleanCep);
-      setOptions(results);
+      const { data, error: fnError } = await supabase.functions.invoke('calculate-shipping', {
+        body: {
+          cepOrigem: '01001000', // CEP padrão, será substituído pelo da loja
+          cepDestino: cleanCep,
+          peso: weightGrams || 300,
+          comprimento: 20,
+          largura: 15,
+          altura: 5,
+          valorDeclarado: valorCents ? valorCents / 100 : 50,
+        },
+      });
+
+      if (fnError) {
+        throw fnError;
+      }
+
+      if (data?.options) {
+        setOptions(data.options);
+        if (data.warning) {
+          setWarning(data.warning);
+        }
+      } else {
+        throw new Error('Resposta inválida');
+      }
     } catch (err) {
+      console.error('Shipping calculation error:', err);
       setError('Erro ao calcular frete. Tente novamente.');
+      // Fallback para opções padrão
+      setOptions([
+        { service: 'PAC', price: 1990, deadline: 8 },
+        { service: 'SEDEX', price: 2990, deadline: 3 },
+      ]);
+      setWarning('Usando valores estimados');
     } finally {
       setIsLoading(false);
     }
@@ -91,6 +112,10 @@ export function ShippingCalculator({
       
       {error && (
         <p className="text-sm text-destructive">{error}</p>
+      )}
+
+      {warning && (
+        <p className="text-sm text-yellow-600">{warning}</p>
       )}
 
       {options.length > 0 && (
