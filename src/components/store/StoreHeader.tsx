@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Search, Menu, X, ShoppingBag } from 'lucide-react';
+import { Search, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { useCategories } from '@/hooks/useProducts';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { getWhatsAppLink } from '@/lib/utils';
 import logoImage from '@/assets/logo.png';
+import { CartDrawer } from './CartDrawer';
 
 interface StoreHeaderProps {
   onSearch?: (query: string) => void;
@@ -101,12 +102,8 @@ export function StoreHeader({ onSearch, searchValue = '' }: StoreHeaderProps) {
             </a>
           )}
 
-          {/* Admin Link */}
-          <Link to="/admin">
-            <Button variant="ghost" size="icon">
-              <ShoppingBag className="h-5 w-5" />
-            </Button>
-          </Link>
+          {/* Cart */}
+          <CartDrawer />
         </div>
       </div>
 
