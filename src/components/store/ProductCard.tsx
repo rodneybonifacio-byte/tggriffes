@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Minus, ShoppingCart } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
@@ -33,8 +33,23 @@ export function ProductCard({ product }: ProductCardProps) {
   const { toast } = useToast();
   
   const variants = product.product_variants || [];
+  const images = product.product_images || [];
   const totalStock = variants.reduce((sum, v) => sum + v.stock_qty, 0);
   const isOutOfStock = totalStock === 0;
+
+  // Build images array (main + gallery)
+  const allImages = useMemo(() => {
+    const imgs: string[] = [];
+    if (product.main_image_url) imgs.push(product.main_image_url);
+    images
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .forEach(img => {
+        if (!imgs.includes(img.image_url)) imgs.push(img.image_url);
+      });
+    return imgs;
+  }, [product.main_image_url, images]);
+
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Get unique colors and sizes
   const colors = useMemo(() => {
@@ -58,6 +73,18 @@ export function ProductCard({ product }: ProductCardProps) {
   const [selectedColor, setSelectedColor] = useState<string | null>(colors[0] || null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
+
+  const handlePrevImage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
+  };
+
+  const handleNextImage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+  };
 
   // Get available variant based on selection
   const selectedVariant = useMemo(() => {
@@ -127,11 +154,11 @@ export function ProductCard({ product }: ProductCardProps) {
 
   return (
     <div className="group block animate-fade-in">
-      <Link to={`/produto/${product.slug}`}>
-        <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-secondary">
-          {product.main_image_url ? (
+      <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-secondary">
+        <Link to={`/produto/${product.slug}`}>
+          {allImages.length > 0 ? (
             <img
-              src={product.main_image_url}
+              src={allImages[currentImageIndex]}
               alt={product.name}
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
@@ -142,16 +169,52 @@ export function ProductCard({ product }: ProductCardProps) {
               </svg>
             </div>
           )}
-          
-          {isOutOfStock && (
-            <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
-              <Badge variant="secondary" className="bg-background">
-                Esgotado
-              </Badge>
+        </Link>
+        
+        {/* Navigation arrows */}
+        {allImages.length > 1 && (
+          <>
+            <button
+              onClick={handlePrevImage}
+              className="absolute left-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={handleNextImage}
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            
+            {/* Dots indicator */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+              {allImages.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setCurrentImageIndex(idx);
+                  }}
+                  className={cn(
+                    "w-1.5 h-1.5 rounded-full transition-all",
+                    idx === currentImageIndex ? "bg-white w-3" : "bg-white/60"
+                  )}
+                />
+              ))}
             </div>
-          )}
-        </div>
-      </Link>
+          </>
+        )}
+        
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+            <Badge variant="secondary" className="bg-background">
+              Esgotado
+            </Badge>
+          </div>
+        )}
+      </div>
       
       <div className="mt-3 space-y-2">
         <Link to={`/produto/${product.slug}`}>
