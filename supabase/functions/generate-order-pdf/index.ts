@@ -1,9 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 interface OrderItem {
@@ -32,14 +32,14 @@ interface OrderData {
 }
 
 function formatPrice(cents: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
   }).format(cents / 100);
 }
 
 function formatPhone(phone: string): string {
-  const clean = phone.replace(/\D/g, '');
+  const clean = phone.replace(/\D/g, "");
   if (clean.length === 11) {
     return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
   }
@@ -47,28 +47,49 @@ function formatPhone(phone: string): string {
 }
 
 function formatCep(cep: string): string {
-  const clean = cep.replace(/\D/g, '');
+  const clean = cep.replace(/\D/g, "");
   if (clean.length === 8) {
     return `${clean.slice(0, 5)}-${clean.slice(5)}`;
   }
   return cep;
 }
 
+function resolveAssetUrl(maybeUrl: string | undefined, siteUrl?: string): string | undefined {
+  if (!maybeUrl) return undefined;
+  if (/^https?:\/\//i.test(maybeUrl)) return maybeUrl;
+  if (!siteUrl) return maybeUrl;
+
+  try {
+    return new URL(maybeUrl, siteUrl).toString();
+  } catch {
+    return maybeUrl;
+  }
+}
+
 function generateOrderHTML(order: OrderData): string {
-  const itemsHtml = order.items.map(item => `
+  const itemsHtml = order.items
+    .map((item) => {
+      const imageUrl = resolveAssetUrl(item.imageUrl, order.siteUrl);
+      return `
     <tr>
       <td style="padding: 12px; border-bottom: 1px solid #eee; width: 60px;">
-        ${item.imageUrl ? `<img src="${item.imageUrl}" alt="${item.productName}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" />` : '<div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 4px;"></div>'}
+        ${imageUrl
+          ? `<img src="${imageUrl}" alt="${item.productName}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;" />`
+          : '<div style="width: 50px; height: 50px; background: #f0f0f0; border-radius: 4px;"></div>'}
       </td>
       <td style="padding: 12px; border-bottom: 1px solid #eee;">
         <strong>${item.productName}</strong><br>
-        <span style="color: #666; font-size: 12px;">Tam: ${item.size}${item.color ? ` • Cor: ${item.color}` : ''}</span>
+        <span style="color: #666; font-size: 12px;">Tam: ${item.size}${item.color ? ` • Cor: ${item.color}` : ""}</span>
       </td>
       <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
       <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">${formatPrice(item.unitPriceCents)}</td>
       <td style="padding: 12px; border-bottom: 1px solid #eee; text-align: right;">${formatPrice(item.unitPriceCents * item.quantity)}</td>
     </tr>
-  `).join('');
+  `;
+    })
+    .join("");
+
+  const logoUrl = resolveAssetUrl(order.logoUrl, order.siteUrl);
 
   return `
 <!DOCTYPE html>
@@ -101,10 +122,10 @@ function generateOrderHTML(order: OrderData): string {
 <body>
   <div class="container">
     <div class="header">
-      ${order.logoUrl ? `<img src="${order.logoUrl}" alt="Logo" />` : '<h1>TG GRIFFES</h1>'}
+      ${logoUrl ? `<img src="${logoUrl}" alt="Logo" />` : "<h1>TG GRIFFES</h1>"}
       <p>Confirmação de Pedido</p>
     </div>
-    
+
     <div class="content">
       <div class="section">
         <div class="section-title">Dados do Cliente</div>
@@ -127,7 +148,7 @@ function generateOrderHTML(order: OrderData): string {
           </div>
         </div>
       </div>
-      
+
       <div class="section">
         <div class="section-title">Itens do Pedido</div>
         <table>
@@ -145,7 +166,7 @@ function generateOrderHTML(order: OrderData): string {
           </tbody>
         </table>
       </div>
-      
+
       <div class="section">
         <div class="totals">
           <div class="total-row">
@@ -163,7 +184,7 @@ function generateOrderHTML(order: OrderData): string {
         </div>
       </div>
     </div>
-    
+
     <div class="footer">
       <p>Obrigado por comprar conosco!</p>
       <p>TG GRIFFES • Streetwear Premium</p>
@@ -175,78 +196,80 @@ function generateOrderHTML(order: OrderData): string {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const orderData: OrderData = await req.json();
-    
-    console.log('Generating PDF for order:', orderData.customerName);
-    
-    // Generate HTML
+
+    console.log("[generate-order-pdf] start", {
+      customerName: orderData.customerName,
+      destCep: orderData.destCep,
+      items: orderData.items?.length ?? 0,
+    });
+
     const html = generateOrderHTML(orderData);
-    
-    // Create Supabase client with service role for storage upload
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Generate unique filename
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const customerSlug = orderData.customerName.toLowerCase().replace(/\s+/g, '-').slice(0, 20);
-    const fileName = `pedido-${customerSlug}-${timestamp}.html`;
-    
-    console.log('Uploading to storage:', fileName);
-    
-    // Upload HTML to storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('order-pdfs')
-      .upload(fileName, html, {
-        contentType: 'text/html',
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const customerSlug = (orderData.customerName || "cliente")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "")
+      .slice(0, 24);
+
+    const filePath = `orders/${timestamp}-${customerSlug}.html`;
+
+    console.log("[generate-order-pdf] uploading", { bucket: "order-pdfs", filePath });
+
+    const bytes = new TextEncoder().encode(html);
+
+    const { error: uploadError } = await supabase.storage
+      .from("order-pdfs")
+      .upload(filePath, bytes, {
+        contentType: "text/html; charset=utf-8",
         upsert: false,
       });
-    
+
     if (uploadError) {
-      console.error('Upload error:', uploadError);
-      throw new Error(`Failed to upload: ${uploadError.message}`);
+      console.error("[generate-order-pdf] uploadError", uploadError);
+      throw new Error(`Upload failed: ${uploadError.message}`);
     }
-    
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('order-pdfs')
-      .getPublicUrl(fileName);
-    
+
+    const { data: urlData } = supabase.storage.from("order-pdfs").getPublicUrl(filePath);
+
     const pdfUrl = urlData.publicUrl;
-    console.log('PDF URL:', pdfUrl);
-    
+
+    console.log("[generate-order-pdf] done", { pdfUrl });
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        html,
+      JSON.stringify({
+        success: true,
         pdfUrl,
-        message: 'PDF generated and uploaded successfully'
+        filePath,
+        message: "PDF HTML generated and uploaded successfully",
       }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
-      }
+      {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      },
     );
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-    console.error('Error generating PDF:', errorMessage);
-    return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
-      { 
-        status: 500, 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
-      }
-    );
+    const errorMessage = err instanceof Error ? err.message : "Unknown error";
+    console.error("[generate-order-pdf] fatal", errorMessage);
+
+    return new Response(JSON.stringify({ success: false, error: errorMessage }), {
+      status: 500,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
+    });
   }
 });

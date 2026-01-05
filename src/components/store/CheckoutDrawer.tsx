@@ -236,10 +236,10 @@ ${itemsList}
               <CheckCircle className="h-10 w-10 text-green-600" />
             </div>
             <h3 className="text-xl font-semibold mb-2">Tudo certo!</h3>
-            <p className="text-muted-foreground mb-6">
-              Seu pedido foi registrado e enviado para o WhatsApp da loja.
-              O PDF do pedido foi aberto em uma nova aba.
-            </p>
+              <p className="text-muted-foreground mb-6">
+                Seu pedido foi registrado e enviado para o WhatsApp da loja.
+                O link do PDF do pedido foi incluído na mensagem.
+              </p>
             <Button onClick={handleClose} className="w-full max-w-xs">
               Voltar às compras
             </Button>
