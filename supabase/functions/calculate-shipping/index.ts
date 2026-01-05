@@ -108,31 +108,27 @@ async function calculateShipping(params: ShippingRequest): Promise<ShippingOptio
     throw new Error('Erro ao consultar frete no BRHUB');
   }
 
-  const data = await response.json();
-  console.log('BRHUB response:', JSON.stringify(data));
+  const responseData = await response.json();
+  console.log('BRHUB response:', JSON.stringify(responseData));
 
   // Mapear resposta da API para nosso formato
   const options: ShippingOption[] = [];
 
-  if (data && Array.isArray(data)) {
-    for (const item of data) {
-      if (item.prazo && item.valor) {
-        options.push({
-          service: item.servico || item.nome || 'Correios',
-          price: Math.round(parseFloat(item.valor) * 100), // Converter para centavos
-          deadline: parseInt(item.prazo) || 7,
-        });
-      }
-    }
-  } else if (data && data.cotacoes && Array.isArray(data.cotacoes)) {
-    for (const item of data.cotacoes) {
-      if (item.prazo && item.valor) {
-        options.push({
-          service: item.servico || item.nome || 'Correios',
-          price: Math.round(parseFloat(item.valor) * 100),
-          deadline: parseInt(item.prazo) || 7,
-        });
-      }
+  // A API BRHUB retorna { data: [...] } com os serviços
+  const items = responseData?.data || responseData?.cotacoes || (Array.isArray(responseData) ? responseData : []);
+
+  for (const item of items) {
+    // Campos da API BRHUB: nomeServico, preco, prazo
+    const serviceName = item.nomeServico || item.servico || item.nome || 'Correios';
+    const price = item.preco || item.valor;
+    const deadline = item.prazo;
+
+    if (price !== undefined && deadline !== undefined) {
+      options.push({
+        service: serviceName,
+        price: Math.round(parseFloat(price) * 100), // Converter para centavos
+        deadline: parseInt(deadline) || 7,
+      });
     }
   }
 
