@@ -367,25 +367,25 @@ export function ProductCard({ product }: ProductCardProps) {
                     {available ? (
                       quantityInCart > 0 ? (
                         isExpanded ? (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-0.5 sm:gap-1">
                             <button
                               onClick={(e) => {
                                 handleRemove(e);
                                 const newQty = quantityInCart - 1;
                                 if (newQty <= 0) setExpandedCell(null);
                               }}
-                              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                              className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
                             >
-                              <Minus className="h-5 w-5 sm:h-6 sm:w-6" />
+                              <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
                             </button>
-                            <span className="w-6 text-center text-sm sm:text-base font-bold text-green-600">
+                            <span className="w-4 sm:w-5 text-center text-xs sm:text-sm font-bold text-green-600">
                               {quantityInCart}
                             </span>
                             <button
                               onClick={handleAdd}
-                              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
+                              className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
                             >
-                              <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
+                              <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                             </button>
                           </div>
                         ) : (
