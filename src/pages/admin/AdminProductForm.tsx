@@ -4,6 +4,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import { VariantEditor, VariantData } from '@/components/admin/VariantEditor';
+import { CurrencyInput } from '@/components/admin/CurrencyInput';
 import { useProduct, useCategories, useCreateProduct, useUpdateProduct, useCreateCategory, useCreateVariant, useDeleteVariant } from '@/hooks/useProducts';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -228,7 +229,7 @@ const AdminProductForm = () => {
                     </Dialog>
                   </div>
                 </div>
-                <div><Label>Preço (R$) *</Label><Input type="number" min={0} step={0.01} value={priceCents / 100} onChange={(e) => setPriceCents(Math.round(parseFloat(e.target.value || '0') * 100))} required /></div>
+                <div><Label>Preço *</Label><CurrencyInput value={priceCents} onChange={setPriceCents} required /></div>
               </div>
               <div><Label>Descrição</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} /></div>
               <div className="flex items-center gap-2"><Switch checked={active} onCheckedChange={setActive} /><Label>Produto ativo</Label></div>
