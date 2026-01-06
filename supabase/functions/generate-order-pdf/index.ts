@@ -135,14 +135,14 @@ function resolveUrl(maybeUrl: string | undefined, siteUrl?: string): string | un
   }
 }
 
-// Constants for layout - optimized for ~15 items per page with larger photos
+// Constants for layout - optimized for ~12 items per page with larger photos
 const PAGE_WIDTH = 595;
 const PAGE_HEIGHT = 842;
 const MARGIN = 35; // Reduced margin
 const CONTENT_WIDTH = PAGE_WIDTH - (MARGIN * 2);
-const ITEM_HEIGHT = 48; // Adjusted for larger image
+const ITEM_HEIGHT = 58; // Adjusted for larger image
 const FOOTER_HEIGHT = 30; // Reduced footer
-const IMG_SIZE = 42; // Larger square image
+const IMG_SIZE = 52; // Larger square image
 
 async function generatePDF(order: OrderData): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
@@ -376,32 +376,42 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         });
       }
       
-      const textX = MARGIN + IMG_SIZE + 10;
-      const textY = rowStartY - 14;
+      const textX = MARGIN + IMG_SIZE + 12;
+      const textY = rowStartY - 16;
       
-      // Product name - truncated for compact layout
-      const productText = item.productName.length > 30 
-        ? item.productName.substring(0, 28) + "..." 
+      // Product name - larger font, truncated for layout
+      const productText = item.productName.length > 28 
+        ? item.productName.substring(0, 26) + "..." 
         : item.productName;
       
       page.drawText(productText, {
         x: textX,
         y: textY,
-        size: 9,
+        size: 11,
         font: fontBold,
         color: black,
       });
       
-      // Size and color info - same line, smaller
-      const colorText = item.color || '-';
-      const variantText = `${colorText} / ${item.size}`;
-      page.drawText(variantText, {
+      // Size - prominent display
+      page.drawText(`Tam: ${item.size}`, {
         x: textX,
-        y: textY - 12,
-        size: 7,
-        font: fontRegular,
+        y: textY - 15,
+        size: 9,
+        font: fontBold,
         color: gray,
       });
+      
+      // Color - if available, show next to size
+      const colorText = item.color ? `Cor: ${item.color}` : '';
+      if (colorText) {
+        page.drawText(colorText, {
+          x: textX + 60,
+          y: textY - 15,
+          size: 9,
+          font: fontRegular,
+          color: gray,
+        });
+      }
       
       // Quantity column
       const qtyText = `${item.quantity}`;
