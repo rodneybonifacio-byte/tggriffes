@@ -305,7 +305,7 @@ export function ProductCard({ product }: ProductCardProps) {
               style={{ gridTemplateColumns: `32px repeat(${sizes.length}, 1fr)` }}
             >
               <div className="flex items-center justify-center py-1">
-                <span className="text-[9px] text-muted-foreground"></span>
+                <span className="text-[9px] text-muted-foreground font-medium">Cor</span>
               </div>
               {sizes.map((size) => (
                 <div key={size} className="flex items-center justify-center py-1 border-l">
