@@ -287,8 +287,8 @@ export function ProductCard({ product }: ProductCardProps) {
         )}
       </div>
       
-      <div className="mt-1.5 space-y-1">
-        <button type="button" onClick={openProduct} className="text-left w-full">
+      <div className="mt-1.5 space-y-1 text-center">
+        <button type="button" onClick={openProduct} className="w-full">
           <h3 className="text-[11px] sm:text-xs font-medium line-clamp-2 leading-tight group-hover:text-primary/80 transition-colors">
             {product.name}
           </h3>
