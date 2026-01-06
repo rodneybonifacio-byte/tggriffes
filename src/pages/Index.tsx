@@ -27,6 +27,7 @@ const Index = () => {
     search,
     categoryId: categories.find(c => c.slug === selectedCategory)?.id,
     stock: inStockOnly ? 'in-stock' : 'all',
+    status: 'active',
   });
 
   // Filter and sort products
