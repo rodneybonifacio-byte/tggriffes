@@ -74,9 +74,9 @@ const AdminOrders = () => {
 
       if (error) throw error;
 
-      // Open PDF using the site route (same pattern as customer WhatsApp link)
-      const pdfPath = `/pedidos/pdf/${order.order_number}`;
-      window.open(pdfPath, '_blank', 'noopener,noreferrer');
+      // Open PDF directly from storage (production URL)
+      const pdfUrl = `https://dvqeitcliexenhnfradm.supabase.co/storage/v1/object/public/order-pdfs/pedido-${order.order_number}.pdf`;
+      window.open(pdfUrl, '_blank', 'noopener,noreferrer');
       
       toast({ title: 'PDF gerado com sucesso!' });
     } catch (error) {
