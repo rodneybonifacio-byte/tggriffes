@@ -37,7 +37,9 @@ const AdminOrders = () => {
   const generatePdf = async (order: OrderIntent) => {
     setIsGeneratingPdf(true);
     try {
-      const logoUrl = storeSettings?.store_logo_url || `${window.location.origin}/logo.png`;
+      // Use production URL for images (preview URLs don't serve static files correctly)
+      const productionUrl = 'https://atacado.tggriffes.com.br';
+      const logoUrl = storeSettings?.store_logo_url || `${productionUrl}/logo.png`;
       
       const items = order.order_intent_items?.map(item => {
         const product = products.find(p => p.id === item.product_id);
@@ -66,7 +68,7 @@ const AdminOrders = () => {
           skipShipping: !order.shipping_service,
           orderDate: new Date(order.created_at).toLocaleDateString('pt-BR'),
           logoUrl,
-          siteUrl: window.location.origin,
+          siteUrl: productionUrl,
         },
       });
 
