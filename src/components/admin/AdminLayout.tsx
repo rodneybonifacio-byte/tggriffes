@@ -7,7 +7,8 @@ import {
   LogOut, 
   Menu,
   ChevronLeft,
-  Warehouse
+  Warehouse,
+  Tag
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
   { icon: Package, label: 'Produtos', href: '/admin/produtos' },
   { icon: Warehouse, label: 'Estoque', href: '/admin/estoque' },
+  { icon: Tag, label: 'Promoções', href: '/admin/promocoes' },
   { icon: ShoppingCart, label: 'Pedidos', href: '/admin/pedidos' },
   { icon: Settings, label: 'Configurações', href: '/admin/configuracoes' },
 ];
