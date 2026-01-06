@@ -51,7 +51,7 @@ const AdminOrders = () => {
         };
       }) || [];
 
-      const { data, error } = await supabase.functions.invoke('generate-order-pdf', {
+      const { error } = await supabase.functions.invoke('generate-order-pdf', {
         body: {
           orderNumber: order.order_number,
           customerName: order.customer_name || 'Cliente',
@@ -72,10 +72,9 @@ const AdminOrders = () => {
 
       if (error) throw error;
 
-      // Open PDF in new tab
-      const pdfUrl = data?.pdfUrl as string | undefined;
-      if (!pdfUrl) throw new Error('Resposta inválida ao gerar PDF');
-      window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+      // Open PDF using the site route (same pattern as customer WhatsApp link)
+      const pdfPath = `/pedidos/pdf/${order.order_number}`;
+      window.open(pdfPath, '_blank', 'noopener,noreferrer');
       
       toast({ title: 'PDF gerado com sucesso!' });
     } catch (error) {
