@@ -82,18 +82,39 @@ async function fetchImageAsBytes(url: string): Promise<{ bytes: Uint8Array; type
     }
     
     const contentType = response.headers.get('content-type') || '';
+    
+    // IMPORTANT: Skip if response is HTML (happens with preview URLs that serve the SPA)
+    if (contentType.includes('text/html') || contentType.includes('text/plain')) {
+      console.log("[generate-order-pdf] skipping non-image content-type:", contentType);
+      return null;
+    }
+    
     const buffer = await response.arrayBuffer();
     const bytes = new Uint8Array(buffer);
     
     console.log("[generate-order-pdf] image fetched:", { size: bytes.length, contentType, convertedUrl });
     
+    // Determine image type from content-type header first, then URL
     let type = 'unknown';
-    if (contentType.includes('png') || convertedUrl.toLowerCase().includes('.png')) {
+    if (contentType.includes('image/png')) {
       type = 'png';
-    } else if (contentType.includes('jpeg') || contentType.includes('jpg') || 
-               convertedUrl.toLowerCase().includes('.jpg') || convertedUrl.toLowerCase().includes('.jpeg') ||
-               convertedUrl.includes('output=jpg')) {
+    } else if (contentType.includes('image/jpeg') || contentType.includes('image/jpg')) {
       type = 'jpg';
+    } else if (convertedUrl.includes('output=jpg')) {
+      // wsrv.nl conversion
+      type = 'jpg';
+    } else if (contentType.includes('image/')) {
+      // For other image types, try to detect from URL
+      if (convertedUrl.toLowerCase().includes('.png')) {
+        type = 'png';
+      } else if (convertedUrl.toLowerCase().includes('.jpg') || convertedUrl.toLowerCase().includes('.jpeg')) {
+        type = 'jpg';
+      }
+    }
+    
+    if (type === 'unknown') {
+      console.log("[generate-order-pdf] could not determine image type for:", contentType);
+      return null;
     }
     
     return { bytes, type };
