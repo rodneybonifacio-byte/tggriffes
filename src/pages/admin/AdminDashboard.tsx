@@ -177,9 +177,12 @@ const AdminDashboard = () => {
                       className="flex items-center justify-between p-2 rounded-lg hover:bg-secondary transition-colors"
                     >
                       <div>
-                        <p className="font-medium flex items-center gap-1">
-                          <User className="h-3 w-3 text-muted-foreground" />
-                          {order.customer_name || 'Cliente não informado'}
+                        <p className="font-medium flex items-center gap-2">
+                          <span className="text-primary font-semibold">#{order.order_number}</span>
+                          <span className="flex items-center gap-1">
+                            <User className="h-3 w-3 text-muted-foreground" />
+                            {order.customer_name || 'Cliente não informado'}
+                          </span>
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {formatPrice(order.total_cents)} • {new Date(order.created_at).toLocaleString('pt-BR', {

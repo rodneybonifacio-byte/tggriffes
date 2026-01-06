@@ -159,6 +159,7 @@ const AdminOrders = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Pedido</TableHead>
                     <TableHead>Data</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Itens</TableHead>
@@ -170,6 +171,9 @@ const AdminOrders = () => {
                 <TableBody>
                   {filteredOrders.map((order) => (
                     <TableRow key={order.id}>
+                      <TableCell className="font-semibold text-primary">
+                        #{order.order_number}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {formatDate(order.created_at)}
                       </TableCell>
@@ -231,6 +235,9 @@ const AdminOrders = () => {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div>
+                        <p className="font-semibold text-primary mb-1">
+                          #{order.order_number}
+                        </p>
                         <p className="font-medium flex items-center gap-1">
                           <User className="h-3 w-3 text-muted-foreground" />
                           {order.customer_name || 'Não informado'}
@@ -304,7 +311,7 @@ const AdminOrders = () => {
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
           <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Detalhes do Pedido</DialogTitle>
+              <DialogTitle>Pedido #{selectedOrder?.order_number}</DialogTitle>
             </DialogHeader>
             
             {selectedOrder && (
