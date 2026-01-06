@@ -6,7 +6,8 @@ import {
   Settings, 
   LogOut, 
   Menu,
-  ChevronLeft
+  ChevronLeft,
+  Warehouse
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { cn } from '@/lib/utils';
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
   { icon: Package, label: 'Produtos', href: '/admin/produtos' },
+  { icon: Warehouse, label: 'Estoque', href: '/admin/estoque' },
   { icon: ShoppingCart, label: 'Pedidos', href: '/admin/pedidos' },
   { icon: Settings, label: 'Configurações', href: '/admin/configuracoes' },
 ];
