@@ -299,122 +299,216 @@ export function ProductCard({ product }: ProductCardProps) {
 
         {!isOutOfStock && sizes.length > 0 && (
           <div className="border rounded-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            {/* Single row with sizes */}
+            {/* Header row with sizes */}
             <div 
-              className="grid" 
-              style={{ gridTemplateColumns: `repeat(${sizes.length}, 1fr)` }}
+              className="grid border-b bg-muted/30" 
+              style={{ gridTemplateColumns: `32px repeat(${sizes.length}, 1fr)` }}
             >
-              {sizes.map((size) => {
-                // Get any available variant for this size (ignore color for now)
-                const variant = variants.find(v => v.size === size && v.stock_qty > 0);
-                const available = !!variant;
-                const quantityInCart = variant ? getQuantityForVariant(variant.id) : 0;
-                const cellKey = `${size}`;
-                const isExpanded = expandedCell === cellKey;
-                
-                // For add to cart, use the first available variant with this size
-                const handleAdd = (e: React.MouseEvent) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (!variant) return;
-                  
-                  addItem({
-                    productId: product.id,
-                    productName: product.name,
-                    variantId: variant.id,
-                    size: size,
-                    color: variant.color,
-                    quantity: 1,
-                    unitPriceCents: product.price_cents,
-                    imageUrl: product.main_image_url,
-                  });
-                  
-                  toast({
-                    title: 'Adicionado!',
-                    description: `${product.name} - ${size}`,
-                  });
-                };
-                
-                const handleRemove = (e: React.MouseEvent) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (!variant) return;
-                  
-                  const cartItem = items.find(i => i.variantId === variant.id);
-                  if (!cartItem) return;
-                  
-                  if (cartItem.quantity <= 1) {
-                    removeItem(cartItem.id);
-                  } else {
-                    updateQuantity(cartItem.id, cartItem.quantity - 1);
-                  }
-                  
-                  toast({
-                    title: 'Removido',
-                    description: `${product.name} - ${size}`,
-                  });
-                };
+              <div className="flex items-center justify-center py-1">
+                <span className="text-[9px] text-muted-foreground"></span>
+              </div>
+              {sizes.map((size) => (
+                <div key={size} className="flex items-center justify-center py-1 border-l">
+                  <span className="text-[10px] sm:text-xs font-medium">{size}</span>
+                </div>
+              ))}
+            </div>
+            
+            {/* Color rows */}
+            {colors.length > 0 ? (
+              colors.map((color) => {
+                const colorHex = findColorHex(color);
+                const needsBorder = isLightColor(colorHex);
                 
                 return (
                   <div 
-                    key={size} 
-                    className={cn(
-                      "flex flex-col items-center justify-center py-2.5 border-r last:border-r-0",
-                      !available && "bg-muted/50"
-                    )}
+                    key={color}
+                    className="grid border-t first:border-t-0"
+                    style={{ gridTemplateColumns: `32px repeat(${sizes.length}, 1fr)` }}
                   >
-                    <span className="text-[11px] sm:text-xs font-medium mb-1.5">{size}</span>
-                    {available ? (
-                      quantityInCart > 0 ? (
-                        isExpanded ? (
-                          <div className="flex items-center gap-0.5 sm:gap-1">
+                    {/* Color swatch */}
+                    <div className="flex items-center justify-center py-2">
+                      <div 
+                        className={cn(
+                          "w-4 h-4 rounded-full",
+                          needsBorder && "border border-gray-400"
+                        )}
+                        style={{ backgroundColor: colorHex }}
+                        title={color}
+                      />
+                    </div>
+                    
+                    {/* Size cells */}
+                    {sizes.map((size) => {
+                      const variant = getVariant(color, size);
+                      const available = variant && variant.stock_qty > 0;
+                      const quantityInCart = variant ? getQuantityForVariant(variant.id) : 0;
+                      const cellKey = `${color}|${size}`;
+                      const isExpanded = expandedCell === cellKey;
+                      
+                      const handleAdd = (e: React.MouseEvent) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleAddToCart(e, color, size);
+                      };
+                      
+                      const handleRemove = (e: React.MouseEvent) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleRemoveFromCart(e, color, size);
+                      };
+                      
+                      return (
+                        <div 
+                          key={size}
+                          className={cn(
+                            "flex items-center justify-center py-2 border-l",
+                            !available && "bg-muted/50"
+                          )}
+                        >
+                          {available ? (
+                            quantityInCart > 0 ? (
+                              isExpanded ? (
+                                <div className="flex items-center gap-0.5 sm:gap-1">
+                                  <button
+                                    onClick={(e) => {
+                                      handleRemove(e);
+                                      const newQty = quantityInCart - 1;
+                                      if (newQty <= 0) setExpandedCell(null);
+                                    }}
+                                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                                  >
+                                    <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  </button>
+                                  <span className="w-3 sm:w-4 text-center text-[10px] sm:text-xs font-bold text-green-600">
+                                    {quantityInCart}
+                                  </span>
+                                  <button
+                                    onClick={handleAdd}
+                                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
+                                  >
+                                    <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setExpandedCell(cellKey);
+                                  }}
+                                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all active:scale-90"
+                                >
+                                  {quantityInCart}
+                                </button>
+                              )
+                            ) : (
+                              <button
+                                onClick={handleAdd}
+                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
+                              >
+                                <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                              </button>
+                            )
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">—</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })
+            ) : (
+              /* No colors - single row with sizes */
+              <div 
+                className="grid"
+                style={{ gridTemplateColumns: `32px repeat(${sizes.length}, 1fr)` }}
+              >
+                <div className="flex items-center justify-center py-2">
+                  <span className="text-[9px] text-muted-foreground"></span>
+                </div>
+                {sizes.map((size) => {
+                  const variant = variants.find(v => v.size === size && v.stock_qty > 0);
+                  const available = !!variant;
+                  const quantityInCart = variant ? getQuantityForVariant(variant.id) : 0;
+                  const cellKey = `|${size}`;
+                  const isExpanded = expandedCell === cellKey;
+                  
+                  const handleAdd = (e: React.MouseEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!variant) return;
+                    handleAddToCart(e, null, size);
+                  };
+                  
+                  const handleRemove = (e: React.MouseEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!variant) return;
+                    handleRemoveFromCart(e, null, size);
+                  };
+                  
+                  return (
+                    <div 
+                      key={size}
+                      className={cn(
+                        "flex items-center justify-center py-2 border-l",
+                        !available && "bg-muted/50"
+                      )}
+                    >
+                      {available ? (
+                        quantityInCart > 0 ? (
+                          isExpanded ? (
+                            <div className="flex items-center gap-0.5 sm:gap-1">
+                              <button
+                                onClick={(e) => {
+                                  handleRemove(e);
+                                  const newQty = quantityInCart - 1;
+                                  if (newQty <= 0) setExpandedCell(null);
+                                }}
+                                className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                              >
+                                <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </button>
+                              <span className="w-3 sm:w-4 text-center text-[10px] sm:text-xs font-bold text-green-600">
+                                {quantityInCart}
+                              </span>
+                              <button
+                                onClick={handleAdd}
+                                className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
+                              >
+                                <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </button>
+                            </div>
+                          ) : (
                             <button
                               onClick={(e) => {
-                                handleRemove(e);
-                                const newQty = quantityInCart - 1;
-                                if (newQty <= 0) setExpandedCell(null);
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setExpandedCell(cellKey);
                               }}
-                              className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all active:scale-90"
                             >
-                              <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
-                            </button>
-                            <span className="w-4 sm:w-5 text-center text-xs sm:text-sm font-bold text-green-600">
                               {quantityInCart}
-                            </span>
-                            <button
-                              onClick={handleAdd}
-                              className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
-                            >
-                              <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                             </button>
-                          </div>
+                          )
                         ) : (
                           <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setExpandedCell(cellKey);
-                            }}
-                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-500 text-white flex items-center justify-center text-xs sm:text-sm font-bold transition-all active:scale-90"
+                            onClick={handleAdd}
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
                           >
-                            {quantityInCart}
+                            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </button>
                         )
                       ) : (
-                        <button
-                          onClick={handleAdd}
-                          className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
-                        >
-                          <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
-                        </button>
-                      )
-                    ) : (
-                      <span className="text-[10px] text-muted-foreground">—</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                        <span className="text-[10px] text-muted-foreground">—</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
