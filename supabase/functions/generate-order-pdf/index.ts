@@ -135,14 +135,14 @@ function resolveUrl(maybeUrl: string | undefined, siteUrl?: string): string | un
   }
 }
 
-// Constants for layout - optimized for ~12 items per page with larger photos
+// Constants for layout - optimized for ~10 items per page with 60px photos
 const PAGE_WIDTH = 595;
 const PAGE_HEIGHT = 842;
-const MARGIN = 35; // Reduced margin
+const MARGIN = 35;
 const CONTENT_WIDTH = PAGE_WIDTH - (MARGIN * 2);
-const ITEM_HEIGHT = 58; // Adjusted for larger image
-const FOOTER_HEIGHT = 30; // Reduced footer
-const IMG_SIZE = 52; // Larger square image
+const ITEM_HEIGHT = 68; // Adjusted for 60px image
+const FOOTER_HEIGHT = 30;
+const IMG_SIZE = 60; // Larger square image
 
 async function generatePDF(order: OrderData): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
@@ -376,72 +376,72 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         });
       }
       
-      const textX = MARGIN + IMG_SIZE + 12;
-      const textY = rowStartY - 16;
+      const textX = MARGIN + IMG_SIZE + 14;
+      const textY = rowStartY - 18;
       
-      // Product name - larger font, truncated for layout
-      const productText = item.productName.length > 28 
-        ? item.productName.substring(0, 26) + "..." 
+      // Product name - LARGER font (13pt)
+      const productText = item.productName.length > 26 
+        ? item.productName.substring(0, 24) + "..." 
         : item.productName;
       
       page.drawText(productText, {
         x: textX,
         y: textY,
-        size: 11,
+        size: 13,
         font: fontBold,
         color: black,
       });
       
-      // Size - prominent display
+      // Size - LARGER prominent display (11pt)
       page.drawText(`Tam: ${item.size}`, {
         x: textX,
-        y: textY - 15,
-        size: 9,
+        y: textY - 18,
+        size: 11,
         font: fontBold,
         color: gray,
       });
       
-      // Color - if available, show next to size
+      // Color - if available, show next to size (11pt)
       const colorText = item.color ? `Cor: ${item.color}` : '';
       if (colorText) {
         page.drawText(colorText, {
-          x: textX + 60,
-          y: textY - 15,
-          size: 9,
+          x: textX + 70,
+          y: textY - 18,
+          size: 11,
           font: fontRegular,
           color: gray,
         });
       }
       
-      // Quantity column
+      // Quantity column - LARGER (12pt)
       const qtyText = `${item.quantity}`;
-      const qtyWidth = fontRegular.widthOfTextAtSize(qtyText, 9);
+      const qtyWidth = fontBold.widthOfTextAtSize(qtyText, 12);
       page.drawText(qtyText, {
         x: PAGE_WIDTH - MARGIN - 130 + (20 - qtyWidth) / 2,
-        y: textY - 4,
-        size: 9,
-        font: fontRegular,
+        y: textY - 6,
+        size: 12,
+        font: fontBold,
         color: black,
       });
       
       // Unit price column
       const unitPriceText = formatPrice(item.unitPriceCents);
-      const unitWidth = fontRegular.widthOfTextAtSize(unitPriceText, 8);
+      const unitWidth = fontRegular.widthOfTextAtSize(unitPriceText, 9);
       page.drawText(unitPriceText, {
         x: PAGE_WIDTH - MARGIN - 85 + (40 - unitWidth) / 2,
-        y: textY - 4,
-        size: 8,
+        y: textY - 6,
+        size: 9,
         font: fontRegular,
         color: gray,
       });
       
       // Line total column - right aligned
       const lineTotalText = formatPrice(item.unitPriceCents * item.quantity);
-      const lineTotalWidth = fontBold.widthOfTextAtSize(lineTotalText, 9);
+      const lineTotalWidth = fontBold.widthOfTextAtSize(lineTotalText, 10);
       page.drawText(lineTotalText, {
         x: PAGE_WIDTH - MARGIN - lineTotalWidth,
-        y: textY - 4,
-        size: 9,
+        y: textY - 6,
+        size: 10,
         font: fontBold,
         color: black,
       });
@@ -507,32 +507,36 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         color: black,
       });
       
-      y -= 18;
+      y -= 20;
       
-      // Total line separator
-      page.drawLine({
-        start: { x: totalsLabelX, y: y + 6 },
-        end: { x: PAGE_WIDTH - MARGIN, y: y + 6 },
-        thickness: 1.5,
-        color: black,
+      // Total highlight box instead of ugly line
+      const totalBoxHeight = 28;
+      page.drawRectangle({
+        x: totalsLabelX - 10,
+        y: y - 6,
+        width: PAGE_WIDTH - MARGIN - totalsLabelX + 10,
+        height: totalBoxHeight,
+        color: rgb(0.95, 0.95, 0.95),
+        borderColor: rgb(0.85, 0.85, 0.85),
+        borderWidth: 1,
       });
       
-      // TOTAL
+      // TOTAL - larger and centered in box
       page.drawText("TOTAL", {
         x: totalsLabelX,
-        y,
-        size: 12,
+        y: y + 4,
+        size: 14,
         font: fontBold,
         color: black,
       });
       const totalText = order.skipShipping 
         ? `${formatPrice(order.subtotalCents)} + Frete` 
         : formatPrice(order.totalCents);
-      const totalWidth = fontBold.widthOfTextAtSize(totalText, 12);
+      const totalWidth = fontBold.widthOfTextAtSize(totalText, 14);
       page.drawText(totalText, {
         x: totalsValueX - totalWidth,
-        y,
-        size: 12,
+        y: y + 4,
+        size: 14,
         font: fontBold,
         color: black,
       });
