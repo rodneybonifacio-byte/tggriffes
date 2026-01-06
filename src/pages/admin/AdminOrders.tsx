@@ -53,6 +53,7 @@ const AdminOrders = () => {
 
       const { data, error } = await supabase.functions.invoke('generate-order-pdf', {
         body: {
+          orderNumber: order.order_number,
           customerName: order.customer_name || 'Cliente',
           customerWhatsapp: order.customer_whatsapp || '',
           items,
@@ -62,7 +63,10 @@ const AdminOrders = () => {
           shippingDeadlineDays: order.shipping_deadline_days || 0,
           totalCents: order.total_cents,
           destCep: order.dest_cep || '',
+          skipShipping: !order.shipping_service,
+          orderDate: new Date(order.created_at).toLocaleDateString('pt-BR'),
           logoUrl,
+          siteUrl: window.location.origin,
         },
       });
 
