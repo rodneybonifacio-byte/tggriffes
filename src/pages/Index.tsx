@@ -5,9 +5,10 @@ import { ProductCard } from '@/components/store/ProductCard';
 import { ProductFilters } from '@/components/store/ProductFilters';
 import { WhatsAppButton } from '@/components/store/WhatsAppButton';
 import { useProducts, useCategories } from '@/hooks/useProducts';
-import { Loader2 } from 'lucide-react';
+import { Loader2, LayoutGrid, Square } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || '');
@@ -18,6 +19,7 @@ const Index = () => {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000]);
   const [inStockOnly, setInStockOnly] = useState(false);
   const [sortBy, setSortBy] = useState('relevance');
+  const [gridCols, setGridCols] = useState<1 | 2>(2);
 
   const { data: categories = [] } = useCategories();
   const { data: products = [], isLoading } = useProducts({
@@ -111,17 +113,28 @@ const Index = () => {
           
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">{filteredProducts.length}</span>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-32 h-9 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="relevance">Relevância</SelectItem>
-                <SelectItem value="newest">Mais recentes</SelectItem>
-                <SelectItem value="price-asc">Menor preço</SelectItem>
-                <SelectItem value="price-desc">Maior preço</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex border rounded-md overflow-hidden">
+              <button
+                onClick={() => setGridCols(2)}
+                className={cn(
+                  "p-2 transition-colors",
+                  gridCols === 2 ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"
+                )}
+                aria-label="2 colunas"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setGridCols(1)}
+                className={cn(
+                  "p-2 transition-colors border-l",
+                  gridCols === 1 ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"
+                )}
+                aria-label="1 coluna"
+              >
+                <Square className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -179,7 +192,11 @@ const Index = () => {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-4">
+              <div className={cn(
+                "grid gap-2 md:gap-4",
+                gridCols === 1 ? "grid-cols-1" : "grid-cols-2",
+                "lg:grid-cols-3 xl:grid-cols-4"
+              )}>
                 {filteredProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
