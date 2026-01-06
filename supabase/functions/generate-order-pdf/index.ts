@@ -135,14 +135,14 @@ function resolveUrl(maybeUrl: string | undefined, siteUrl?: string): string | un
   }
 }
 
-// Constants for layout - optimized for ~20 items per page
+// Constants for layout - optimized for ~15 items per page with larger photos
 const PAGE_WIDTH = 595;
 const PAGE_HEIGHT = 842;
 const MARGIN = 35; // Reduced margin
 const CONTENT_WIDTH = PAGE_WIDTH - (MARGIN * 2);
-const ITEM_HEIGHT = 38; // Compact item row (was 90)
+const ITEM_HEIGHT = 48; // Adjusted for larger image
 const FOOTER_HEIGHT = 30; // Reduced footer
-const IMG_SIZE = 32; // Square image size
+const IMG_SIZE = 42; // Larger square image
 
 async function generatePDF(order: OrderData): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.create();
