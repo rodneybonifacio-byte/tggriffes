@@ -73,9 +73,9 @@ const AdminOrders = () => {
       if (error) throw error;
 
       // Open PDF in new tab
-      const pdfBlob = new Blob([Uint8Array.from(atob(data.pdf), c => c.charCodeAt(0))], { type: 'application/pdf' });
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      window.open(pdfUrl, '_blank');
+      const pdfUrl = data?.pdfUrl as string | undefined;
+      if (!pdfUrl) throw new Error('Resposta inválida ao gerar PDF');
+      window.open(pdfUrl, '_blank', 'noopener,noreferrer');
       
       toast({ title: 'PDF gerado com sucesso!' });
     } catch (error) {
