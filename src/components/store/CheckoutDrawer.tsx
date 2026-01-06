@@ -103,31 +103,38 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const generateOrderSummaryText = (orderNumber?: number, pdfUrl?: string) => {
     const itemsList = items.map(item => {
       const colorText = item.color ? ` • ${item.color}` : '';
-      return `   📌 ${item.quantity}x ${item.productName}\n      Tam: ${item.size}${colorText}\n      💲 ${formatPrice(item.unitPriceCents * item.quantity)}`;
+      return `📌 ${item.quantity}x ${item.productName}\n   Tam: ${item.size}${colorText}\n💲 ${formatPrice(item.unitPriceCents * item.quantity)}`;
     }).join('\n\n');
 
     const orderLabel = orderNumber ? `#${orderNumber}` : '';
 
-    let message = `   ✨ NOVO PEDIDO ${orderLabel} ✨
+    let message = `✨ NOVO PEDIDO ${orderLabel} ✨
+┈┈┈┈┈┈┈┈┈┈┈
 
 👤 CLIENTE
-   ${customerName}
+
+${customerName}
 
 📱 WHATSAPP
-   ${customerWhatsapp}
 
-┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+${customerWhatsapp}
+
+┈┈┈┈┈┈┈┈┈┈┈
+
 📦 ITENS DO PEDIDO
-┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+
 
 ${itemsList}
 
-┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
+
+┈┈┈┈┈┈┈┈┈┈┈
+
 💰 RESUMO FINANCEIRO
-┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈
-   Subtotal: ${formatPrice(subtotalCents)}
-   Frete: ${skipShipping ? 'A combinar' : formatPrice(shippingCents)}
-   
+
+Subtotal: ${formatPrice(subtotalCents)}
+
+Frete: ${skipShipping ? 'A combinar' : formatPrice(shippingCents)}
+
 🏷️ TOTAL: ${skipShipping ? formatPrice(subtotalCents) + ' + Frete' : formatPrice(finalTotalCents)}`;
 
     if (pdfUrl) {
