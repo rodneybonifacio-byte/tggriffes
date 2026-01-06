@@ -4,6 +4,7 @@ import { StoreHeader } from '@/components/store/StoreHeader';
 import { ProductCard } from '@/components/store/ProductCard';
 import { ProductFilters } from '@/components/store/ProductFilters';
 import { WhatsAppButton } from '@/components/store/WhatsAppButton';
+import { PromoBanner } from '@/components/store/PromoBanner';
 import { useProducts, useCategories } from '@/hooks/useProducts';
 import { Loader2, LayoutGrid, Square } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -93,6 +94,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <StoreHeader onSearch={handleSearch} searchValue={search} />
+      
+      <PromoBanner />
 
       <main className="container py-4 md:py-6">
         {/* Mobile: Filters + Sort in one row */}
