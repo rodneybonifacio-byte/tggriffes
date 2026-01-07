@@ -487,7 +487,7 @@ ${pdfUrl}`;
                       setShowShippingCalculator(false);
                     }}
                   >
-                    Voltar às opções
+                    Trocar forma de envio
                   </Button>
                   
                   <div className="pt-4 space-y-2">
@@ -537,7 +537,7 @@ ${pdfUrl}`;
                       setSelectedShipping(null);
                     }}
                   >
-                    Voltar às opções
+                    Trocar forma de envio
                   </Button>
 
                   {selectedShipping && (
