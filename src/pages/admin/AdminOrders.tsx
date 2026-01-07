@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { OrderEditModal } from '@/components/admin/OrderEditModal';
-import { useOrderIntents, useUpdateOrderStatus } from '@/hooks/useOrders';
+import { useOrderIntents, useUpdateOrderStatus, useAddOrderHistory, useOrderHistory } from '@/hooks/useOrders';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { useProducts } from '@/hooks/useProducts';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText, Phone, User, MessageSquare, Pencil } from 'lucide-react';
+import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText, Phone, User, MessageSquare, Pencil, History, Clock } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { OrderIntent } from '@/hooks/useOrders';
@@ -34,6 +34,8 @@ const AdminOrders = () => {
   const { data: storeSettings } = useStoreSettings();
   const { data: products = [] } = useProducts();
   const { mutateAsync: updateStatus, isPending: isUpdating } = useUpdateOrderStatus();
+  const { mutateAsync: addHistory } = useAddOrderHistory();
+  const { data: orderHistory = [] } = useOrderHistory(selectedOrder?.id || null);
   const { toast } = useToast();
 
   const generatePdf = async (order: OrderIntent) => {
@@ -94,9 +96,20 @@ const AdminOrders = () => {
     ? orders 
     : orders.filter(o => o.status === statusFilter);
 
-  const handleStatusChange = async (orderId: string, newStatus: string) => {
+  const handleStatusChange = async (orderId: string, newStatus: string, currentStatus?: string) => {
     try {
       await updateStatus({ id: orderId, status: newStatus });
+      
+      // Log status change in history
+      const oldLabel = STATUS_OPTIONS.find(s => s.value === currentStatus)?.label || currentStatus;
+      const newLabel = STATUS_OPTIONS.find(s => s.value === newStatus)?.label || newStatus;
+      await addHistory({
+        order_intent_id: orderId,
+        action: 'status_changed',
+        description: `Status alterado: ${oldLabel} → ${newLabel}`,
+        changes: { old_status: currentStatus, new_status: newStatus },
+      });
+      
       toast({ title: 'Status atualizado!' });
     } catch (error) {
       toast({ title: 'Erro ao atualizar status', variant: 'destructive' });
@@ -204,7 +217,7 @@ const AdminOrders = () => {
                       <TableCell className="text-center">
                         <Select 
                           value={order.status} 
-                          onValueChange={(value) => handleStatusChange(order.id, value)}
+                          onValueChange={(value) => handleStatusChange(order.id, value, order.status)}
                           disabled={isUpdating}
                         >
                           <SelectTrigger className="w-32 h-8">
@@ -284,7 +297,7 @@ const AdminOrders = () => {
                     <div className="flex gap-2">
                       <Select 
                         value={order.status} 
-                        onValueChange={(value) => handleStatusChange(order.id, value)}
+                        onValueChange={(value) => handleStatusChange(order.id, value, order.status)}
                         disabled={isUpdating}
                       >
                         <SelectTrigger className="flex-1">
@@ -426,7 +439,7 @@ const AdminOrders = () => {
                   <Select 
                     value={selectedOrder.status} 
                     onValueChange={(value) => {
-                      handleStatusChange(selectedOrder.id, value);
+                      handleStatusChange(selectedOrder.id, value, selectedOrder.status);
                       setSelectedOrder({ ...selectedOrder, status: value });
                     }}
                     disabled={isUpdating}
@@ -441,6 +454,27 @@ const AdminOrders = () => {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Order History */}
+                {orderHistory.length > 0 && (
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center gap-2 text-sm font-medium mb-3">
+                      <History className="h-4 w-4 text-muted-foreground" />
+                      <span>Histórico de Alterações</span>
+                    </div>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {orderHistory.map((entry) => (
+                        <div key={entry.id} className="text-xs bg-secondary/30 rounded p-2">
+                          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                            <Clock className="h-3 w-3" />
+                            <span>{new Date(entry.created_at).toLocaleString('pt-BR')}</span>
+                          </div>
+                          <p className="text-foreground">{entry.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </DialogContent>

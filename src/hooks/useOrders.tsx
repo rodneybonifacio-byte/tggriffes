@@ -6,6 +6,16 @@ export type OrderIntent = Tables<'order_intents'> & {
   order_intent_items?: Tables<'order_intent_items'>[];
 };
 
+export interface OrderHistoryEntry {
+  id: string;
+  order_intent_id: string;
+  user_id: string | null;
+  action: string;
+  description: string;
+  changes: Record<string, unknown> | null;
+  created_at: string;
+}
+
 export function useOrderIntents() {
   return useQuery({
     queryKey: ['order-intents'],
@@ -178,6 +188,64 @@ export function useAddOrderItem() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['order-intents'] });
+    },
+  });
+}
+
+// Order History hooks
+export function useOrderHistory(orderIntentId: string | null) {
+  return useQuery({
+    queryKey: ['order-history', orderIntentId],
+    queryFn: async () => {
+      if (!orderIntentId) return [];
+      
+      // Direct query - cast to any to bypass type checking for newly created table
+      const response = await (supabase as unknown as { from: (table: string) => { 
+        select: (cols: string) => { 
+          eq: (col: string, val: string) => { 
+            order: (col: string, opts: { ascending: boolean }) => Promise<{ data: OrderHistoryEntry[] | null; error: Error | null }> 
+          } 
+        } 
+      }}).from('order_history')
+        .select('*')
+        .eq('order_intent_id', orderIntentId)
+        .order('created_at', { ascending: false });
+      
+      if (response.error) throw response.error;
+      return response.data || [];
+    },
+    enabled: !!orderIntentId,
+  });
+}
+
+export function useAddOrderHistory() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (entry: {
+      order_intent_id: string;
+      action: string;
+      description: string;
+      changes?: Record<string, unknown>;
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Direct insert - cast to any to bypass type checking for newly created table
+      const response = await (supabase as unknown as { from: (table: string) => { 
+        insert: (data: unknown) => Promise<{ error: Error | null }> 
+      }}).from('order_history')
+        .insert({
+          order_intent_id: entry.order_intent_id,
+          user_id: user?.id || null,
+          action: entry.action,
+          description: entry.description,
+          changes: entry.changes || null,
+        });
+      
+      if (response.error) throw response.error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['order-history', variables.order_intent_id] });
     },
   });
 }

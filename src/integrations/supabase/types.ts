@@ -35,6 +35,44 @@ export type Database = {
         }
         Relationships: []
       }
+      order_history: {
+        Row: {
+          action: string
+          changes: Json | null
+          created_at: string
+          description: string
+          id: string
+          order_intent_id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          created_at?: string
+          description: string
+          id?: string
+          order_intent_id: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          created_at?: string
+          description?: string
+          id?: string
+          order_intent_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_history_order_intent_id_fkey"
+            columns: ["order_intent_id"]
+            isOneToOne: false
+            referencedRelation: "order_intents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_intent_items: {
         Row: {
           created_at: string
