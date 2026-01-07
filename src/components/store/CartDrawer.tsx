@@ -1,16 +1,24 @@
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, Tag } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
 import { formatPrice } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { CheckoutDrawer } from './CheckoutDrawer';
+import { useApplicablePromotions, calculatePromotionDiscount } from '@/hooks/usePromotions';
 
 export function CartDrawer() {
   const { items, removeItem, updateQuantity, totalItems, totalCents } = useCart();
   const [open, setOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  
+  const { data: promotion } = useApplicablePromotions(totalItems);
+  const { discountCents, finalCents, description } = calculatePromotionDiscount(
+    promotion,
+    totalCents,
+    totalItems
+  );
 
   const handleCheckout = () => {
     setOpen(false);
@@ -97,11 +105,27 @@ export function CartDrawer() {
           
           {items.length > 0 && (
             <SheetFooter className="border-t pt-4">
-              <div className="w-full space-y-4">
-                <div className="flex justify-between text-lg font-semibold">
+              <div className="w-full space-y-3">
+                <div className="flex justify-between text-sm">
                   <span>Subtotal:</span>
                   <span>{formatPrice(totalCents)}</span>
                 </div>
+                
+                {discountCents > 0 && (
+                  <div className="flex items-center justify-between text-sm text-green-600">
+                    <span className="flex items-center gap-1">
+                      <Tag className="h-3 w-3" />
+                      {description}
+                    </span>
+                    <span>-{formatPrice(discountCents)}</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between text-lg font-semibold">
+                  <span>Total:</span>
+                  <span>{formatPrice(finalCents)}</span>
+                </div>
+                
                 <Button 
                   className="w-full gap-2" 
                   size="lg"

@@ -154,3 +154,50 @@ export function useApplicablePromotions(quantity: number, productId?: string, ca
     enabled: quantity > 0,
   });
 }
+
+// Calculate discount based on promotion
+export function calculatePromotionDiscount(
+  promotion: Promotion | null,
+  subtotalCents: number,
+  totalItems: number
+): { discountCents: number; finalCents: number; description: string } {
+  if (!promotion || totalItems < promotion.min_quantity) {
+    return { discountCents: 0, finalCents: subtotalCents, description: '' };
+  }
+
+  let discountCents = 0;
+  let description = '';
+
+  switch (promotion.discount_type) {
+    case 'percentage':
+      discountCents = Math.round((subtotalCents * promotion.discount_value) / 100);
+      description = `${promotion.discount_value}% de desconto`;
+      break;
+    case 'fixed_discount':
+      // discount_value is in cents
+      discountCents = promotion.discount_value;
+      description = `${formatPrice(promotion.discount_value)} de desconto`;
+      break;
+    case 'fixed_price':
+      // discount_value is the final price per item in cents
+      const averageItemPrice = subtotalCents / totalItems;
+      const newTotal = promotion.discount_value * totalItems;
+      discountCents = Math.max(0, subtotalCents - newTotal);
+      description = `Preço fixo ${formatPrice(promotion.discount_value)}/peça`;
+      break;
+  }
+
+  return {
+    discountCents,
+    finalCents: Math.max(0, subtotalCents - discountCents),
+    description,
+  };
+}
+
+// Helper for formatting (imported from utils but needed here for the function)
+function formatPrice(cents: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(cents / 100);
+}

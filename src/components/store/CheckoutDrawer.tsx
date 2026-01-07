@@ -9,9 +9,10 @@ import { useCart, CartItem } from '@/hooks/useCart';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { ShippingCalculator, ShippingOption } from './ShippingCalculator';
 import { formatPrice, formatCEP, formatWhatsApp } from '@/lib/utils';
-import { Loader2, Package, Truck, User, FileText, CheckCircle, RefreshCw } from 'lucide-react';
+import { Loader2, Package, Truck, User, FileText, CheckCircle, RefreshCw, Tag } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useApplicablePromotions, calculatePromotionDiscount } from '@/hooks/usePromotions';
 
 const CHECKOUT_STORAGE_KEY = 'tg-checkout-state';
 
@@ -57,7 +58,7 @@ interface CheckoutDrawerProps {
 }
 
 export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
-  const { items, totalCents, clearCart } = useCart();
+  const { items, totalCents, totalItems, clearCart } = useCart();
   const { data: settings } = useStoreSettings();
   const { toast } = useToast();
   
@@ -73,6 +74,14 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const [showShippingCalculator, setShowShippingCalculator] = useState(storedState.showShippingCalculator || false);
   const [skipShipping, setSkipShipping] = useState(storedState.skipShipping || false);
   const [observations, setObservations] = useState(storedState.observations || '');
+
+  // Promotions
+  const { data: promotion } = useApplicablePromotions(totalItems);
+  const { discountCents, finalCents: subtotalAfterDiscount, description: promoDescription } = calculatePromotionDiscount(
+    promotion,
+    totalCents,
+    totalItems
+  );
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -90,7 +99,7 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
 
   const subtotalCents = totalCents;
   const shippingCents = selectedShipping?.price || 0;
-  const finalTotalCents = subtotalCents + shippingCents;
+  const finalTotalCents = subtotalAfterDiscount + shippingCents;
 
   const handleWhatsappChange = (value: string) => {
     const formatted = formatWhatsApp(value);
@@ -136,10 +145,10 @@ ${itemsList}
 💰 RESUMO FINANCEIRO
 
 Subtotal: ${formatPrice(subtotalCents)}
-
+${discountCents > 0 ? `\n🏷️ Desconto (${promoDescription}): -${formatPrice(discountCents)}\n` : ''}
 Frete: ${skipShipping ? 'A combinar' : formatPrice(shippingCents)}
 
-🏷️ TOTAL: ${skipShipping ? formatPrice(subtotalCents) + ' + Frete' : formatPrice(finalTotalCents)}`;
+🏷️ TOTAL: ${skipShipping ? formatPrice(subtotalAfterDiscount) + ' + Frete' : formatPrice(finalTotalCents)}`;
 
     if (observations.trim()) {
       message += `
@@ -192,13 +201,15 @@ ${pdfUrl}`;
           customer_name: customerName,
           customer_whatsapp: customerWhatsapp.replace(/\D/g, ''),
           dest_cep: destCep,
-          subtotal_cents: subtotalCents,
+          subtotal_cents: subtotalAfterDiscount,
           shipping_service: skipShipping ? 'A combinar' : selectedShipping?.service,
           shipping_price_cents: skipShipping ? 0 : shippingCents,
           shipping_deadline_days: skipShipping ? null : selectedShipping?.deadline,
-          total_cents: skipShipping ? subtotalCents : finalTotalCents,
+          total_cents: skipShipping ? subtotalAfterDiscount : finalTotalCents,
           status: 'NOVO',
-          observations: observations.trim() || null,
+          observations: discountCents > 0 
+            ? `${observations.trim() ? observations.trim() + ' | ' : ''}Promoção aplicada: ${promoDescription} (-${formatPrice(discountCents)})`
+            : (observations.trim() || null),
         });
 
       if (orderError) throw orderError;
@@ -422,9 +433,26 @@ ${pdfUrl}`;
                 ))}
               </div>
 
-              <div className="flex justify-between text-lg font-semibold pt-4">
-                <span>Subtotal:</span>
-                <span>{formatPrice(subtotalCents)}</span>
+              <div className="space-y-2 pt-4">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal:</span>
+                  <span>{formatPrice(subtotalCents)}</span>
+                </div>
+                
+                {discountCents > 0 && (
+                  <div className="flex items-center justify-between text-sm text-green-600">
+                    <span className="flex items-center gap-1">
+                      <Tag className="h-3 w-3" />
+                      {promoDescription}
+                    </span>
+                    <span>-{formatPrice(discountCents)}</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between text-lg font-semibold">
+                  <span>Total:</span>
+                  <span>{formatPrice(subtotalAfterDiscount)}</span>
+                </div>
               </div>
             </div>
           )}
@@ -626,13 +654,24 @@ ${pdfUrl}`;
                   <span>Subtotal:</span>
                   <span>{formatPrice(subtotalCents)}</span>
                 </div>
+                
+                {discountCents > 0 && (
+                  <div className="flex items-center justify-between text-sm text-green-600">
+                    <span className="flex items-center gap-1">
+                      <Tag className="h-3 w-3" />
+                      {promoDescription}
+                    </span>
+                    <span>-{formatPrice(discountCents)}</span>
+                  </div>
+                )}
+                
                 <div className="flex justify-between text-sm">
                   <span>Frete:</span>
                   <span>{skipShipping ? 'A combinar' : formatPrice(shippingCents)}</span>
                 </div>
                 <div className="flex justify-between text-xl font-bold pt-2">
                   <span>Total:</span>
-                  <span>{skipShipping ? `${formatPrice(subtotalCents)} + Frete` : formatPrice(finalTotalCents)}</span>
+                  <span>{skipShipping ? `${formatPrice(subtotalAfterDiscount)} + Frete` : formatPrice(finalTotalCents)}</span>
                 </div>
               </div>
 
