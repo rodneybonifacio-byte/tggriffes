@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText, Phone, User } from 'lucide-react';
+import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText, Phone, User, MessageSquare } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { OrderIntent } from '@/hooks/useOrders';
@@ -66,6 +66,7 @@ const AdminOrders = () => {
           totalCents: order.total_cents,
           destCep: order.dest_cep || '',
           skipShipping: !order.shipping_service,
+          observations: order.observations || null,
           orderDate: new Date(order.created_at).toLocaleDateString('pt-BR'),
           logoUrl,
           siteUrl: productionUrl,
@@ -375,6 +376,17 @@ const AdminOrders = () => {
                   <div className="flex items-center gap-2 text-sm">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
                     <span>CEP: {selectedOrder.dest_cep}</span>
+                  </div>
+                )}
+
+                {/* Observations */}
+                {selectedOrder.observations && (
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                      <MessageSquare className="h-4 w-4" />
+                      <span className="font-medium">Observações</span>
+                    </div>
+                    <p className="text-sm">{selectedOrder.observations}</p>
                   </div>
                 )}
 
