@@ -9,7 +9,7 @@ import { useCart, CartItem } from '@/hooks/useCart';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { ShippingCalculator, ShippingOption } from './ShippingCalculator';
 import { formatPrice, formatCEP, formatWhatsApp } from '@/lib/utils';
-import { Loader2, Package, Truck, User, FileText, CheckCircle } from 'lucide-react';
+import { Loader2, Package, Truck, User, FileText, CheckCircle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -480,13 +480,15 @@ ${pdfUrl}`;
                   </div>
                   
                   <Button
-                    variant="ghost"
-                    className="w-full"
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-primary border-primary/50 hover:bg-primary/10"
                     onClick={() => {
                       setSkipShipping(false);
                       setShowShippingCalculator(false);
                     }}
                   >
+                    <RefreshCw className="h-4 w-4 mr-2" />
                     Trocar forma de envio
                   </Button>
                   
@@ -530,13 +532,15 @@ ${pdfUrl}`;
                   />
                   
                   <Button
-                    variant="ghost"
-                    className="w-full"
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-primary border-primary/50 hover:bg-primary/10"
                     onClick={() => {
                       setShowShippingCalculator(false);
                       setSelectedShipping(null);
                     }}
                   >
+                    <RefreshCw className="h-4 w-4 mr-2" />
                     Trocar forma de envio
                   </Button>
 
