@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { StoreHeader } from '@/components/store/StoreHeader';
 import { ProductCard } from '@/components/store/ProductCard';
@@ -92,6 +92,31 @@ const Index = () => {
   // Calculate max price for slider
   const maxPrice = Math.max(...products.map(p => p.price_cents), 50000);
 
+  // Get unique categories that are actually used by products
+  const usedCategories = useMemo(() => {
+    const usedCategoryIds = new Set(products.map(p => p.category_id).filter(Boolean));
+    return categories.filter(c => usedCategoryIds.has(c.id));
+  }, [products, categories]);
+
+  // Get unique sizes from all product variants, sorted
+  const availableSizes = useMemo(() => {
+    const sizeOrder = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG'];
+    const sizes = new Set<string>();
+    products.forEach(product => {
+      product.product_variants?.forEach(variant => {
+        sizes.add(variant.size.toUpperCase());
+      });
+    });
+    return Array.from(sizes).sort((a, b) => {
+      const indexA = sizeOrder.indexOf(a);
+      const indexB = sizeOrder.indexOf(b);
+      if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+  }, [products]);
+
   return (
     <div className="min-h-screen bg-background">
       <StoreHeader onSearch={handleSearch} searchValue={search} />
@@ -102,8 +127,8 @@ const Index = () => {
         {/* Mobile: Filters + Sort in one row */}
         <div className="flex items-center justify-between gap-3 mb-4 lg:hidden">
           <ProductFilters
-            categories={categories}
-            selectedCategory={selectedCategory}
+            categories={usedCategories}
+            availableSizes={availableSizes}
             selectedSizes={selectedSizes}
             priceRange={priceRange}
             maxPrice={maxPrice}
@@ -146,8 +171,8 @@ const Index = () => {
           {/* Desktop Filters */}
           <div className="hidden lg:block">
             <ProductFilters
-              categories={categories}
-              selectedCategory={selectedCategory}
+              categories={usedCategories}
+              availableSizes={availableSizes}
               selectedSizes={selectedSizes}
               priceRange={priceRange}
               maxPrice={maxPrice}
