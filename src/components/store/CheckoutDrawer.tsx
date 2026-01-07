@@ -221,6 +221,7 @@ ${pdfUrl}`;
         variant_id: item.variantId,
         product_name: item.productName,
         size: item.size,
+        color: item.color || null,
         qty: item.quantity,
         unit_price_cents: item.unitPriceCents,
         line_total_cents: item.unitPriceCents * item.quantity,
