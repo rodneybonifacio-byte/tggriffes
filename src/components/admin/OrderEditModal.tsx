@@ -146,21 +146,49 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
       v.size === newSize && (hasColors ? v.color === newColor : !v.color)
     );
 
-    const newItem: OrderItem = {
-      id: `new-${Date.now()}`,
-      order_intent_id: order!.id,
-      product_id: product.id,
-      product_name: product.name,
-      variant_id: variant?.id || null,
-      size: newSize,
-      color: hasColors ? newColor : null,
-      qty: newQty,
-      unit_price_cents: product.price_cents,
-      line_total_cents: newQty * product.price_cents,
-      created_at: new Date().toISOString(),
-    };
+    const colorToAdd = hasColors ? newColor : null;
 
-    setEditedItems([...editedItems, newItem]);
+    // Check if item with same product, size and color already exists
+    const existingIndex = editedItems.findIndex(item => 
+      item.product_id === product.id && 
+      item.size === newSize && 
+      item.color === colorToAdd
+    );
+
+    if (existingIndex >= 0) {
+      // Merge: add quantity to existing item
+      setEditedItems(items => 
+        items.map((item, index) => {
+          if (index === existingIndex) {
+            const newTotalQty = item.qty + newQty;
+            return {
+              ...item,
+              qty: newTotalQty,
+              line_total_cents: newTotalQty * item.unit_price_cents,
+            };
+          }
+          return item;
+        })
+      );
+      toast({ title: `Quantidade adicionada ao item existente` });
+    } else {
+      // Add new item
+      const newItem: OrderItem = {
+        id: `new-${Date.now()}`,
+        order_intent_id: order!.id,
+        product_id: product.id,
+        product_name: product.name,
+        variant_id: variant?.id || null,
+        size: newSize,
+        color: colorToAdd,
+        qty: newQty,
+        unit_price_cents: product.price_cents,
+        line_total_cents: newQty * product.price_cents,
+        created_at: new Date().toISOString(),
+      };
+      setEditedItems([...editedItems, newItem]);
+    }
+
     setShowAddItem(false);
     setNewProductId('');
     setNewColor('');
