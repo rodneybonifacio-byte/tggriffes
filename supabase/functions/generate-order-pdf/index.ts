@@ -28,6 +28,7 @@ interface OrderData {
   shippingDeadlineDays: number;
   totalCents: number;
   skipShipping?: boolean;
+  observations?: string | null;
   orderDate: string;
   logoUrl?: string;
   siteUrl?: string;
@@ -540,6 +541,51 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         font: fontBold,
         color: black,
       });
+      
+      // ========== OBSERVATIONS SECTION ==========
+      if (order.observations) {
+        y -= 40;
+        
+        page.drawText("OBSERVAÇÕES:", {
+          x: MARGIN,
+          y,
+          size: 9,
+          font: fontBold,
+          color: gray,
+        });
+        
+        y -= 14;
+        
+        // Word wrap observations text
+        const maxWidth = CONTENT_WIDTH;
+        const words = order.observations.split(' ');
+        let line = '';
+        const lines: string[] = [];
+        
+        for (const word of words) {
+          const testLine = line ? `${line} ${word}` : word;
+          const testWidth = fontRegular.widthOfTextAtSize(testLine, 9);
+          
+          if (testWidth > maxWidth && line) {
+            lines.push(line);
+            line = word;
+          } else {
+            line = testLine;
+          }
+        }
+        if (line) lines.push(line);
+        
+        for (const textLine of lines) {
+          page.drawText(textLine, {
+            x: MARGIN,
+            y,
+            size: 9,
+            font: fontRegular,
+            color: black,
+          });
+          y -= 12;
+        }
+      }
     }
     
     // ========== FOOTER (all pages) - compact ==========

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useCart, CartItem } from '@/hooks/useCart';
@@ -22,6 +23,7 @@ interface CheckoutState {
   selectedShipping: ShippingOption | null;
   showShippingCalculator: boolean;
   skipShipping: boolean;
+  observations: string;
 }
 
 const getStoredState = (): Partial<CheckoutState> => {
@@ -70,6 +72,7 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const [orderComplete, setOrderComplete] = useState(false);
   const [showShippingCalculator, setShowShippingCalculator] = useState(storedState.showShippingCalculator || false);
   const [skipShipping, setSkipShipping] = useState(storedState.skipShipping || false);
+  const [observations, setObservations] = useState(storedState.observations || '');
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -81,8 +84,9 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
       selectedShipping,
       showShippingCalculator,
       skipShipping,
+      observations,
     });
-  }, [step, customerName, customerWhatsapp, destCep, selectedShipping, showShippingCalculator, skipShipping]);
+  }, [step, customerName, customerWhatsapp, destCep, selectedShipping, showShippingCalculator, skipShipping, observations]);
 
   const subtotalCents = totalCents;
   const shippingCents = selectedShipping?.price || 0;
@@ -137,6 +141,16 @@ Frete: ${skipShipping ? 'A combinar' : formatPrice(shippingCents)}
 
 🏷️ TOTAL: ${skipShipping ? formatPrice(subtotalCents) + ' + Frete' : formatPrice(finalTotalCents)}`;
 
+    if (observations.trim()) {
+      message += `
+
+┈┈┈┈┈┈┈┈┈┈┈
+
+📝 OBSERVAÇÕES
+
+${observations.trim()}`;
+    }
+
     if (pdfUrl) {
       message += `
 
@@ -184,6 +198,7 @@ ${pdfUrl}`;
           shipping_deadline_days: skipShipping ? null : selectedShipping?.deadline,
           total_cents: skipShipping ? subtotalCents : finalTotalCents,
           status: 'NOVO',
+          observations: observations.trim() || null,
         });
 
       if (orderError) throw orderError;
@@ -229,6 +244,7 @@ ${pdfUrl}`;
         shippingDeadlineDays: skipShipping ? 0 : (selectedShipping?.deadline || 0),
         totalCents: skipShipping ? subtotalCents : finalTotalCents,
         skipShipping,
+        observations: observations.trim() || null,
         orderDate: new Date().toLocaleDateString('pt-BR'),
         logoUrl,
         siteUrl: baseUrl,
@@ -285,6 +301,7 @@ ${pdfUrl}`;
       setOrderComplete(false);
       setShowShippingCalculator(false);
       setSkipShipping(false);
+      setObservations('');
       clearStoredState();
     }
     onOpenChange(false);
@@ -487,6 +504,19 @@ ${pdfUrl}`;
                       <span>Total:</span>
                       <span>{formatPrice(subtotalCents)} + Frete</span>
                     </div>
+                    
+                    <div className="pt-4 space-y-2">
+                      <Label htmlFor="observations-skip" className="text-sm font-medium">Observações (opcional)</Label>
+                      <Textarea
+                        id="observations-skip"
+                        placeholder="Ex: Trocar tamanho se não tiver, entregar após 18h..."
+                        value={observations}
+                        onChange={(e) => setObservations(e.target.value)}
+                        rows={3}
+                        maxLength={500}
+                        className="resize-none"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
@@ -524,6 +554,19 @@ ${pdfUrl}`;
                       <div className="flex justify-between text-lg font-semibold pt-2">
                         <span>Total:</span>
                         <span>{formatPrice(finalTotalCents)}</span>
+                      </div>
+                      
+                      <div className="pt-4 space-y-2">
+                        <Label htmlFor="observations-calc" className="text-sm font-medium">Observações (opcional)</Label>
+                        <Textarea
+                          id="observations-calc"
+                          placeholder="Ex: Trocar tamanho se não tiver, entregar após 18h..."
+                          value={observations}
+                          onChange={(e) => setObservations(e.target.value)}
+                          rows={3}
+                          maxLength={500}
+                          className="resize-none"
+                        />
                       </div>
                     </div>
                   )}
@@ -588,6 +631,13 @@ ${pdfUrl}`;
                   <span>{skipShipping ? `${formatPrice(subtotalCents)} + Frete` : formatPrice(finalTotalCents)}</span>
                 </div>
               </div>
+
+              {observations.trim() && (
+                <div className="bg-secondary/50 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Observações</p>
+                  <p className="text-sm">{observations}</p>
+                </div>
+              )}
 
               <p className="text-xs text-muted-foreground text-center pt-4">
                 Ao finalizar, você será redirecionado para o WhatsApp e um PDF do pedido será gerado.
