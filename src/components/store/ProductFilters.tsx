@@ -10,6 +10,7 @@ import { useState } from 'react';
 
 interface ProductFiltersProps {
   categories: Category[];
+  availableSizes: string[];
   selectedCategory?: string;
   selectedSizes: string[];
   priceRange: [number, number];
@@ -22,10 +23,9 @@ interface ProductFiltersProps {
   onClearFilters: () => void;
 }
 
-const AVAILABLE_SIZES = ['P', 'M', 'G', 'GG', 'XG'];
-
 export function ProductFilters({
   categories,
+  availableSizes,
   selectedCategory,
   selectedSizes,
   priceRange,
@@ -63,10 +63,11 @@ export function ProductFilters({
       </div>
 
       {/* Sizes */}
+      {availableSizes.length > 0 && (
       <div className="space-y-3">
         <Label className="font-semibold">Tamanhos</Label>
         <div className="flex flex-wrap gap-2">
-          {AVAILABLE_SIZES.map((size) => (
+          {availableSizes.map((size) => (
             <button
               key={size}
               onClick={() => {
@@ -86,7 +87,7 @@ export function ProductFilters({
           ))}
         </div>
       </div>
-
+      )}
       {/* Price Range */}
       <div className="space-y-3">
         <Label className="font-semibold">Preço</Label>
