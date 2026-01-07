@@ -29,7 +29,7 @@ interface OrderEditModalProps {
   onSaved: () => void;
 }
 
-type OrderItem = Tables<'order_intent_items'>;
+type OrderItem = Tables<'order_intent_items'> & { color?: string | null };
 
 export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModalProps) {
   const [editedItems, setEditedItems] = useState<OrderItem[]>([]);
@@ -218,17 +218,19 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
       // Add new items
       const newItems = editedItems.filter(item => item.id.startsWith('new-'));
       for (const item of newItems) {
-        changes.push(`Adicionado: ${item.product_name} (${item.size}) x${item.qty}`);
+        const colorInfo = item.color ? `${item.color} / ` : '';
+        changes.push(`Adicionado: ${item.product_name} (${colorInfo}${item.size}) x${item.qty}`);
         await addItem({
           order_intent_id: order.id,
           product_id: item.product_id,
           product_name: item.product_name,
           variant_id: item.variant_id,
           size: item.size,
+          color: item.color || null,
           qty: item.qty,
           unit_price_cents: item.unit_price_cents,
           line_total_cents: item.line_total_cents,
-        });
+        } as Parameters<typeof addItem>[0]);
       }
 
       // Check for other changes
@@ -292,11 +294,22 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
   };
 
   const selectedProduct = products.find(p => p.id === newProductId);
-  const availableSizes = (() => {
-    const sizes = Array.from(
-      new Set((selectedProduct?.product_variants || []).map(v => v.size))
+  
+  const availableColors = (() => {
+    const colors = Array.from(
+      new Set((selectedProduct?.product_variants || []).map(v => v.color).filter(Boolean) as string[])
     );
+    return colors.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  })();
 
+  const availableSizes = (() => {
+    const variants = selectedProduct?.product_variants || [];
+    // If there are colors, filter sizes by selected color
+    const filteredVariants = availableColors.length > 0 && newColor
+      ? variants.filter(v => v.color === newColor)
+      : variants;
+    
+    const sizes = Array.from(new Set(filteredVariants.map(v => v.size)));
     const commonOrder = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XGG'];
 
     return sizes.sort((a, b) => {
@@ -374,7 +387,10 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{item.product_name}</p>
-                      <p className="text-xs text-muted-foreground">Tam: {item.size}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.color && <span>{item.color} / </span>}
+                        Tam: {item.size}
+                      </p>
                     </div>
                     
                     <div className="flex items-center gap-2">
@@ -474,12 +490,32 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
                   </div>
                 )}
 
+                {availableColors.length > 0 && (
+                  <div>
+                    <Label className="text-xs">Cor</Label>
+                    <Select value={newColor} onValueChange={setNewColor}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a cor" />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className="z-[9999]">
+                        {availableColors.map((color) => (
+                          <SelectItem key={color} value={color}>{color}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">Tamanho</Label>
-                    <Select value={newSize} onValueChange={setNewSize}>
+                    <Select 
+                      value={newSize} 
+                      onValueChange={setNewSize}
+                      disabled={availableColors.length > 0 && !newColor}
+                    >
                       <SelectTrigger>
-                        <SelectValue placeholder="Tam" />
+                        <SelectValue placeholder={availableColors.length > 0 && !newColor ? "Selecione cor primeiro" : "Tam"} />
                       </SelectTrigger>
                       <SelectContent position="popper" className="z-[9999]">
                         {availableSizes.length > 0 ? (

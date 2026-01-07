@@ -75,6 +75,7 @@ export type Database = {
       }
       order_intent_items: {
         Row: {
+          color: string | null
           created_at: string
           id: string
           line_total_cents: number
@@ -87,6 +88,7 @@ export type Database = {
           variant_id: string | null
         }
         Insert: {
+          color?: string | null
           created_at?: string
           id?: string
           line_total_cents?: number
@@ -99,6 +101,7 @@ export type Database = {
           variant_id?: string | null
         }
         Update: {
+          color?: string | null
           created_at?: string
           id?: string
           line_total_cents?: number
