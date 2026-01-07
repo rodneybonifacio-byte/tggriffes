@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
+import { OrderEditModal } from '@/components/admin/OrderEditModal';
 import { useOrderIntents, useUpdateOrderStatus } from '@/hooks/useOrders';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { useProducts } from '@/hooks/useProducts';
@@ -10,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText, Phone, User, MessageSquare } from 'lucide-react';
+import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText, Phone, User, MessageSquare, Pencil } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { OrderIntent } from '@/hooks/useOrders';
@@ -26,6 +27,7 @@ const STATUS_OPTIONS = [
 const AdminOrders = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedOrder, setSelectedOrder] = useState<OrderIntent | null>(null);
+  const [editingOrder, setEditingOrder] = useState<OrderIntent | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   
   const { data: orders = [], isLoading } = useOrderIntents();
@@ -327,6 +329,17 @@ const AdminOrders = () => {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => {
+                        setEditingOrder(selectedOrder);
+                        setSelectedOrder(null);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Editar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => generatePdf(selectedOrder)}
                       disabled={isGeneratingPdf}
                     >
@@ -432,6 +445,16 @@ const AdminOrders = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Edit Order Modal */}
+        <OrderEditModal 
+          order={editingOrder}
+          open={!!editingOrder}
+          onClose={() => setEditingOrder(null)}
+          onSaved={() => {
+            // Refresh the data
+          }}
+        />
       </AdminLayout>
     </AdminGuard>
   );
