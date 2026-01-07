@@ -94,12 +94,12 @@ export function ShippingCalculator({
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Truck className="h-5 w-5 text-muted-foreground" />
-        <Label className="font-medium">Calcular Frete</Label>
+        <Label className="font-medium">Calcular Frete Correio</Label>
       </div>
       
       <div className="flex gap-2">
         <Input
-          placeholder="00000-000"
+          placeholder="Informe o seu CEP"
           value={cep}
           onChange={(e) => handleCepChange(e.target.value)}
           maxLength={9}
