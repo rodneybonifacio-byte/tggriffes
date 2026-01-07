@@ -12,7 +12,8 @@ import {
   useUpdateOrderIntent, 
   useDeleteOrderItem, 
   useUpdateOrderItem, 
-  useAddOrderItem 
+  useAddOrderItem,
+  useAddOrderHistory
 } from '@/hooks/useOrders';
 import { useProducts } from '@/hooks/useProducts';
 import { formatPrice } from '@/lib/utils';
@@ -54,6 +55,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
   const { mutateAsync: deleteItem } = useDeleteOrderItem();
   const { mutateAsync: updateItem } = useUpdateOrderItem();
   const { mutateAsync: addItem } = useAddOrderItem();
+  const { mutateAsync: addHistory } = useAddOrderHistory();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -155,10 +157,15 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
       const originalItems = order.order_intent_items || [];
       const originalItemIds = originalItems.map(i => i.id);
       const currentItemIds = editedItems.map(i => i.id);
+      const changes: string[] = [];
 
       // Delete removed items
       const itemsToDelete = originalItemIds.filter(id => !currentItemIds.includes(id));
       for (const itemId of itemsToDelete) {
+        const removedItem = originalItems.find(i => i.id === itemId);
+        if (removedItem) {
+          changes.push(`Removido: ${removedItem.product_name} (${removedItem.size}) x${removedItem.qty}`);
+        }
         await deleteItem(itemId);
       }
 
@@ -170,6 +177,15 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
             original.qty !== item.qty || 
             original.unit_price_cents !== item.unit_price_cents
           )) {
+            const itemChanges: string[] = [];
+            if (original.qty !== item.qty) {
+              itemChanges.push(`qtd: ${original.qty}→${item.qty}`);
+            }
+            if (original.unit_price_cents !== item.unit_price_cents) {
+              itemChanges.push(`preço: ${formatPrice(original.unit_price_cents)}→${formatPrice(item.unit_price_cents)}`);
+            }
+            changes.push(`${item.product_name} (${item.size}): ${itemChanges.join(', ')}`);
+            
             await updateItem({
               id: item.id,
               qty: item.qty,
@@ -183,6 +199,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
       // Add new items
       const newItems = editedItems.filter(item => item.id.startsWith('new-'));
       for (const item of newItems) {
+        changes.push(`Adicionado: ${item.product_name} (${item.size}) x${item.qty}`);
         await addItem({
           order_intent_id: order.id,
           product_id: item.product_id,
@@ -193,6 +210,20 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
           unit_price_cents: item.unit_price_cents,
           line_total_cents: item.line_total_cents,
         });
+      }
+
+      // Check for other changes
+      if (customerName !== (order.customer_name || '')) {
+        changes.push(`Nome: ${order.customer_name || '(vazio)'}→${customerName || '(vazio)'}`);
+      }
+      if (customerWhatsapp !== (order.customer_whatsapp || '')) {
+        changes.push(`WhatsApp alterado`);
+      }
+      if (observations !== (order.observations || '')) {
+        changes.push(`Observações atualizadas`);
+      }
+      if (shippingPriceCents !== (order.shipping_price_cents || 0)) {
+        changes.push(`Frete: ${formatPrice(order.shipping_price_cents || 0)}→${formatPrice(shippingPriceCents)}`);
       }
 
       // Update order totals and observations
@@ -210,6 +241,25 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
         subtotal_cents: subtotal,
         total_cents: total,
       });
+
+      // Log history if there were changes
+      if (changes.length > 0) {
+        await addHistory({
+          order_intent_id: order.id,
+          action: 'updated',
+          description: changes.join(' | '),
+          changes: {
+            items_removed: itemsToDelete.length,
+            items_added: newItems.length,
+            items_updated: editedItems.filter(item => {
+              const original = originalItems.find(i => i.id === item.id);
+              return original && (original.qty !== item.qty || original.unit_price_cents !== item.unit_price_cents);
+            }).length,
+            new_total: total,
+            old_total: order.total_cents,
+          },
+        });
+      }
 
       toast({ title: 'Pedido atualizado com sucesso!' });
       onSaved();
