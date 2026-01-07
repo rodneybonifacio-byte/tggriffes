@@ -508,13 +508,13 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         color: black,
       });
       
-      y -= 20;
+      y -= 28;
       
-      // Total highlight box instead of ugly line
+      // Total highlight box - positioned lower to avoid overlap
       const totalBoxHeight = 28;
       page.drawRectangle({
         x: totalsLabelX - 10,
-        y: y - 6,
+        y: y - 8,
         width: PAGE_WIDTH - MARGIN - totalsLabelX + 10,
         height: totalBoxHeight,
         color: rgb(0.95, 0.95, 0.95),
