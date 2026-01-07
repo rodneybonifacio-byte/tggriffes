@@ -50,7 +50,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
   // Delete confirmation
   const [itemToDelete, setItemToDelete] = useState<OrderItem | null>(null);
   
-  const { data: products = [] } = useProducts();
+  const { data: products = [] } = useProducts({ status: 'active' });
   const { mutateAsync: updateOrder } = useUpdateOrderIntent();
   const { mutateAsync: deleteItem } = useDeleteOrderItem();
   const { mutateAsync: updateItem } = useUpdateOrderItem();
