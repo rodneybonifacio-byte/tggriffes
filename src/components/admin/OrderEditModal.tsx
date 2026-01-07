@@ -70,6 +70,10 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
     }
   }, [order]);
 
+  useEffect(() => {
+    setNewSize('');
+  }, [newProductId]);
+
   const calculateSubtotal = () => {
     return editedItems.reduce((sum, item) => sum + item.line_total_cents, 0);
   };
@@ -121,19 +125,13 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
   };
 
   const handleAddNewItem = () => {
-    console.log('handleAddNewItem called', { newProductId, newSize, newQty });
-    
     if (!newProductId || !newSize || newQty < 1) {
-      console.log('Validation failed', { newProductId, newSize, newQty });
       toast({ title: 'Preencha todos os campos do item', variant: 'destructive' });
       return;
     }
 
     const product = products.find(p => p.id === newProductId);
-    if (!product) {
-      console.log('Product not found', newProductId);
-      return;
-    }
+    if (!product) return;
 
     const newItem: OrderItem = {
       id: `new-${Date.now()}`,
@@ -148,7 +146,6 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
       created_at: new Date().toISOString(),
     };
 
-    console.log('Adding new item', newItem);
     setEditedItems([...editedItems, newItem]);
     setShowAddItem(false);
     setNewProductId('');
@@ -280,7 +277,20 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
   };
 
   const selectedProduct = products.find(p => p.id === newProductId);
-  const availableSizes = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XGG'];
+  const availableSizes = (() => {
+    const sizes = Array.from(
+      new Set((selectedProduct?.product_variants || []).map(v => v.size))
+    );
+
+    const commonOrder = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XGG'];
+
+    return sizes.sort((a, b) => {
+      const ai = commonOrder.indexOf(a);
+      const bi = commonOrder.indexOf(b);
+      if (ai !== -1 || bi !== -1) return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+      return a.localeCompare(b, 'pt-BR', { numeric: true });
+    });
+  })();
 
   if (!order) return null;
 
@@ -457,9 +467,15 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
                         <SelectValue placeholder="Tam" />
                       </SelectTrigger>
                       <SelectContent position="popper" className="z-[9999]">
-                        {availableSizes.map((size) => (
-                          <SelectItem key={size} value={size}>{size}</SelectItem>
-                        ))}
+                        {availableSizes.length > 0 ? (
+                          availableSizes.map((size) => (
+                            <SelectItem key={size} value={size}>{size}</SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="__no-sizes" disabled>
+                            Sem tamanhos cadastrados
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
