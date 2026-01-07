@@ -484,10 +484,10 @@ ${pdfUrl}`;
                     className="w-full"
                     onClick={() => {
                       setSkipShipping(false);
-                      setShowShippingCalculator(true);
+                      setShowShippingCalculator(false);
                     }}
                   >
-                    Quero calcular o frete
+                    Voltar às opções
                   </Button>
                   
                   <div className="pt-4 space-y-2">
