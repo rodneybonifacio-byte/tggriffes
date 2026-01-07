@@ -44,6 +44,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
   // New item form
   const [showAddItem, setShowAddItem] = useState(false);
   const [newProductId, setNewProductId] = useState('');
+  const [newColor, setNewColor] = useState('');
   const [newSize, setNewSize] = useState('');
   const [newQty, setNewQty] = useState(1);
   
@@ -71,8 +72,13 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
   }, [order]);
 
   useEffect(() => {
+    setNewColor('');
     setNewSize('');
   }, [newProductId]);
+
+  useEffect(() => {
+    setNewSize('');
+  }, [newColor]);
 
   const calculateSubtotal = () => {
     return editedItems.reduce((sum, item) => sum + item.line_total_cents, 0);
@@ -125,7 +131,9 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
   };
 
   const handleAddNewItem = () => {
-    if (!newProductId || !newSize || newQty < 1) {
+    const hasColors = availableColors.length > 0;
+    
+    if (!newProductId || !newSize || newQty < 1 || (hasColors && !newColor)) {
       toast({ title: 'Preencha todos os campos do item', variant: 'destructive' });
       return;
     }
@@ -133,13 +141,19 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
     const product = products.find(p => p.id === newProductId);
     if (!product) return;
 
+    // Find the matching variant
+    const variant = product.product_variants?.find(v => 
+      v.size === newSize && (hasColors ? v.color === newColor : !v.color)
+    );
+
     const newItem: OrderItem = {
       id: `new-${Date.now()}`,
       order_intent_id: order!.id,
       product_id: product.id,
       product_name: product.name,
-      variant_id: null,
+      variant_id: variant?.id || null,
       size: newSize,
+      color: hasColors ? newColor : null,
       qty: newQty,
       unit_price_cents: product.price_cents,
       line_total_cents: newQty * product.price_cents,
@@ -149,6 +163,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
     setEditedItems([...editedItems, newItem]);
     setShowAddItem(false);
     setNewProductId('');
+    setNewColor('');
     setNewSize('');
     setNewQty(1);
   };
