@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
@@ -16,10 +16,11 @@ import {
   useAddOrderHistory
 } from '@/hooks/useOrders';
 import { useProducts } from '@/hooks/useProducts';
+import { useApplicablePromotions, calculatePromotionDiscount } from '@/hooks/usePromotions';
 import { formatPrice } from '@/lib/utils';
 import { CurrencyInput } from './CurrencyInput';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Trash2, Save } from 'lucide-react';
+import { Loader2, Plus, Trash2, Save, Tag } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 
 interface OrderEditModalProps {
@@ -80,12 +81,27 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
     setNewSize('');
   }, [newColor]);
 
-  const calculateSubtotal = () => {
-    return editedItems.reduce((sum, item) => sum + item.line_total_cents, 0);
-  };
+  const totalItems = useMemo(() => 
+    editedItems.reduce((sum, item) => sum + item.qty, 0), 
+    [editedItems]
+  );
+
+  const subtotalCents = useMemo(() => 
+    editedItems.reduce((sum, item) => sum + item.line_total_cents, 0), 
+    [editedItems]
+  );
+
+  const { data: applicablePromotion } = useApplicablePromotions(totalItems);
+  
+  const promotionResult = useMemo(() => 
+    calculatePromotionDiscount(applicablePromotion || null, subtotalCents, totalItems),
+    [applicablePromotion, subtotalCents, totalItems]
+  );
+
+  const calculateSubtotal = () => subtotalCents;
 
   const calculateTotal = () => {
-    return calculateSubtotal() + (shippingPriceCents || 0);
+    return promotionResult.finalCents + (shippingPriceCents || 0);
   };
 
   const handleItemQtyChange = (itemId: string, newQty: number) => {
@@ -640,9 +656,18 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
           {/* Totals */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>Subtotal:</span>
+              <span>Subtotal ({totalItems} {totalItems === 1 ? 'item' : 'itens'}):</span>
               <span>{formatPrice(calculateSubtotal())}</span>
             </div>
+            {promotionResult.discountCents > 0 && applicablePromotion && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span className="flex items-center gap-1">
+                  <Tag className="h-3 w-3" />
+                  {applicablePromotion.name}:
+                </span>
+                <span>-{formatPrice(promotionResult.discountCents)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span>Frete:</span>
               <span>{shippingPriceCents ? formatPrice(shippingPriceCents) : 'A combinar'}</span>
