@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -44,6 +45,9 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
   const [newProductId, setNewProductId] = useState('');
   const [newSize, setNewSize] = useState('');
   const [newQty, setNewQty] = useState(1);
+  
+  // Delete confirmation
+  const [itemToDelete, setItemToDelete] = useState<OrderItem | null>(null);
   
   const { data: products = [] } = useProducts();
   const { mutateAsync: updateOrder } = useUpdateOrderIntent();
@@ -103,8 +107,15 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
     );
   };
 
-  const handleRemoveItem = (itemId: string) => {
-    setEditedItems(items => items.filter(item => item.id !== itemId));
+  const handleRemoveItem = (item: OrderItem) => {
+    setItemToDelete(item);
+  };
+
+  const confirmRemoveItem = () => {
+    if (itemToDelete) {
+      setEditedItems(items => items.filter(item => item.id !== itemToDelete.id));
+      setItemToDelete(null);
+    }
   };
 
   const handleAddNewItem = () => {
@@ -217,6 +228,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
   if (!order) return null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -296,7 +308,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
                     variant="ghost" 
                     size="icon"
                     className="h-8 w-8 text-destructive"
-                    onClick={() => handleRemoveItem(item.id)}
+                    onClick={() => handleRemoveItem(item)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -451,5 +463,28 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Delete Confirmation Dialog */}
+    <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remover item do pedido?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Tem certeza que deseja remover "{itemToDelete?.product_name}" (Tam: {itemToDelete?.size}) do pedido?
+            Esta ação será aplicada ao salvar as alterações.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={confirmRemoveItem}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Remover
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
   );
 }
