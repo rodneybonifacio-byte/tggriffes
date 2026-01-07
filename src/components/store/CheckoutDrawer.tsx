@@ -434,7 +434,7 @@ ${pdfUrl}`;
                       setSelectedShipping(null);
                     }}
                   >
-                    <span className="font-medium">Combinar frete pelo WhatsApp</span>
+                    <span className="font-medium">Combinar Entrega com Vendedor</span>
                     <span className="text-xs text-muted-foreground font-normal leading-tight">
                       Enviar pedido sem<br />calcular frete agora
                     </span>
@@ -447,7 +447,7 @@ ${pdfUrl}`;
                   >
                     <span className="font-medium">Calcular frete correio</span>
                     <span className="text-xs text-muted-foreground font-normal leading-tight">
-                      Informe seu CEP e escolha<br />a transportadora
+                      Informe seu CEP
                     </span>
                   </Button>
                 </div>
