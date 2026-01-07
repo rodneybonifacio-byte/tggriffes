@@ -121,13 +121,19 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
   };
 
   const handleAddNewItem = () => {
+    console.log('handleAddNewItem called', { newProductId, newSize, newQty });
+    
     if (!newProductId || !newSize || newQty < 1) {
+      console.log('Validation failed', { newProductId, newSize, newQty });
       toast({ title: 'Preencha todos os campos do item', variant: 'destructive' });
       return;
     }
 
     const product = products.find(p => p.id === newProductId);
-    if (!product) return;
+    if (!product) {
+      console.log('Product not found', newProductId);
+      return;
+    }
 
     const newItem: OrderItem = {
       id: `new-${Date.now()}`,
@@ -142,6 +148,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
       created_at: new Date().toISOString(),
     };
 
+    console.log('Adding new item', newItem);
     setEditedItems([...editedItems, newItem]);
     setShowAddItem(false);
     setNewProductId('');
@@ -449,7 +456,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
                       <SelectTrigger>
                         <SelectValue placeholder="Tam" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper" className="z-[9999]">
                         {availableSizes.map((size) => (
                           <SelectItem key={size} value={size}>{size}</SelectItem>
                         ))}
