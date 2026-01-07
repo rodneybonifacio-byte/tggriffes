@@ -323,47 +323,63 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
             </div>
 
             <div className="border rounded-lg divide-y">
-              {editedItems.map((item) => (
-                <div key={item.id} className="p-3 flex items-center gap-3">
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{item.product_name}</p>
-                    <p className="text-xs text-muted-foreground">Tam: {item.size}</p>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs">Qtd:</Label>
-                    <Input 
-                      type="number"
-                      min={1}
-                      value={item.qty}
-                      onChange={(e) => handleItemQtyChange(item.id, parseInt(e.target.value) || 1)}
-                      className="w-16 h-8 text-center"
-                    />
-                  </div>
+              {editedItems.map((item) => {
+                const itemProduct = products.find(p => p.id === item.product_id);
+                return (
+                  <div key={item.id} className="p-3 flex items-center gap-3">
+                    <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
+                      {itemProduct?.main_image_url ? (
+                        <img 
+                          src={itemProduct.main_image_url} 
+                          alt={item.product_name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                          Sem foto
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{item.product_name}</p>
+                      <p className="text-xs text-muted-foreground">Tam: {item.size}</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs">Qtd:</Label>
+                      <Input 
+                        type="number"
+                        min={1}
+                        value={item.qty}
+                        onChange={(e) => handleItemQtyChange(item.id, parseInt(e.target.value) || 1)}
+                        className="w-16 h-8 text-center"
+                      />
+                    </div>
 
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs">Preço:</Label>
-                    <CurrencyInput 
-                      value={item.unit_price_cents}
-                      onChange={(value) => handleItemPriceChange(item.id, value)}
-                      className="w-24 h-8"
-                    />
-                  </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs">Preço:</Label>
+                      <CurrencyInput 
+                        value={item.unit_price_cents}
+                        onChange={(value) => handleItemPriceChange(item.id, value)}
+                        className="w-24 h-8"
+                      />
+                    </div>
 
-                  <div className="text-right min-w-[80px]">
-                    <span className="font-medium text-sm">{formatPrice(item.line_total_cents)}</span>
-                  </div>
+                    <div className="text-right min-w-[80px]">
+                      <span className="font-medium text-sm">{formatPrice(item.line_total_cents)}</span>
+                    </div>
 
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    className="h-8 w-8 text-destructive"
-                    onClick={() => handleRemoveItem(item)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => handleRemoveItem(item)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
 
               {editedItems.length === 0 && (
                 <div className="p-6 text-center text-muted-foreground">
@@ -375,22 +391,58 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
             {/* Add New Item Form */}
             {showAddItem && (
               <div className="mt-3 p-3 border rounded-lg bg-secondary/30 space-y-3">
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2">
-                    <Label className="text-xs">Produto</Label>
-                    <Select value={newProductId} onValueChange={setNewProductId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um produto" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {products.map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name} - {formatPrice(product.price_cents)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div>
+                  <Label className="text-xs">Produto</Label>
+                  <Select value={newProductId} onValueChange={setNewProductId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um produto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded overflow-hidden bg-muted flex-shrink-0">
+                              {product.main_image_url ? (
+                                <img 
+                                  src={product.main_image_url} 
+                                  alt={product.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-muted" />
+                              )}
+                            </div>
+                            <span className="truncate">{product.name} - {formatPrice(product.price_cents)}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedProduct && (
+                  <div className="flex items-center gap-3 p-2 bg-background rounded border">
+                    <div className="w-16 h-16 rounded overflow-hidden bg-muted flex-shrink-0">
+                      {selectedProduct.main_image_url ? (
+                        <img 
+                          src={selectedProduct.main_image_url} 
+                          alt={selectedProduct.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                          Sem foto
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{selectedProduct.name}</p>
+                      <p className="text-sm text-muted-foreground">{formatPrice(selectedProduct.price_cents)}</p>
+                    </div>
                   </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs">Tamanho</Label>
                     <Select value={newSize} onValueChange={setNewSize}>
@@ -404,9 +456,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-                <div className="flex items-end gap-3">
-                  <div className="w-20">
+                  <div>
                     <Label className="text-xs">Quantidade</Label>
                     <Input 
                       type="number"
@@ -415,21 +465,26 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
                       onChange={(e) => setNewQty(parseInt(e.target.value) || 1)}
                     />
                   </div>
+                </div>
+
+                <div className="flex items-center justify-between">
                   {selectedProduct && (
-                    <div className="flex-1 text-sm text-muted-foreground">
+                    <div className="text-sm font-medium">
                       Total: {formatPrice(newQty * selectedProduct.price_cents)}
                     </div>
                   )}
-                  <Button size="sm" onClick={handleAddNewItem}>
-                    Adicionar
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="ghost"
-                    onClick={() => setShowAddItem(false)}
-                  >
-                    Cancelar
-                  </Button>
+                  <div className="flex gap-2 ml-auto">
+                    <Button 
+                      size="sm" 
+                      variant="ghost"
+                      onClick={() => setShowAddItem(false)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button size="sm" onClick={handleAddNewItem}>
+                      Adicionar
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
