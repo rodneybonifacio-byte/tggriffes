@@ -121,6 +121,13 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <StoreHeader onSearch={handleSearch} searchValue={search} />
       
+      {/* Top Promo Banner */}
+      <div className="bg-primary text-primary-foreground py-2.5 px-4 text-center">
+        <p className="text-sm md:text-base font-bold tracking-wide">
+          🔥 PROMOÇÃO: QUALQUER PEÇA POR <span className="text-lg md:text-xl">R$ 38</span> 🔥
+        </p>
+      </div>
+      
       <PromoBanner />
 
       <main className="container py-4 md:py-6">
