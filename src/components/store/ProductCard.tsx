@@ -419,13 +419,14 @@ export function ProductCard({ product }: ProductCardProps) {
                                   <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                 </button>
                               )}
-                              {/* Stock indicator - show when low stock */}
-                              {variant && variant.stock_qty <= 3 && (
+                              {/* Stock indicator */}
+                              {variant && (
                                 <span className={cn(
                                   "text-[8px] mt-0.5 font-medium",
-                                  variant.stock_qty === 1 ? "text-red-500" : "text-amber-600"
+                                  variant.stock_qty === 1 ? "text-red-500" : 
+                                  variant.stock_qty <= 3 ? "text-amber-600" : "text-muted-foreground"
                                 )}>
-                                  {variant.stock_qty === 1 ? 'Última!' : `${variant.stock_qty} rest.`}
+                                  {variant.stock_qty === 1 ? 'Última!' : `${variant.stock_qty} disp.`}
                                 </span>
                               )}
                             </>
@@ -521,13 +522,14 @@ export function ProductCard({ product }: ProductCardProps) {
                               <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </button>
                           )}
-                          {/* Stock indicator - show when low stock */}
-                          {variant && variant.stock_qty <= 3 && (
+                          {/* Stock indicator */}
+                          {variant && (
                             <span className={cn(
                               "text-[8px] mt-0.5 font-medium",
-                              variant.stock_qty === 1 ? "text-red-500" : "text-amber-600"
+                              variant.stock_qty === 1 ? "text-red-500" : 
+                              variant.stock_qty <= 3 ? "text-amber-600" : "text-muted-foreground"
                             )}>
-                              {variant.stock_qty === 1 ? 'Última!' : `${variant.stock_qty} rest.`}
+                              {variant.stock_qty === 1 ? 'Última!' : `${variant.stock_qty} disp.`}
                             </span>
                           )}
                         </>
