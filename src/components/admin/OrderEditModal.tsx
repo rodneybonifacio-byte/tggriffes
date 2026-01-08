@@ -20,8 +20,9 @@ import { useApplicablePromotions, calculatePromotionDiscount } from '@/hooks/use
 import { formatPrice, getColorDisplayName } from '@/lib/utils';
 import { CurrencyInput } from './CurrencyInput';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Trash2, Save, Tag } from 'lucide-react';
+import { Loader2, Plus, Save, Tag } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
+import { BulkEditPanel } from './BulkEditPanel';
 
 interface OrderEditModalProps {
   order: OrderIntent | null;
@@ -397,7 +398,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
 
           <Separator />
 
-          {/* Items */}
+          {/* Items with Bulk Edit */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <Label className="text-base font-semibold">Itens do Pedido</Label>
@@ -411,74 +412,14 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
               </Button>
             </div>
 
-            <div className="border rounded-lg divide-y">
-              {editedItems.map((item) => {
-                const itemProduct = products.find(p => p.id === item.product_id);
-                return (
-                  <div key={item.id} className="p-3 flex items-center gap-3">
-                    <div className="w-12 h-12 rounded overflow-hidden bg-muted flex-shrink-0">
-                      {itemProduct?.main_image_url ? (
-                        <img 
-                          src={itemProduct.main_image_url} 
-                          alt={item.product_name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                          Sem foto
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{item.product_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.color && <span>{getColorDisplayName(item.color)} / </span>}
-                        Tam: {item.size}
-                      </p>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs">Qtd:</Label>
-                      <Input 
-                        type="number"
-                        min={1}
-                        value={item.qty}
-                        onChange={(e) => handleItemQtyChange(item.id, parseInt(e.target.value) || 1)}
-                        className="w-16 h-8 text-center"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs">Preço:</Label>
-                      <CurrencyInput 
-                        value={item.unit_price_cents}
-                        onChange={(value) => handleItemPriceChange(item.id, value)}
-                        className="w-24 h-8"
-                      />
-                    </div>
-
-                    <div className="text-right min-w-[80px]">
-                      <span className="font-medium text-sm">{formatPrice(item.line_total_cents)}</span>
-                    </div>
-
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => handleRemoveItem(item)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                );
-              })}
-
-              {editedItems.length === 0 && (
-                <div className="p-6 text-center text-muted-foreground">
-                  Nenhum item no pedido
-                </div>
-              )}
-            </div>
+            <BulkEditPanel
+              items={editedItems}
+              onItemsChange={setEditedItems}
+              onDeleteItems={(ids) => {
+                setEditedItems(items => items.filter(item => !ids.includes(item.id)));
+              }}
+              products={products.map(p => ({ id: p.id, main_image_url: p.main_image_url }))}
+            />
 
             {/* Add New Item Form */}
             {showAddItem && (
