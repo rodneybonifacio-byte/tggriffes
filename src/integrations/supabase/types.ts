@@ -35,6 +35,30 @@ export type Database = {
         }
         Relationships: []
       }
+      customers: {
+        Row: {
+          created_at: string
+          id: string
+          name: string | null
+          updated_at: string
+          whatsapp: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          updated_at?: string
+          whatsapp: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          updated_at?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
       order_history: {
         Row: {
           action: string
@@ -140,6 +164,7 @@ export type Database = {
       order_intents: {
         Row: {
           created_at: string
+          customer_id: string | null
           customer_name: string | null
           customer_whatsapp: string | null
           dest_cep: string | null
@@ -157,6 +182,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          customer_id?: string | null
           customer_name?: string | null
           customer_whatsapp?: string | null
           dest_cep?: string | null
@@ -174,6 +200,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          customer_id?: string | null
           customer_name?: string | null
           customer_whatsapp?: string | null
           dest_cep?: string | null
@@ -189,7 +216,15 @@ export type Database = {
           total_cents?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "order_intents_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_images: {
         Row: {
@@ -536,6 +571,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_seller: { Args: { _user_id: string }; Returns: boolean }
+      upsert_customer: {
+        Args: { p_name: string; p_whatsapp: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "seller"

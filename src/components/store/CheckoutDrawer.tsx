@@ -236,7 +236,17 @@ ${pdfUrl}`;
       if (orderNumberError) throw orderNumberError;
       const orderNumber = orderNumberData as number;
 
-      // 2. Save order intent to database
+      // 2. Criar/atualizar cliente e obter ID
+      const cleanWhatsapp = customerWhatsapp.replace(/\D/g, '');
+      const { data: customerId, error: customerError } = await supabase
+        .rpc('upsert_customer', { p_name: customerName, p_whatsapp: cleanWhatsapp });
+
+      if (customerError) {
+        console.error('Error upserting customer:', customerError);
+        // Não falha o pedido se não conseguir criar cliente
+      }
+
+      // 3. Save order intent to database
       const orderIntentId = crypto.randomUUID();
 
       const { error: orderError } = await supabase
@@ -244,8 +254,9 @@ ${pdfUrl}`;
         .insert({
           id: orderIntentId,
           order_number: orderNumber,
+          customer_id: customerId || null,
           customer_name: customerName,
-          customer_whatsapp: customerWhatsapp.replace(/\D/g, ''),
+          customer_whatsapp: cleanWhatsapp,
           dest_cep: destCep,
           subtotal_cents: subtotalAfterDiscount,
           shipping_service: skipShipping ? 'A combinar' : selectedShipping?.service,
