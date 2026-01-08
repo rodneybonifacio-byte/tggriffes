@@ -183,6 +183,51 @@ ${pdfUrl}`;
     setIsSubmitting(true);
 
     try {
+      // 0. Validar estoque em tempo real antes de prosseguir
+      const variantIds = items.map(item => item.variantId);
+      const { data: currentStock, error: stockError } = await supabase
+        .from('product_variants')
+        .select('id, stock_qty, size, color')
+        .in('id', variantIds);
+
+      if (stockError) throw stockError;
+
+      // Verificar se todos os itens têm estoque suficiente
+      const stockMap = new Map(currentStock?.map(v => [v.id, v]) || []);
+      const outOfStockItems: string[] = [];
+
+      for (const item of items) {
+        const variant = stockMap.get(item.variantId);
+        if (!variant || variant.stock_qty < item.quantity) {
+          const available = variant?.stock_qty || 0;
+          const colorText = item.color ? ` (${item.color})` : '';
+          outOfStockItems.push(
+            `${item.productName} - Tam: ${item.size}${colorText}: pedido ${item.quantity}, disponível ${available}`
+          );
+        }
+      }
+
+      if (outOfStockItems.length > 0) {
+        toast({
+          title: 'Estoque insuficiente',
+          description: (
+            <div className="space-y-1">
+              <p>Alguns itens não têm estoque suficiente:</p>
+              <ul className="text-xs list-disc pl-4">
+                {outOfStockItems.map((msg, i) => (
+                  <li key={i}>{msg}</li>
+                ))}
+              </ul>
+              <p className="text-xs mt-2">Atualize as quantidades no carrinho.</p>
+            </div>
+          ),
+          variant: 'destructive',
+          duration: 10000,
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       // 1. Get next order number using RPC
       const { data: orderNumberData, error: orderNumberError } = await supabase
         .rpc('get_next_order_number');
