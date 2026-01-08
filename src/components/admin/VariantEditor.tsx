@@ -8,6 +8,7 @@ const DEFAULT_SIZES = ['P', 'M', 'G', 'GG', 'XG'];
 const DEFAULT_COLORS = [
   { name: 'Preto', value: '#000000' },
   { name: 'Branco', value: '#FFFFFF' },
+  { name: 'Off White', value: '#f5f5dc' },
   { name: 'Vermelho', value: '#EF4444' },
   { name: 'Azul', value: '#3B82F6' },
   { name: 'Verde', value: '#22C55E' },
