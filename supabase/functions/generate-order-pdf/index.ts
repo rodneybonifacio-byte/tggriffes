@@ -328,10 +328,10 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       // Column headers
       page.drawText("ITENS DO PEDIDO", { x: MARGIN, y, size: 8, font: fontBold, color: gray });
       
-      // Right side column headers
-      page.drawText("QTD", { x: PAGE_WIDTH - MARGIN - 130, y, size: 7, font: fontBold, color: gray });
-      page.drawText("UNIT.", { x: PAGE_WIDTH - MARGIN - 85, y, size: 7, font: fontBold, color: gray });
-      page.drawText("TOTAL", { x: PAGE_WIDTH - MARGIN - 40, y, size: 7, font: fontBold, color: gray });
+      // Right side column headers - increased spacing
+      page.drawText("QTD", { x: PAGE_WIDTH - MARGIN - 160, y, size: 7, font: fontBold, color: gray });
+      page.drawText("UNIT.", { x: PAGE_WIDTH - MARGIN - 110, y, size: 7, font: fontBold, color: gray });
+      page.drawText("TOTAL", { x: PAGE_WIDTH - MARGIN - 50, y, size: 7, font: fontBold, color: gray });
       y -= 12;
     }
     
@@ -416,22 +416,22 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         });
       }
       
-      // Quantity column - LARGER (12pt)
+      // Quantity column - LARGER (12pt) - adjusted position
       const qtyText = `${item.quantity}`;
       const qtyWidth = fontBold.widthOfTextAtSize(qtyText, 12);
       page.drawText(qtyText, {
-        x: PAGE_WIDTH - MARGIN - 130 + (20 - qtyWidth) / 2,
+        x: PAGE_WIDTH - MARGIN - 160 + (20 - qtyWidth) / 2,
         y: textY - 6,
         size: 12,
         font: fontBold,
         color: black,
       });
       
-      // Unit price column - GREEN COLOR
+      // Unit price column - GREEN COLOR - adjusted position
       const unitPriceText = formatPrice(item.unitPriceCents);
       const unitWidth = fontBold.widthOfTextAtSize(unitPriceText, 10);
       page.drawText(unitPriceText, {
-        x: PAGE_WIDTH - MARGIN - 85 + (40 - unitWidth) / 2,
+        x: PAGE_WIDTH - MARGIN - 115,
         y: textY - 6,
         size: 10,
         font: fontBold,
