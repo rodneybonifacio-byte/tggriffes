@@ -43,8 +43,10 @@ const AdminDashboard = () => {
     new Date(o.created_at).toDateString() === today
   );
 
-  // Vendas do dia (pedidos de hoje com status FINALIZADO)
-  const todaySales = todayOrders.filter(o => o.status === 'FINALIZADO');
+  // Vendas do dia (pedidos finalizados HOJE, baseado em updated_at)
+  const todaySales = orders.filter(o => 
+    o.status === 'FINALIZADO' && new Date(o.updated_at).toDateString() === today
+  );
   const todayRevenue = todaySales.reduce((sum, o) => sum + o.total_cents, 0);
 
   // Vendas fechadas (total FINALIZADO)
