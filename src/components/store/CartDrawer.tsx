@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart, Trash2, Plus, Minus, Tag } from 'lucide-react';
@@ -9,6 +9,7 @@ import { CheckoutDrawer } from './CheckoutDrawer';
 import { useApplicablePromotions, calculatePromotionDiscount } from '@/hooks/usePromotions';
 import { useProducts } from '@/hooks/useProducts';
 import { useToast } from '@/hooks/use-toast';
+import { VariationsSummary } from './VariationsSummary';
 
 export function CartDrawer() {
   const { items, removeItem, updateQuantity, totalItems, totalCents } = useCart();
@@ -138,6 +139,8 @@ export function CartDrawer() {
           {items.length > 0 && (
             <SheetFooter className="border-t pt-4">
               <div className="w-full space-y-3">
+                <VariationsSummary items={items} />
+                
                 <div className="flex justify-between text-sm">
                   <span>Subtotal:</span>
                   <span>{formatPrice(totalCents)}</span>
