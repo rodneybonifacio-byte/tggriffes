@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { ShoppingCart, Trash2, Plus, Minus, Tag } from 'lucide-react';
@@ -7,11 +7,17 @@ import { formatPrice } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { CheckoutDrawer } from './CheckoutDrawer';
 import { useApplicablePromotions, calculatePromotionDiscount } from '@/hooks/usePromotions';
+import { useProducts } from '@/hooks/useProducts';
+import { useToast } from '@/hooks/use-toast';
 
 export function CartDrawer() {
   const { items, removeItem, updateQuantity, totalItems, totalCents } = useCart();
   const [open, setOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const { toast } = useToast();
+  
+  // Fetch products to get current stock info
+  const { data: products } = useProducts();
   
   const { data: promotion } = useApplicablePromotions(totalItems);
   const { discountCents, finalCents, description } = calculatePromotionDiscount(
@@ -19,6 +25,32 @@ export function CartDrawer() {
     totalCents,
     totalItems
   );
+
+  // Get stock for a variant
+  const getVariantStock = (variantId: string): number => {
+    if (!products) return 999; // fallback high number if products not loaded
+    for (const product of products) {
+      const variant = product.product_variants?.find(v => v.id === variantId);
+      if (variant) return variant.stock_qty;
+    }
+    return 999;
+  };
+
+  const handleIncrement = (itemId: string, variantId: string, currentQty: number) => {
+    const stockQty = getVariantStock(variantId);
+    const result = updateQuantity(itemId, currentQty + 1, stockQty);
+    if (!result.success) {
+      toast({
+        title: 'Limite atingido',
+        description: result.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDecrement = (itemId: string, currentQty: number) => {
+    updateQuantity(itemId, currentQty - 1);
+  };
 
   const handleCheckout = () => {
     setOpen(false);
@@ -74,7 +106,7 @@ export function CartDrawer() {
                           variant="outline"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => handleDecrement(item.id, item.quantity)}
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
@@ -83,7 +115,7 @@ export function CartDrawer() {
                           variant="outline"
                           size="icon"
                           className="h-7 w-7"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => handleIncrement(item.id, item.variantId, item.quantity)}
                         >
                           <Plus className="h-3 w-3" />
                         </Button>
