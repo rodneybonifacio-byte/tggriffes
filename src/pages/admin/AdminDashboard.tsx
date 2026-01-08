@@ -37,20 +37,29 @@ const AdminDashboard = () => {
       }))
   );
 
-  const todayOrders = orders.filter(o => {
-    const today = new Date().toDateString();
-    return new Date(o.created_at).toDateString() === today;
-  });
+  const today = new Date().toDateString();
+  
+  const todayOrders = orders.filter(o => 
+    new Date(o.created_at).toDateString() === today
+  );
 
-  const totalRevenue = orders
-    .filter(o => o.status === 'FECHADO')
-    .reduce((sum, o) => sum + o.total_cents, 0);
+  // Vendas do dia (pedidos de hoje com status FINALIZADO)
+  const todaySales = todayOrders.filter(o => o.status === 'FINALIZADO');
+  const todayRevenue = todaySales.reduce((sum, o) => sum + o.total_cents, 0);
+
+  // Vendas fechadas (total FINALIZADO)
+  const closedOrders = orders.filter(o => o.status === 'FINALIZADO');
+  const closedRevenue = closedOrders.reduce((sum, o) => sum + o.total_cents, 0);
+
+  // Vendas canceladas
+  const cancelledOrders = orders.filter(o => o.status === 'CANCELADO');
+  const cancelledTotal = cancelledOrders.reduce((sum, o) => sum + o.total_cents, 0);
 
   return (
     <AdminGuard>
       <AdminLayout title="Dashboard">
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -61,7 +70,7 @@ const AdminDashboard = () => {
             <CardContent>
               <div className="text-2xl font-bold">{activeProducts.length}</div>
               <p className="text-xs text-muted-foreground">
-                {products.length} total cadastrados
+                {products.length} total
               </p>
             </CardContent>
           </Card>
@@ -76,7 +85,52 @@ const AdminDashboard = () => {
             <CardContent>
               <div className="text-2xl font-bold">{todayOrders.length}</div>
               <p className="text-xs text-muted-foreground">
-                {orders.length} total de pedidos
+                {orders.length} total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-green-500/20 bg-green-500/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-green-600">
+                Vendas Hoje
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{formatPrice(todayRevenue)}</div>
+              <p className="text-xs text-muted-foreground">
+                {todaySales.length} pedidos finalizados
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-primary">
+                Vendas Finalizadas
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-primary">{formatPrice(closedRevenue)}</div>
+              <p className="text-xs text-muted-foreground">
+                {closedOrders.length} pedidos
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-destructive/20 bg-destructive/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-destructive">
+                Cancelados
+              </CardTitle>
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-destructive">{formatPrice(cancelledTotal)}</div>
+              <p className="text-xs text-muted-foreground">
+                {cancelledOrders.length} pedidos
               </p>
             </CardContent>
           </Card>
@@ -91,22 +145,7 @@ const AdminDashboard = () => {
             <CardContent>
               <div className="text-2xl font-bold text-warning">{lowStockVariants.length}</div>
               <p className="text-xs text-muted-foreground">
-                {outOfStockVariants.length} variantes sem estoque
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Receita (Fechados)
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-success" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatPrice(totalRevenue)}</div>
-              <p className="text-xs text-muted-foreground">
-                {orders.filter(o => o.status === 'FECHADO').length} pedidos fechados
+                {outOfStockVariants.length} sem estoque
               </p>
             </CardContent>
           </Card>
