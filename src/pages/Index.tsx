@@ -121,8 +121,8 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <StoreHeader onSearch={handleSearch} searchValue={search} />
       
-      {/* Top Promo Banner - IMPACTANTE */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-rose-600 via-pink-600 to-orange-500">
+      {/* Top Promo Banner - IMPACTANTE - sem espaço */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-rose-600 via-pink-600 to-orange-500 -mt-px">
         {/* Animated background shimmer */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
         
