@@ -233,20 +233,27 @@ const AdminOrders = () => {
                         {formatPrice(order.total_cents)}
                       </TableCell>
                       <TableCell className="text-center">
-                        <Select 
-                          value={order.status} 
-                          onValueChange={(value) => handleStatusChange(order.id, value, order.status)}
-                          disabled={isUpdating}
-                        >
-                          <SelectTrigger className="w-32 h-8">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {STATUS_OPTIONS.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="flex flex-col items-center gap-1">
+                          <Select 
+                            value={order.status} 
+                            onValueChange={(value) => handleStatusChange(order.id, value, order.status)}
+                            disabled={isUpdating}
+                          >
+                            <SelectTrigger className="w-32 h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {STATUS_OPTIONS.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {order.status === 'CANCELADO' && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">
+                              ↩ Estoque restaurado
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button 
@@ -284,7 +291,14 @@ const AdminOrders = () => {
                           </p>
                         )}
                       </div>
-                      {getStatusBadge(order.status)}
+                      <div className="flex flex-col items-end gap-1">
+                        {getStatusBadge(order.status)}
+                        {order.status === 'CANCELADO' && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200">
+                            ↩ Estoque restaurado
+                          </Badge>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between mb-3">
