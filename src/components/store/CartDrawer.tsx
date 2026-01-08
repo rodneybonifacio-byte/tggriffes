@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter
 import { Button } from '@/components/ui/button';
 import { ShoppingCart, Trash2, Plus, Minus, Tag } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, getColorDisplayName } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { CheckoutDrawer } from './CheckoutDrawer';
 import { useApplicablePromotions, calculatePromotionDiscount } from '@/hooks/usePromotions';
@@ -95,7 +95,7 @@ export function CartDrawer() {
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-sm line-clamp-1">{item.productName}</h4>
                       <p className="text-xs text-muted-foreground">
-                        Tam: {item.size} {item.color && `• ${item.color}`}
+                        Tam: {item.size} {item.color && `• ${getColorDisplayName(item.color)}`}
                       </p>
                       <p className="text-sm font-semibold mt-1">
                         {formatPrice(item.unitPriceCents * item.quantity)}

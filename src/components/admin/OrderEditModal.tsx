@@ -17,7 +17,7 @@ import {
 } from '@/hooks/useOrders';
 import { useProducts } from '@/hooks/useProducts';
 import { useApplicablePromotions, calculatePromotionDiscount } from '@/hooks/usePromotions';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, getColorDisplayName } from '@/lib/utils';
 import { CurrencyInput } from './CurrencyInput';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Trash2, Save, Tag } from 'lucide-react';
@@ -262,7 +262,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
       // Add new items
       const newItems = editedItems.filter(item => item.id.startsWith('new-'));
       for (const item of newItems) {
-        const colorInfo = item.color ? `${item.color} / ` : '';
+        const colorInfo = item.color ? `${getColorDisplayName(item.color)} / ` : '';
         changes.push(`Adicionado: ${item.product_name} (${colorInfo}${item.size}) x${item.qty}`);
         await addItem({
           order_intent_id: order.id,
@@ -432,7 +432,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{item.product_name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {item.color && <span>{item.color} / </span>}
+                        {item.color && <span>{getColorDisplayName(item.color)} / </span>}
                         Tam: {item.size}
                       </p>
                     </div>

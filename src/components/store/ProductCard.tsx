@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Product } from '@/hooks/useProducts';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, getColorDisplayName } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
@@ -174,7 +174,7 @@ export function ProductCard({ product }: ProductCardProps) {
     if (result.success) {
       toast({
         title: 'Adicionado!',
-        description: `${product.name} - ${size}${color ? ` (${color})` : ''}`,
+        description: `${product.name} - ${size}${color ? ` (${getColorDisplayName(color)})` : ''}`,
       });
     } else {
       toast({
@@ -204,7 +204,7 @@ export function ProductCard({ product }: ProductCardProps) {
     
     toast({
       title: 'Removido',
-      description: `${product.name} - ${size}${color ? ` (${color})` : ''}`,
+      description: `${product.name} - ${size}${color ? ` (${getColorDisplayName(color)})` : ''}`,
     });
   };
 
