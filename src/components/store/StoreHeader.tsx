@@ -124,7 +124,7 @@ export function StoreHeader({ onSearch, searchValue = '' }: StoreHeaderProps) {
       )}
 
       {/* Desktop Categories */}
-      <nav className="hidden lg:block border-t">
+      <nav className="hidden lg:block">
         <div className="container">
           <div className="flex items-center gap-6 h-12 overflow-x-auto scrollbar-hide">
             {categories?.map((cat) => (
