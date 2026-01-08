@@ -331,20 +331,19 @@ export function ProductCard({ product }: ProductCardProps) {
                   })();
 
                   const stockLabel = (() => {
-                    if (remaining === 0) {
-                      return isMaxed ? "Máx!" : "Esgotado";
-                    }
-                    if (remaining === 1) return "🔥 Última!";
-                    if (remaining <= 3) return `⚡ ${remaining} disp.`;
-                    return `${remaining} disp.`;
+                    if (remaining === 0) return isMaxed ? "Máx!" : "0";
+                    if (remaining === 1) return "🔥 1";
+                    if (remaining <= 3) return `⚡ ${remaining}`;
+                    return `${remaining}`;
                   })();
 
                   const stockColor = (() => {
                     if (remaining === 0) return isMaxed ? "text-amber-600 font-bold" : "text-muted-foreground";
                     if (remaining === 1) return "text-red-600 font-bold";
                     if (remaining <= 3) return "text-amber-600 font-semibold";
-                    return "text-foreground/70 font-medium";
+                    return "text-emerald-600 font-semibold";
                   })();
+
 
 
 
