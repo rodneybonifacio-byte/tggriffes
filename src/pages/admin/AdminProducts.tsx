@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { StockModal } from '@/components/admin/StockModal';
-import { useProducts, useDeleteProduct, Product } from '@/hooks/useProducts';
+import { useProducts, useDeleteProduct, useToggleProductActive, Product } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useProducts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,11 +39,12 @@ const AdminProducts = () => {
     stock: stockFilter !== 'all' ? stockFilter as 'in-stock' | 'out-of-stock' | 'low-stock' : 'all',
   });
   const { mutateAsync: deleteProduct, isPending: isDeleting } = useDeleteProduct();
+  const { mutateAsync: toggleProductActive, isPending: isToggling } = useToggleProductActive();
   const { toast } = useToast();
 
   const handleToggleActive = async (product: Product) => {
     try {
-      await deleteProduct(product.id);
+      await toggleProductActive({ id: product.id, active: !product.active });
       toast({
         title: product.active ? 'Produto desativado' : 'Produto ativado',
         description: `${product.name} foi ${product.active ? 'desativado' : 'ativado'}.`,
@@ -210,7 +211,7 @@ const AdminProducts = () => {
                               size="icon" 
                               title={product.active ? 'Desativar' : 'Ativar'}
                               onClick={() => handleToggleActive(product)}
-                              disabled={isDeleting}
+                              disabled={isToggling}
                             >
                               {product.active ? (
                                 <ToggleRight className="h-4 w-4" />

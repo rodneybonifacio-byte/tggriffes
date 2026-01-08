@@ -200,6 +200,24 @@ export function useDeleteProduct() {
   });
 }
 
+export function useToggleProductActive() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      const { error } = await supabase
+        .from('products')
+        .update({ active })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
+}
+
 export function useCreateCategory() {
   const queryClient = useQueryClient();
   
