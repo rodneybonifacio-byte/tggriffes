@@ -306,122 +306,131 @@ export function ProductCard({ product }: ProductCardProps) {
         </p>
 
         {!isOutOfStock && sizes.length > 0 && (
-          <div className="border rounded-md divide-y" onClick={(e) => e.stopPropagation()}>
-            {/* Each size is a row */}
-            {sizes.map((size) => {
-              // Get all color variants for this size
-              const sizeVariants = colors.length > 0 
-                ? colors.map(color => ({ color, variant: getVariant(color, size) }))
-                : [{ color: null, variant: variants.find(v => v.size === size) }];
-              
-              return (
-                <div key={size} className="flex items-center gap-2 px-2 py-2.5">
-                  {/* Size label */}
-                  <span className="text-sm font-bold w-7 text-center shrink-0">{size}</span>
+          <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
+            {/* Variant cards grid */}
+            <div className="grid grid-cols-2 gap-1.5">
+              {sizes.map((size) => {
+                // Get all color variants for this size
+                const sizeVariants = colors.length > 0 
+                  ? colors.map(color => ({ color, variant: getVariant(color, size) }))
+                  : [{ color: null, variant: variants.find(v => v.size === size) }];
+                
+                return sizeVariants.map(({ color, variant }) => {
+                  if (!variant) return null;
                   
-                  {/* Color variants for this size */}
-                  <div className="flex items-center gap-3 flex-1 flex-wrap">
-                    {sizeVariants.map(({ color, variant }) => {
-                      if (!variant) return null;
-                      
-                      const available = variant.stock_qty > 0;
-                      const quantityInCart = getQuantityForVariant(variant.id);
-                      const remaining = variant.stock_qty - quantityInCart;
-                      const colorHex = color ? findColorHex(color) : null;
-                      const needsBorder = colorHex ? isLightColor(colorHex) : false;
-                      
-                      // Variant esgotada
-                      if (!available && quantityInCart === 0) {
-                        return (
-                          <div key={color || 'default'} className="flex items-center gap-1.5 opacity-40">
-                            {colorHex && (
-                              <div 
-                                className={cn("w-5 h-5 rounded-full", needsBorder && "border border-gray-400")}
-                                style={{ backgroundColor: colorHex }}
-                              />
-                            )}
-                            <span className="text-[10px] text-muted-foreground">—</span>
-                          </div>
-                        );
-                      }
-                      
-                      const handleAdd = (e: React.MouseEvent) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleAddToCart(e, color, size);
-                      };
-                      
-                      const handleRemove = (e: React.MouseEvent) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleRemoveFromCart(e, color, size);
-                      };
-                      
-                      // Renderizar disponibilidade como badge
-                      const stockBadge = (() => {
-                        if (remaining === 0) {
-                          return <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">0</span>;
-                        }
-                        if (remaining === 1) {
-                          return <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-semibold">1 🔥</span>;
-                        }
-                        if (remaining <= 3) {
-                          return <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{remaining} ⚡</span>;
-                        }
-                        return <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-50 text-green-600">{remaining}</span>;
-                      })();
-                      
-                      return (
-                        <div key={color || 'default'} className="flex items-center gap-1.5">
-                          {/* Color swatch */}
+                  const available = variant.stock_qty > 0;
+                  const quantityInCart = getQuantityForVariant(variant.id);
+                  const remaining = variant.stock_qty - quantityInCart;
+                  const colorHex = color ? findColorHex(color) : null;
+                  const needsBorder = colorHex ? isLightColor(colorHex) : false;
+                  
+                  // Esgotado
+                  if (!available && quantityInCart === 0) {
+                    return (
+                      <div 
+                        key={`${size}-${color || 'default'}`} 
+                        className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-gray-100 opacity-50"
+                      >
+                        <div className="flex items-center gap-1.5">
                           {colorHex && (
                             <div 
-                              className={cn("w-5 h-5 rounded-full shrink-0", needsBorder && "border border-gray-400")}
+                              className={cn("w-4 h-4 rounded-full", needsBorder && "border border-gray-300")}
                               style={{ backgroundColor: colorHex }}
-                              title={color || ''}
                             />
                           )}
-                          
-                          {/* Quantity controls - always visible */}
-                          <div className="flex items-center gap-0.5 bg-gray-50 rounded-full">
-                            {quantityInCart > 0 && (
-                              <button
-                                onClick={handleRemove}
-                                className="w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center active:scale-90"
-                              >
-                                <Minus className="h-3.5 w-3.5" />
-                              </button>
-                            )}
-                            
-                            {quantityInCart > 0 ? (
-                              <span className="w-5 text-center text-sm font-bold text-green-600">
-                                {quantityInCart}
-                              </span>
-                            ) : null}
-                            
-                            <button
-                              onClick={handleAdd}
-                              disabled={remaining <= 0}
-                              className={cn(
-                                "w-7 h-7 rounded-full flex items-center justify-center active:scale-90",
-                                quantityInCart > 0 
-                                  ? "bg-green-100 text-green-600 disabled:opacity-40"
-                                  : "border-2 border-dashed border-gray-300 text-gray-500 hover:border-green-500 hover:bg-green-50 hover:text-green-600 disabled:opacity-40"
-                              )}
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                          
-                          {/* Stock badge - always visible */}
-                          {stockBadge}
+                          <span className="text-xs font-semibold text-gray-400">{size}</span>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+                        <span className="text-[10px] text-gray-400">Esgotado</span>
+                      </div>
+                    );
+                  }
+                  
+                  const handleAdd = (e: React.MouseEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleAddToCart(e, color, size);
+                  };
+                  
+                  const handleRemove = (e: React.MouseEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleRemoveFromCart(e, color, size);
+                  };
+                  
+                  // Definir estilo baseado no estoque
+                  const isLowStock = remaining <= 3;
+                  const isLastOne = remaining === 1;
+                  const isOutOfRemaining = remaining === 0;
+                  
+                  return (
+                    <div 
+                      key={`${size}-${color || 'default'}`} 
+                      className={cn(
+                        "relative flex items-center justify-between px-2 py-1.5 rounded-lg border transition-all",
+                        quantityInCart > 0 
+                          ? "bg-green-50 border-green-200" 
+                          : "bg-white border-gray-200",
+                        isLastOne && quantityInCart === 0 && "border-red-200 bg-red-50",
+                        isOutOfRemaining && "border-amber-200 bg-amber-50"
+                      )}
+                    >
+                      {/* Left: Color + Size */}
+                      <div className="flex items-center gap-1.5">
+                        {colorHex && (
+                          <div 
+                            className={cn("w-4 h-4 rounded-full shrink-0", needsBorder && "border border-gray-300")}
+                            style={{ backgroundColor: colorHex }}
+                          />
+                        )}
+                        <span className="text-xs font-bold">{size}</span>
+                      </div>
+                      
+                      {/* Center: Stock badge */}
+                      <div className="flex-1 flex justify-center">
+                        {isOutOfRemaining ? (
+                          <span className="text-[9px] font-semibold text-amber-600">Máx!</span>
+                        ) : isLastOne ? (
+                          <span className="text-[9px] font-bold text-red-500 animate-pulse">🔥 1</span>
+                        ) : isLowStock ? (
+                          <span className="text-[9px] font-semibold text-amber-600">⚡ {remaining}</span>
+                        ) : (
+                          <span className="text-[9px] text-green-600">{remaining}</span>
+                        )}
+                      </div>
+                      
+                      {/* Right: Controls */}
+                      <div className="flex items-center gap-0.5">
+                        {quantityInCart > 0 && (
+                          <>
+                            <button
+                              onClick={handleRemove}
+                              className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center active:scale-90 transition-transform"
+                            >
+                              <Minus className="h-3 w-3" />
+                            </button>
+                            <span className="w-5 text-center text-xs font-bold text-green-600">
+                              {quantityInCart}
+                            </span>
+                          </>
+                        )}
+                        <button
+                          onClick={handleAdd}
+                          disabled={isOutOfRemaining}
+                          className={cn(
+                            "w-6 h-6 rounded-full flex items-center justify-center transition-all active:scale-90",
+                            quantityInCart > 0 
+                              ? "bg-green-500 text-white disabled:bg-gray-200 disabled:text-gray-400"
+                              : "bg-green-500 text-white hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400"
+                          )}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                });
+              })}
+            </div>
           </div>
         )}
       </div>
