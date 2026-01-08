@@ -334,17 +334,18 @@ export function ProductCard({ product }: ProductCardProps) {
                     if (remaining === 0) {
                       return isMaxed ? "Máx!" : "Esgotado";
                     }
-                    if (remaining === 1) return "🔥 1";
-                    if (remaining <= 3) return `⚡ ${remaining}`;
-                    return `${remaining}`;
+                    if (remaining === 1) return "🔥 Última!";
+                    if (remaining <= 3) return `⚡ ${remaining} disp.`;
+                    return `${remaining} disp.`;
                   })();
 
                   const stockColor = (() => {
-                    if (remaining === 0) return isMaxed ? "text-warning" : "text-muted-foreground";
-                    if (remaining === 1) return "text-destructive font-semibold";
-                    if (remaining <= 3) return "text-warning font-semibold";
-                    return "text-muted-foreground";
+                    if (remaining === 0) return isMaxed ? "text-amber-600 font-bold" : "text-muted-foreground";
+                    if (remaining === 1) return "text-red-600 font-bold";
+                    if (remaining <= 3) return "text-amber-600 font-semibold";
+                    return "text-foreground/70 font-medium";
                   })();
+
 
 
                   const handleAdd = (e: React.MouseEvent) => {
