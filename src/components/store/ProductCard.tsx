@@ -34,7 +34,6 @@ const COLOR_MAP: Record<string, string> = {
   offwhite: '#f5f5dc',
   'off-white': '#f5f5dc',
   'off white': '#f5f5dc',
-  off: '#f5f5dc',
   caramelo: '#a0522d',
   mostarda: '#e4a010',
   oliva: '#808000',
