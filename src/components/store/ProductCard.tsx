@@ -306,18 +306,18 @@ export function ProductCard({ product }: ProductCardProps) {
         </p>
 
         {!isOutOfStock && sizes.length > 0 && (
-          <div className="border rounded-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="border rounded-md overflow-x-auto" onClick={(e) => e.stopPropagation()}>
             {/* Header row with sizes */}
             <div 
               className="grid border-b bg-muted/30" 
-              style={{ gridTemplateColumns: `40px repeat(${sizes.length}, 1fr)` }}
+              style={{ gridTemplateColumns: `28px repeat(${sizes.length}, minmax(48px, 1fr))` }}
             >
-              <div className="flex items-center justify-center py-2">
-                <span className="text-[10px] text-muted-foreground font-medium">Cor</span>
+              <div className="flex items-center justify-center py-1.5">
+                <span className="text-[9px] text-muted-foreground font-medium">Cor</span>
               </div>
               {sizes.map((size) => (
-                <div key={size} className="flex items-center justify-center py-2 border-l">
-                  <span className="text-xs font-semibold">{size}</span>
+                <div key={size} className="flex items-center justify-center py-1.5 border-l">
+                  <span className="text-[11px] font-semibold">{size}</span>
                 </div>
               ))}
             </div>
@@ -332,13 +332,13 @@ export function ProductCard({ product }: ProductCardProps) {
                   <div 
                     key={color}
                     className="grid border-t first:border-t-0"
-                    style={{ gridTemplateColumns: `40px repeat(${sizes.length}, 1fr)` }}
+                    style={{ gridTemplateColumns: `28px repeat(${sizes.length}, minmax(48px, 1fr))` }}
                   >
                     {/* Color swatch */}
-                    <div className="flex items-center justify-center py-3">
+                    <div className="flex items-center justify-center py-2">
                       <div 
                         className={cn(
-                          "w-5 h-5 rounded-full",
+                          "w-4 h-4 rounded-full",
                           needsBorder && "border border-gray-400"
                         )}
                         style={{ backgroundColor: colorHex }}
@@ -370,7 +370,7 @@ export function ProductCard({ product }: ProductCardProps) {
                         <div 
                           key={size}
                           className={cn(
-                            "flex flex-col items-center justify-center py-2 border-l relative min-h-[70px]",
+                            "flex flex-col items-center justify-center py-1.5 border-l relative min-h-[58px]",
                             !available && "bg-muted/50"
                           )}
                         >
@@ -378,25 +378,25 @@ export function ProductCard({ product }: ProductCardProps) {
                             <>
                               {quantityInCart > 0 ? (
                                 isExpanded ? (
-                                  <div className="flex items-center gap-1">
+                                  <div className="flex items-center gap-0.5">
                                     <button
                                       onClick={(e) => {
                                         handleRemove(e);
                                         const newQty = quantityInCart - 1;
                                         if (newQty <= 0) setExpandedCell(null);
                                       }}
-                                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                                      className="w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
                                     >
-                                      <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
+                                      <Minus className="h-3.5 w-3.5" />
                                     </button>
-                                    <span className="w-5 text-center text-sm font-bold text-green-600">
+                                    <span className="w-4 text-center text-xs font-bold text-green-600">
                                       {quantityInCart}
                                     </span>
                                     <button
                                       onClick={handleAdd}
-                                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
+                                      className="w-7 h-7 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
                                     >
-                                      <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                                      <Plus className="h-3.5 w-3.5" />
                                     </button>
                                   </div>
                                 ) : (
@@ -406,7 +406,7 @@ export function ProductCard({ product }: ProductCardProps) {
                                       e.stopPropagation();
                                       setExpandedCell(cellKey);
                                     }}
-                                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold shadow-md transition-all active:scale-90"
+                                    className="w-9 h-9 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold shadow-md transition-all active:scale-90"
                                   >
                                     {quantityInCart}
                                   </button>
@@ -414,38 +414,38 @@ export function ProductCard({ product }: ProductCardProps) {
                               ) : (
                                 <button
                                   onClick={handleAdd}
-                                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border-2 border-dashed border-muted-foreground/50 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
+                                  className="w-9 h-9 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
                                 >
-                                  <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
+                                  <Plus className="h-4 w-4" />
                                 </button>
                               )}
-                              {/* Stock indicator - shows remaining after cart */}
+                              {/* Stock indicator - compact */}
                               {variant && (() => {
                                 const remaining = variant.stock_qty - quantityInCart;
                                 if (remaining === 0) {
                                   return (
-                                    <span className="text-[10px] mt-1.5 px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 font-semibold">
+                                    <span className="text-[8px] mt-1 text-gray-500 font-medium">
                                       Esgotado
                                     </span>
                                   );
                                 }
                                 if (remaining === 1) {
                                   return (
-                                    <span className="text-[10px] mt-1.5 px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold animate-pulse">
+                                    <span className="text-[8px] mt-1 text-red-500 font-semibold">
                                       🔥 Última!
                                     </span>
                                   );
                                 }
                                 if (remaining <= 3) {
                                   return (
-                                    <span className="text-[10px] mt-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
+                                    <span className="text-[8px] mt-1 text-amber-600 font-medium">
                                       ⚡ {remaining} restam
                                     </span>
                                   );
                                 }
                                 return (
-                                  <span className="text-[10px] mt-1.5 px-2 py-0.5 rounded-full bg-green-50 text-green-600 font-medium">
-                                    ✓ {remaining} disp.
+                                  <span className="text-[8px] mt-1 text-green-600 font-medium">
+                                    ✓ {remaining}
                                   </span>
                                 );
                               })()}
@@ -463,10 +463,10 @@ export function ProductCard({ product }: ProductCardProps) {
               /* No colors - single row with sizes */
               <div 
                 className="grid"
-                style={{ gridTemplateColumns: `40px repeat(${sizes.length}, 1fr)` }}
+                style={{ gridTemplateColumns: `28px repeat(${sizes.length}, minmax(48px, 1fr))` }}
               >
-                <div className="flex items-center justify-center py-3">
-                  <span className="text-[10px] text-muted-foreground"></span>
+                <div className="flex items-center justify-center py-2">
+                  <span className="text-[9px] text-muted-foreground"></span>
                 </div>
                 {sizes.map((size) => {
                   const variant = variants.find(v => v.size === size && v.stock_qty > 0);
@@ -493,7 +493,7 @@ export function ProductCard({ product }: ProductCardProps) {
                     <div 
                       key={size}
                       className={cn(
-                        "flex flex-col items-center justify-center py-2 border-l min-h-[70px]",
+                        "flex flex-col items-center justify-center py-1.5 border-l min-h-[58px]",
                         !available && "bg-muted/50"
                       )}
                     >
@@ -501,25 +501,25 @@ export function ProductCard({ product }: ProductCardProps) {
                         <>
                           {quantityInCart > 0 ? (
                             isExpanded ? (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-0.5">
                                 <button
                                   onClick={(e) => {
                                     handleRemove(e);
                                     const newQty = quantityInCart - 1;
                                     if (newQty <= 0) setExpandedCell(null);
                                   }}
-                                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                                  className="w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
                                 >
-                                  <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
+                                  <Minus className="h-3.5 w-3.5" />
                                 </button>
-                                <span className="w-5 text-center text-sm font-bold text-green-600">
+                                <span className="w-4 text-center text-xs font-bold text-green-600">
                                   {quantityInCart}
                                 </span>
                                 <button
                                   onClick={handleAdd}
-                                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
+                                  className="w-7 h-7 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
                                 >
-                                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                                  <Plus className="h-3.5 w-3.5" />
                                 </button>
                               </div>
                             ) : (
@@ -529,7 +529,7 @@ export function ProductCard({ product }: ProductCardProps) {
                                   e.stopPropagation();
                                   setExpandedCell(cellKey);
                                 }}
-                                className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold shadow-md transition-all active:scale-90"
+                                className="w-9 h-9 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold shadow-md transition-all active:scale-90"
                               >
                                 {quantityInCart}
                               </button>
@@ -537,38 +537,38 @@ export function ProductCard({ product }: ProductCardProps) {
                           ) : (
                             <button
                               onClick={handleAdd}
-                              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border-2 border-dashed border-muted-foreground/50 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
+                              className="w-9 h-9 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
                             >
-                              <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
+                              <Plus className="h-4 w-4" />
                             </button>
                           )}
-                          {/* Stock indicator - shows remaining after cart */}
+                          {/* Stock indicator - compact */}
                           {variant && (() => {
                             const remaining = variant.stock_qty - quantityInCart;
                             if (remaining === 0) {
                               return (
-                                <span className="text-[10px] mt-1.5 px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 font-semibold">
+                                <span className="text-[8px] mt-1 text-gray-500 font-medium">
                                   Esgotado
                                 </span>
                               );
                             }
                             if (remaining === 1) {
                               return (
-                                <span className="text-[10px] mt-1.5 px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold animate-pulse">
+                                <span className="text-[8px] mt-1 text-red-500 font-semibold">
                                   🔥 Última!
                                 </span>
                               );
                             }
                             if (remaining <= 3) {
                               return (
-                                <span className="text-[10px] mt-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
+                                <span className="text-[8px] mt-1 text-amber-600 font-medium">
                                   ⚡ {remaining} restam
                                 </span>
                               );
                             }
                             return (
-                              <span className="text-[10px] mt-1.5 px-2 py-0.5 rounded-full bg-green-50 text-green-600 font-medium">
-                                ✓ {remaining} disp.
+                              <span className="text-[8px] mt-1 text-green-600 font-medium">
+                                ✓ {remaining}
                               </span>
                             );
                           })()}
