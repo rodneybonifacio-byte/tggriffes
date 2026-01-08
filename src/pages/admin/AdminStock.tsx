@@ -510,7 +510,16 @@ export default function AdminStock() {
             </div>
           </div>
           
-          <div className="bg-card rounded-lg border p-4">
+          <div 
+            className={cn(
+              "bg-card rounded-lg border p-4 cursor-pointer transition-all hover:shadow-md hover:border-yellow-300",
+              stockFilter === 'low-stock' && "ring-2 ring-yellow-400 border-yellow-400"
+            )}
+            onClick={() => {
+              setStockFilter(stockFilter === 'low-stock' ? 'all' : 'low-stock');
+              setActiveTab('stock');
+            }}
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
                 <AlertTriangle className="h-5 w-5 text-yellow-600" />
@@ -522,7 +531,16 @@ export default function AdminStock() {
             </div>
           </div>
           
-          <div className="bg-card rounded-lg border p-4">
+          <div 
+            className={cn(
+              "bg-card rounded-lg border p-4 cursor-pointer transition-all hover:shadow-md hover:border-red-300",
+              stockFilter === 'out-of-stock' && "ring-2 ring-red-400 border-red-400"
+            )}
+            onClick={() => {
+              setStockFilter(stockFilter === 'out-of-stock' ? 'all' : 'out-of-stock');
+              setActiveTab('stock');
+            }}
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
                 <AlertTriangle className="h-5 w-5 text-red-600" />
