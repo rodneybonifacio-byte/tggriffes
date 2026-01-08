@@ -41,104 +41,77 @@ import { cn } from '@/lib/utils';
 // Size order for sorting
 const SIZE_ORDER = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG', 'XXXG', 'U'];
 
-// Component for entry/exit stock controls
-function StockEntryControls({
-  variantId,
+// Compact stock adjustment component
+function StockAdjuster({
   currentStock,
   newStock,
   hasChange,
   diff,
-  onAdd,
-  onRemove,
+  onAdjust,
 }: {
-  variantId: string;
   currentStock: number;
   newStock: number;
   hasChange: boolean;
   diff: number;
-  onAdd: (qty: number) => void;
-  onRemove: (qty: number) => void;
+  onAdjust: (amount: number) => void;
 }) {
-  const [entryQty, setEntryQty] = useState<string>('');
-  const [exitQty, setExitQty] = useState<string>('');
+  const [qty, setQty] = useState<string>('1');
 
-  const handleEntry = () => {
-    const qty = parseInt(entryQty);
-    if (!isNaN(qty) && qty > 0) {
-      onAdd(qty);
-      setEntryQty('');
-    }
+  const handleAdd = () => {
+    const amount = parseInt(qty) || 1;
+    if (amount > 0) onAdjust(amount);
   };
 
-  const handleExit = () => {
-    const qty = parseInt(exitQty);
-    if (!isNaN(qty) && qty > 0 && qty <= newStock) {
-      onRemove(qty);
-      setExitQty('');
-    }
+  const handleRemove = () => {
+    const amount = parseInt(qty) || 1;
+    if (amount > 0 && amount <= newStock) onAdjust(-amount);
   };
 
   return (
-    <div className="flex items-center justify-center gap-2">
-      {/* Entry (Entrada) */}
-      <div className="flex items-center gap-1">
-        <Input
-          type="number"
-          placeholder="Qtd"
-          value={entryQty}
-          onChange={(e) => setEntryQty(e.target.value)}
-          className="w-14 h-8 text-center text-sm"
-          min="1"
-          onKeyDown={(e) => e.key === 'Enter' && handleEntry()}
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
-          onClick={handleEntry}
-          disabled={!entryQty || parseInt(entryQty) <= 0}
-        >
-          <Plus className="h-3 w-3 mr-1" />
-          Entrada
-        </Button>
-      </div>
-
-      {/* Exit (Saída) */}
-      <div className="flex items-center gap-1">
-        <Input
-          type="number"
-          placeholder="Qtd"
-          value={exitQty}
-          onChange={(e) => setExitQty(e.target.value)}
-          className="w-14 h-8 text-center text-sm"
-          min="1"
-          max={newStock}
-          onKeyDown={(e) => e.key === 'Enter' && handleExit()}
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-          onClick={handleExit}
-          disabled={!exitQty || parseInt(exitQty) <= 0 || parseInt(exitQty) > newStock}
-        >
-          <Minus className="h-3 w-3 mr-1" />
-          Saída
-        </Button>
-      </div>
-
-      {/* New stock indicator */}
+    <div className="flex items-center gap-3">
+      {/* Current/New Stock Display */}
       <div className={cn(
-        "min-w-[60px] text-center font-semibold px-2 py-1 rounded",
-        hasChange && diff > 0 && "bg-green-100 text-green-700",
-        hasChange && diff < 0 && "bg-red-100 text-red-700",
-        !hasChange && "text-muted-foreground"
+        "flex items-center justify-center min-w-[80px] h-10 rounded-lg font-bold text-lg",
+        hasChange && diff > 0 && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+        hasChange && diff < 0 && "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+        !hasChange && "bg-muted text-foreground"
       )}>
-        {hasChange ? (
-          <span>{newStock} ({diff > 0 ? `+${diff}` : diff})</span>
-        ) : (
-          <span>{newStock}</span>
+        {newStock}
+        {hasChange && (
+          <span className="text-xs ml-1 font-medium">
+            ({diff > 0 ? `+${diff}` : diff})
+          </span>
         )}
+      </div>
+
+      {/* Quick adjustment buttons */}
+      <div className="flex items-center bg-muted rounded-lg p-1 gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30"
+          onClick={handleRemove}
+          disabled={newStock <= 0}
+        >
+          <Minus className="h-4 w-4" />
+        </Button>
+        
+        <Input
+          type="number"
+          value={qty}
+          onChange={(e) => setQty(e.target.value)}
+          className="w-12 h-8 text-center text-sm border-0 bg-background"
+          min="1"
+        />
+        
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 hover:bg-green-100 hover:text-green-600 dark:hover:bg-green-900/30"
+          onClick={handleAdd}
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
@@ -696,12 +669,9 @@ export default function AdminStock() {
                       onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
-                  <TableHead className="w-10"></TableHead>
-                  <TableHead>Produto</TableHead>
-                  <TableHead className="w-24 text-center">Tamanho</TableHead>
-                  <TableHead className="w-24 text-center">Cor</TableHead>
-                  <TableHead className="w-24 text-center">Atual</TableHead>
-                  <TableHead className="w-64 text-center">Entrada / Saída</TableHead>
+                  <TableHead className="w-8"></TableHead>
+                  <TableHead>Produto / Variação</TableHead>
+                  <TableHead className="w-64">Ajuste de Estoque</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -748,18 +718,15 @@ export default function AdminStock() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell></TableCell>
-                      <TableCell></TableCell>
                       <TableCell className="text-center">
                         <span className={cn(
-                          "font-semibold",
+                          "font-semibold text-lg",
                           group.totalStock === 0 && "text-red-600",
                           group.totalStock > 0 && group.totalStock <= 3 && "text-yellow-600"
                         )}>
-                          {group.totalStock}
+                          {group.totalStock} un
                         </span>
                       </TableCell>
-                      <TableCell></TableCell>
                     </TableRow>
                     
                     {/* Variant Rows */}
@@ -779,39 +746,21 @@ export default function AdminStock() {
                             />
                           </TableCell>
                           <TableCell></TableCell>
-                          <TableCell className="pl-14">
-                            <span className="text-sm text-muted-foreground">
-                              {variant.sku || '-'}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="outline">{variant.size}</Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {variant.color ? (
-                              <Badge variant="outline">{variant.color}</Badge>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <span className={cn(
-                              "font-medium",
-                              variant.currentStock === 0 && "text-red-600",
-                              variant.currentStock > 0 && variant.currentStock <= 3 && "text-yellow-600"
-                            )}>
-                              {variant.currentStock}
-                            </span>
+                          <TableCell className="pl-10">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="font-medium">{variant.size}</Badge>
+                              {variant.color && (
+                                <Badge variant="secondary" className="text-xs">{variant.color}</Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
-                            <StockEntryControls
-                              variantId={variant.variantId}
+                            <StockAdjuster
                               currentStock={variant.currentStock}
                               newStock={variant.newStock}
                               hasChange={hasChange}
                               diff={diff}
-                              onAdd={(qty) => handleIncrement(variant.variantId, qty)}
-                              onRemove={(qty) => handleIncrement(variant.variantId, -qty)}
+                              onAdjust={(amount) => handleIncrement(variant.variantId, amount)}
                             />
                           </TableCell>
                         </TableRow>
