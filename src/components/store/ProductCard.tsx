@@ -31,6 +31,7 @@ const COLOR_MAP: Record<string, string> = {
   navy: '#000080',
   marinho: '#000080',
   creme: '#fffdd0',
+  off: '#f5f5dc',
   offwhite: '#f5f5dc',
   'off-white': '#f5f5dc',
   'off white': '#f5f5dc',
