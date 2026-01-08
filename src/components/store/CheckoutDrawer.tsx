@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { useCart, CartItem } from '@/hooks/useCart';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { ShippingCalculator, ShippingOption } from './ShippingCalculator';
+import { VariationsSummary } from './VariationsSummary';
 import { formatPrice, formatCEP, formatWhatsApp, getColorDisplayName } from '@/lib/utils';
 import { Loader2, Package, Truck, User, FileText, CheckCircle, RefreshCw, Tag } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -673,6 +674,9 @@ ${pdfUrl}`;
                 <span className="font-medium">Resumo do Pedido</span>
               </div>
 
+              {/* Epic Variations Summary */}
+              <VariationsSummary items={items} />
+
               <div className="bg-secondary/50 rounded-lg p-4 space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground">Cliente</p>
@@ -698,7 +702,7 @@ ${pdfUrl}`;
                 {items.map((item) => (
                   <div key={item.id} className="flex justify-between text-sm">
                     <span className="text-muted-foreground">
-                      {item.quantity}x {item.productName} ({item.size})
+                      {item.quantity}x {item.productName} ({item.size}{item.color ? ` - ${getColorDisplayName(item.color)}` : ''})
                     </span>
                     <span>{formatPrice(item.unitPriceCents * item.quantity)}</span>
                   </div>

@@ -457,6 +457,128 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
     if (isLastPage) {
       y -= 8;
       
+      // Divider before variations summary
+      page.drawLine({
+        start: { x: MARGIN, y },
+        end: { x: PAGE_WIDTH - MARGIN, y },
+        thickness: 0.5,
+        color: lightGray,
+      });
+      
+      y -= 18;
+      
+      // ========== VARIATIONS SUMMARY - Epic Design ==========
+      // Calculate summaries
+      const sizesSummary = new Map<string, number>();
+      const colorsSummary = new Map<string, number>();
+      let totalPieces = 0;
+      
+      for (const item of order.items) {
+        totalPieces += item.quantity;
+        sizesSummary.set(item.size, (sizesSummary.get(item.size) || 0) + item.quantity);
+        if (item.color) {
+          colorsSummary.set(item.color, (colorsSummary.get(item.color) || 0) + item.quantity);
+        }
+      }
+      
+      // Sort sizes by common order
+      const sizeOrder = ['PP', 'P', 'M', 'G', 'GG', 'XGG', 'XXGG', 'EG', 'EGG'];
+      const sortedSizes = Array.from(sizesSummary.entries())
+        .sort((a, b) => {
+          const aIdx = sizeOrder.indexOf(a[0].toUpperCase());
+          const bIdx = sizeOrder.indexOf(b[0].toUpperCase());
+          if (aIdx === -1 && bIdx === -1) return a[0].localeCompare(b[0]);
+          if (aIdx === -1) return 1;
+          if (bIdx === -1) return -1;
+          return aIdx - bIdx;
+        });
+      
+      const sortedColors = Array.from(colorsSummary.entries())
+        .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'));
+      
+      // Draw variations summary box
+      const summaryBoxWidth = CONTENT_WIDTH;
+      const summaryBoxHeight = 70;
+      const summaryBoxY = y - summaryBoxHeight;
+      
+      // Dark gradient background
+      page.drawRectangle({
+        x: MARGIN,
+        y: summaryBoxY,
+        width: summaryBoxWidth,
+        height: summaryBoxHeight,
+        color: rgb(0.12, 0.12, 0.14),
+        borderColor: rgb(0.25, 0.25, 0.28),
+        borderWidth: 1,
+      });
+      
+      // Header
+      const headerY = y - 14;
+      page.drawText("RESUMO DAS VARIAÇÕES", {
+        x: MARGIN + 12,
+        y: headerY,
+        size: 9,
+        font: fontBold,
+        color: rgb(0.3, 0.85, 0.55), // emerald
+      });
+      
+      // Total pieces badge
+      const totalText = `TOTAL: ${totalPieces} pcs`;
+      const totalWidth = fontBold.widthOfTextAtSize(totalText, 9);
+      page.drawText(totalText, {
+        x: PAGE_WIDTH - MARGIN - totalWidth - 12,
+        y: headerY,
+        size: 9,
+        font: fontBold,
+        color: rgb(1, 1, 1),
+      });
+      
+      // Sizes column
+      const sizesStartX = MARGIN + 12;
+      const sizesY = headerY - 18;
+      
+      page.drawText("TAMANHOS", {
+        x: sizesStartX,
+        y: sizesY,
+        size: 7,
+        font: fontBold,
+        color: rgb(0.35, 0.65, 0.95), // sky blue
+      });
+      
+      let sizeTextY = sizesY - 12;
+      const sizesText = sortedSizes.map(([size, count]) => `${size}: ${count}`).join('  •  ');
+      page.drawText(sizesText.length > 50 ? sizesText.substring(0, 47) + '...' : sizesText, {
+        x: sizesStartX,
+        y: sizeTextY,
+        size: 10,
+        font: fontBold,
+        color: rgb(1, 1, 1),
+      });
+      
+      // Colors column
+      const colorsStartX = MARGIN + summaryBoxWidth / 2;
+      
+      page.drawText("CORES", {
+        x: colorsStartX,
+        y: sizesY,
+        size: 7,
+        font: fontBold,
+        color: rgb(0.65, 0.45, 0.95), // violet
+      });
+      
+      const colorsText = sortedColors.length > 0 
+        ? sortedColors.map(([color, count]) => `${color}: ${count}`).join('  •  ')
+        : 'Sem cores';
+      page.drawText(colorsText.length > 50 ? colorsText.substring(0, 47) + '...' : colorsText, {
+        x: colorsStartX,
+        y: sizeTextY,
+        size: 10,
+        font: sortedColors.length > 0 ? fontBold : fontRegular,
+        color: sortedColors.length > 0 ? rgb(1, 1, 1) : rgb(0.5, 0.5, 0.5),
+      });
+      
+      y = summaryBoxY - 15;
+      
       // Divider before totals
       page.drawLine({
         start: { x: MARGIN, y },
@@ -532,12 +654,12 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         font: fontBold,
         color: black,
       });
-      const totalText = order.skipShipping 
+      const totalPriceText = order.skipShipping 
         ? `${formatPrice(order.subtotalCents)} + Frete` 
         : formatPrice(order.totalCents);
-      const totalWidth = fontBold.widthOfTextAtSize(totalText, 14);
-      page.drawText(totalText, {
-        x: totalsValueX - totalWidth,
+      const totalPriceWidth = fontBold.widthOfTextAtSize(totalPriceText, 14);
+      page.drawText(totalPriceText, {
+        x: totalsValueX - totalPriceWidth,
         y: y + 4,
         size: 14,
         font: fontBold,
