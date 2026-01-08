@@ -205,7 +205,7 @@ const ProductPage = () => {
     const variant = getVariant(color, size);
     if (!variant || !product) return;
     
-    addItem({
+    const result = addItem({
       productId: product.id,
       productName: product.name,
       variantId: variant.id,
@@ -214,12 +214,20 @@ const ProductPage = () => {
       quantity: 1,
       unitPriceCents: product.price_cents,
       imageUrl: product.main_image_url,
-    });
+    }, variant.stock_qty);
     
-    toast({
-      title: 'Adicionado!',
-      description: `${product.name} - ${size}${color ? ` (${color})` : ''}`,
-    });
+    if (result.success) {
+      toast({
+        title: 'Adicionado!',
+        description: `${product.name} - ${size}${color ? ` (${color})` : ''}`,
+      });
+    } else {
+      toast({
+        title: 'Limite atingido',
+        description: result.message,
+        variant: 'destructive',
+      });
+    }
   };
 
   // Remove from cart
