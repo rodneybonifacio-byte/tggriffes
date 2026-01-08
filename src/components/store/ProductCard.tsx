@@ -116,10 +116,10 @@ export function ProductCard({ product }: ProductCardProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
 
-  // Get unique colors and sizes
+  // Get unique colors sorted alphabetically
   const colors = useMemo(() => {
-    const uniqueColors = [...new Set(variants.map(v => v.color).filter(Boolean))];
-    return uniqueColors as string[];
+    const uniqueColors = [...new Set(variants.map(v => v.color).filter(Boolean))] as string[];
+    return uniqueColors.sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [variants]);
 
   const sizes = useMemo(() => {
@@ -303,15 +303,27 @@ export function ProductCard({ product }: ProductCardProps) {
 
         {!isOutOfStock && sizes.length > 0 && (
           <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
-            {/* Variantes em lista vertical (sem pular layout ao adicionar) */}
+            {/* Variantes organizadas por cor (agrupadas) */}
             <div className="space-y-1">
-              {sizes.map((size) => {
-                const sizeVariants = colors.length > 0
-                  ? colors.map((color) => ({ color, variant: getVariant(color, size) }))
-                  : [{ color: null as string | null, variant: variants.find((v) => v.size === size) }];
+              {(() => {
+                // Build items array sorted by color first, then by size
+                const items = colors.length > 0
+                  ? colors.flatMap((color) =>
+                      sizes.map((size) => {
+                        const variant = getVariant(color, size);
+                        if (!variant) return null;
+                        return { color, size, variant };
+                      }).filter(Boolean)
+                    )
+                  : sizes.map((size) => {
+                      const variant = variants.find((v) => v.size === size);
+                      if (!variant) return null;
+                      return { color: null as string | null, size, variant };
+                    }).filter(Boolean);
 
-                return sizeVariants.map(({ color, variant }) => {
-                  if (!variant) return null;
+                return items.map((item) => {
+                  if (!item) return null;
+                  const { color, size, variant } = item;
 
                   const quantityInCart = getQuantityForVariant(variant.id);
                   const remaining = Math.max(0, variant.stock_qty - quantityInCart);
@@ -346,9 +358,6 @@ export function ProductCard({ product }: ProductCardProps) {
                     return "text-emerald-600 font-semibold";
                   })();
 
-
-
-
                   const handleAdd = (e: React.MouseEvent) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -363,7 +372,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
                   return (
                     <div
-                      key={`${size}-${color || "default"}`}
+                      key={`${color || "default"}-${size}`}
                       className={cn(
                         "flex items-center justify-between min-h-9 rounded-md border px-1.5 py-1 transition-colors",
                         rowTone
@@ -421,7 +430,7 @@ export function ProductCard({ product }: ProductCardProps) {
                     </div>
                   );
                 });
-              })}
+              })()}
             </div>
           </div>
         )}
