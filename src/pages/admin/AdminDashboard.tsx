@@ -43,11 +43,8 @@ const AdminDashboard = () => {
     new Date(o.created_at).toDateString() === today
   );
 
-  // Vendas do dia (pedidos finalizados HOJE, baseado em updated_at)
-  const todaySales = orders.filter(o => 
-    o.status === 'FINALIZADO' && new Date(o.updated_at).toDateString() === today
-  );
-  const todayRevenue = todaySales.reduce((sum, o) => sum + o.total_cents, 0);
+  // Vendas do dia (TODOS os pedidos criados hoje, independente do status)
+  const todayRevenue = todayOrders.reduce((sum, o) => sum + o.total_cents, 0);
 
   // Vendas fechadas (total FINALIZADO)
   const closedOrders = orders.filter(o => o.status === 'FINALIZADO');
@@ -102,7 +99,7 @@ const AdminDashboard = () => {
             <CardContent>
               <div className="text-2xl font-bold text-green-600">{formatPrice(todayRevenue)}</div>
               <p className="text-xs text-muted-foreground">
-                {todaySales.length} pedidos finalizados
+                {todayOrders.length} pedidos hoje
               </p>
             </CardContent>
           </Card>
