@@ -422,52 +422,63 @@ const ProductPage = () => {
                       <div 
                         key={size} 
                         className={cn(
-                          "flex flex-col items-center justify-center py-4 border-r last:border-r-0 min-h-[70px]",
+                          "flex flex-col items-center justify-center py-3 border-r last:border-r-0 min-h-[80px]",
                           !available && "bg-muted/50"
                         )}
                       >
                         {available ? (
-                          quantityInCart > 0 ? (
-                            isExpanded ? (
-                              // Expanded: show +/- controls
-                              <div className="flex items-center gap-1">
+                          <>
+                            {quantityInCart > 0 ? (
+                              isExpanded ? (
+                                // Expanded: show +/- controls
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => {
+                                      handleRemoveFromCart(color, size);
+                                      const newQty = quantityInCart - 1;
+                                      if (newQty <= 0) setExpandedCell(null);
+                                    }}
+                                    className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                                  >
+                                    <Minus className="h-4 w-4" />
+                                  </button>
+                                  <span className="w-6 text-center text-sm font-bold text-green-600">
+                                    {quantityInCart}
+                                  </span>
+                                  <button
+                                    onClick={() => handleAddToCart(color, size)}
+                                    className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ) : (
+                                // Collapsed: show quantity badge
                                 <button
-                                  onClick={() => {
-                                    handleRemoveFromCart(color, size);
-                                    const newQty = quantityInCart - 1;
-                                    if (newQty <= 0) setExpandedCell(null);
-                                  }}
-                                  className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                                  onClick={() => setExpandedCell(cellKey)}
+                                  className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold transition-all active:scale-90"
                                 >
-                                  <Minus className="h-4 w-4" />
-                                </button>
-                                <span className="w-6 text-center text-sm font-bold text-green-600">
                                   {quantityInCart}
-                                </span>
-                                <button
-                                  onClick={() => handleAddToCart(color, size)}
-                                  className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
-                                >
-                                  <Plus className="h-4 w-4" />
                                 </button>
-                              </div>
+                              )
                             ) : (
-                              // Collapsed: show quantity badge
                               <button
-                                onClick={() => setExpandedCell(cellKey)}
-                                className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold transition-all active:scale-90"
+                                onClick={() => handleAddToCart(color, size)}
+                                className="w-10 h-10 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-95"
                               >
-                                {quantityInCart}
+                                <Plus className="h-5 w-5" />
                               </button>
-                            )
-                          ) : (
-                            <button
-                              onClick={() => handleAddToCart(color, size)}
-                              className="w-10 h-10 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-95"
-                            >
-                              <Plus className="h-5 w-5" />
-                            </button>
-                          )
+                            )}
+                            {/* Stock indicator - show when low stock */}
+                            {variant && variant.stock_qty <= 3 && (
+                              <span className={cn(
+                                "text-[10px] mt-1 font-medium",
+                                variant.stock_qty === 1 ? "text-red-500" : "text-amber-600"
+                              )}>
+                                {variant.stock_qty === 1 ? 'Última peça!' : `${variant.stock_qty} restantes`}
+                              </span>
+                            )}
+                          </>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
