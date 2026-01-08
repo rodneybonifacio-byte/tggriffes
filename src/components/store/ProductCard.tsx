@@ -112,8 +112,7 @@ export function ProductCard({ product }: ProductCardProps) {
   }, [product.main_image_url, images]);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  // Track which cell is expanded to show +/- controls (format: "color|size")
-  const [expandedCell, setExpandedCell] = useState<string | null>(null);
+
 
   // Get unique colors and sizes
   const colors = useMemo(() => {
@@ -151,11 +150,6 @@ export function ProductCard({ product }: ProductCardProps) {
     return variants.find(v => v.size === size && v.color === color);
   };
 
-  // Check if a color+size is available
-  const isVariantAvailable = (color: string | null, size: string) => {
-    const variant = getVariant(color, size);
-    return variant && variant.stock_qty > 0;
-  };
 
   // Add to cart directly
   const handleAddToCart = (e: React.MouseEvent, color: string | null, size: string) => {
@@ -307,123 +301,144 @@ export function ProductCard({ product }: ProductCardProps) {
 
         {!isOutOfStock && sizes.length > 0 && (
           <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
-            {/* Variant cards grid */}
-            <div className="grid grid-cols-2 gap-1.5">
+            {/* Variantes em lista vertical (sem pular layout ao adicionar) */}
+            <div className="space-y-1">
               {sizes.map((size) => {
-                // Get all color variants for this size
-                const sizeVariants = colors.length > 0 
-                  ? colors.map(color => ({ color, variant: getVariant(color, size) }))
-                  : [{ color: null, variant: variants.find(v => v.size === size) }];
-                
+                const sizeVariants = colors.length > 0
+                  ? colors.map((color) => ({ color, variant: getVariant(color, size) }))
+                  : [{ color: null as string | null, variant: variants.find((v) => v.size === size) }];
+
                 return sizeVariants.map(({ color, variant }) => {
                   if (!variant) return null;
-                  
-                  const available = variant.stock_qty > 0;
+
                   const quantityInCart = getQuantityForVariant(variant.id);
-                  const remaining = variant.stock_qty - quantityInCart;
+                  const remaining = Math.max(0, variant.stock_qty - quantityInCart);
+
                   const colorHex = color ? findColorHex(color) : null;
                   const needsBorder = colorHex ? isLightColor(colorHex) : false;
-                  
-                  // Esgotado
-                  if (!available && quantityInCart === 0) {
+
+                  const isLastOne = remaining === 1;
+                  const isLowStock = remaining > 1 && remaining <= 3;
+                  const isMaxed = remaining === 0 && quantityInCart > 0;
+                  const isSoldOut = variant.stock_qty === 0 && quantityInCart === 0;
+
+                  const rowTone = (() => {
+                    if (quantityInCart > 0) return "border-success/40 bg-success/10";
+                    if (isLastOne) return "border-destructive/40 bg-destructive/10";
+                    if (isLowStock) return "border-warning/40 bg-warning/10";
+                    if (isSoldOut) return "border-border/40 bg-muted/60 opacity-70";
+                    return "border-border/60 bg-card";
+                  })();
+
+                  const stockNode = (() => {
+                    if (remaining === 0) {
+                      return isMaxed ? (
+                        <span className="text-[10px] font-semibold text-warning whitespace-nowrap">
+                          Máx. no carrinho
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap">
+                          Esgotado
+                        </span>
+                      );
+                    }
+                    if (remaining === 1) {
+                      return (
+                        <span className="text-[10px] font-semibold text-destructive whitespace-nowrap">
+                          🔥 Última!
+                        </span>
+                      );
+                    }
+                    if (remaining <= 3) {
+                      return (
+                        <span className="text-[10px] font-semibold text-warning whitespace-nowrap">
+                          ⚡ {remaining} disp.
+                        </span>
+                      );
+                    }
                     return (
-                      <div 
-                        key={`${size}-${color || 'default'}`} 
-                        className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-gray-100 opacity-50"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          {colorHex && (
-                            <div 
-                              className={cn("w-4 h-4 rounded-full", needsBorder && "border border-gray-300")}
-                              style={{ backgroundColor: colorHex }}
-                            />
-                          )}
-                          <span className="text-xs font-semibold text-gray-400">{size}</span>
-                        </div>
-                        <span className="text-[10px] text-gray-400">Esgotado</span>
-                      </div>
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                        {remaining} disp.
+                      </span>
                     );
-                  }
-                  
+                  })();
+
                   const handleAdd = (e: React.MouseEvent) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleAddToCart(e, color, size);
                   };
-                  
+
                   const handleRemove = (e: React.MouseEvent) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleRemoveFromCart(e, color, size);
                   };
-                  
-                  // Definir estilo baseado no estoque
-                  const isLowStock = remaining <= 3;
-                  const isLastOne = remaining === 1;
-                  const isOutOfRemaining = remaining === 0;
-                  
+
                   return (
-                    <div 
-                      key={`${size}-${color || 'default'}`} 
+                    <div
+                      key={`${size}-${color || "default"}`}
                       className={cn(
-                        "relative flex items-center justify-between px-2 py-1.5 rounded-lg border transition-all",
-                        quantityInCart > 0 
-                          ? "bg-green-50 border-green-200" 
-                          : "bg-white border-gray-200",
-                        isLastOne && quantityInCart === 0 && "border-red-200 bg-red-50",
-                        isOutOfRemaining && "border-amber-200 bg-amber-50"
+                        "flex items-center gap-2 min-h-11 rounded-lg border px-2 py-2 transition-colors",
+                        rowTone
                       )}
                     >
-                      {/* Left: Color + Size */}
-                      <div className="flex items-center gap-1.5">
+                      {/* Left: swatch + tamanho + cor */}
+                      <div className="flex items-center gap-2 min-w-0">
                         {colorHex && (
-                          <div 
-                            className={cn("w-4 h-4 rounded-full shrink-0", needsBorder && "border border-gray-300")}
+                          <div
+                            className={cn(
+                              "w-4 h-4 rounded-full shrink-0",
+                              needsBorder && "border border-border"
+                            )}
                             style={{ backgroundColor: colorHex }}
+                            aria-hidden="true"
                           />
                         )}
-                        <span className="text-xs font-bold">{size}</span>
-                      </div>
-                      
-                      {/* Center: Stock badge */}
-                      <div className="flex-1 flex justify-center">
-                        {isOutOfRemaining ? (
-                          <span className="text-[9px] font-semibold text-amber-600">Máx!</span>
-                        ) : isLastOne ? (
-                          <span className="text-[9px] font-bold text-red-500 animate-pulse">🔥 1</span>
-                        ) : isLowStock ? (
-                          <span className="text-[9px] font-semibold text-amber-600">⚡ {remaining}</span>
-                        ) : (
-                          <span className="text-[9px] text-green-600">{remaining}</span>
+                        <span className="text-xs font-semibold">{size}</span>
+                        {color && (
+                          <span className="text-[11px] text-muted-foreground truncate">
+                            {color}
+                          </span>
                         )}
                       </div>
-                      
-                      {/* Right: Controls */}
-                      <div className="flex items-center gap-0.5">
-                        {quantityInCart > 0 && (
-                          <>
-                            <button
-                              onClick={handleRemove}
-                              className="w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center active:scale-90 transition-transform"
-                            >
-                              <Minus className="h-3 w-3" />
-                            </button>
-                            <span className="w-5 text-center text-xs font-bold text-green-600">
-                              {quantityInCart}
-                            </span>
-                          </>
-                        )}
+
+                      {/* Middle: estoque */}
+                      <div className="flex-1 flex justify-center">{stockNode}</div>
+
+                      {/* Right: controles (largura fixa) */}
+                      <div className="flex items-center justify-end gap-1 w-[96px]">
+                        <button
+                          onClick={handleRemove}
+                          className={cn(
+                            "w-8 h-8 rounded-full bg-destructive/15 text-destructive flex items-center justify-center active:scale-95 transition-transform",
+                            quantityInCart > 0 ? "opacity-100" : "opacity-0 pointer-events-none"
+                          )}
+                          aria-label="Remover"
+                        >
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+
+                        <span
+                          className={cn(
+                            "w-6 text-center text-xs font-semibold text-success",
+                            quantityInCart > 0 ? "opacity-100" : "opacity-0"
+                          )}
+                          aria-hidden={quantityInCart === 0}
+                        >
+                          {quantityInCart}
+                        </span>
+
                         <button
                           onClick={handleAdd}
-                          disabled={isOutOfRemaining}
+                          disabled={remaining === 0}
                           className={cn(
-                            "w-6 h-6 rounded-full flex items-center justify-center transition-all active:scale-90",
-                            quantityInCart > 0 
-                              ? "bg-green-500 text-white disabled:bg-gray-200 disabled:text-gray-400"
-                              : "bg-green-500 text-white hover:bg-green-600 disabled:bg-gray-200 disabled:text-gray-400"
+                            "w-8 h-8 rounded-full bg-success text-success-foreground flex items-center justify-center active:scale-95 transition-transform",
+                            "disabled:bg-muted disabled:text-muted-foreground"
                           )}
+                          aria-label="Adicionar"
                         >
-                          <Plus className="h-3 w-3" />
+                          <Plus className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     </div>
@@ -433,6 +448,7 @@ export function ProductCard({ product }: ProductCardProps) {
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
