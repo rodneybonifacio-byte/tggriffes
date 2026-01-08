@@ -5,7 +5,7 @@ import { ProductGallery } from '@/components/store/ProductGallery';
 
 import { WhatsAppButton } from '@/components/store/WhatsAppButton';
 import { useProductBySlug, useProducts } from '@/hooks/useProducts';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, getColorDisplayName } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, Plus, Minus, Loader2, ArrowLeft, ChevronRight } from 'lucide-react';
@@ -220,7 +220,7 @@ const ProductPage = () => {
     if (result.success) {
       toast({
         title: 'Adicionado!',
-        description: `${product.name} - ${size}${color ? ` (${color})` : ''}`,
+        description: `${product.name} - ${size}${color ? ` (${getColorDisplayName(color)})` : ''}`,
       });
     } else {
       toast({
@@ -247,7 +247,7 @@ const ProductPage = () => {
     
     toast({
       title: 'Removido',
-      description: `${product.name} - ${size}${color ? ` (${color})` : ''}`,
+      description: `${product.name} - ${size}${color ? ` (${getColorDisplayName(color)})` : ''}`,
     });
   };
 
@@ -406,7 +406,7 @@ const ProductPage = () => {
                           backgroundColor: getColorHex(color),
                           borderColor: isLightColor(getColorHex(color)) ? '#1f2937' : getColorHex(color)
                         }}
-                        title={color}
+                        title={getColorDisplayName(color)}
                       />
                     </div>
                   )}

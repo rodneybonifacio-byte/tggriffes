@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { useCart, CartItem } from '@/hooks/useCart';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { ShippingCalculator, ShippingOption } from './ShippingCalculator';
-import { formatPrice, formatCEP, formatWhatsApp } from '@/lib/utils';
+import { formatPrice, formatCEP, formatWhatsApp, getColorDisplayName } from '@/lib/utils';
 import { Loader2, Package, Truck, User, FileText, CheckCircle, RefreshCw, Tag } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -115,7 +115,7 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
 
   const generateOrderSummaryText = (orderNumber?: number, pdfUrl?: string) => {
     const itemsList = items.map(item => {
-      const colorText = item.color ? ` • ${item.color}` : '';
+      const colorText = item.color ? ` • ${getColorDisplayName(item.color)}` : '';
       return `📌 ${item.quantity}x ${item.productName}\n   Tam: ${item.size}${colorText}\n💲 ${formatPrice(item.unitPriceCents * item.quantity)}`;
     }).join('\n\n');
 
@@ -200,7 +200,7 @@ ${pdfUrl}`;
         const variant = stockMap.get(item.variantId);
         if (!variant || variant.stock_qty < item.quantity) {
           const available = variant?.stock_qty || 0;
-          const colorText = item.color ? ` (${item.color})` : '';
+          const colorText = item.color ? ` (${getColorDisplayName(item.color)})` : '';
           outOfStockItems.push(
             `${item.productName} - Tam: ${item.size}${colorText}: pedido ${item.quantity}, disponível ${available}`
           );
@@ -469,7 +469,7 @@ ${pdfUrl}`;
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm line-clamp-1">{item.productName}</p>
                       <p className="text-xs text-muted-foreground">
-                        Tam: {item.size} {item.color && `• ${item.color}`} • Qtd: {item.quantity}
+                        Tam: {item.size} {item.color && `• ${getColorDisplayName(item.color)}`} • Qtd: {item.quantity}
                       </p>
                       <p className="text-sm font-semibold mt-1">
                         {formatPrice(item.unitPriceCents * item.quantity)}

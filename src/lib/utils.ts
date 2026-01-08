@@ -52,3 +52,13 @@ export function getWhatsAppLink(phone: string, message: string): string {
   const encodedMessage = encodeURIComponent(message);
   return `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
 }
+
+// Normalize color display name (e.g., "OFF" -> "Off White")
+export function getColorDisplayName(colorName: string | null | undefined): string {
+  if (!colorName) return '';
+  const normalized = colorName.toLowerCase().trim();
+  if (normalized === 'off' || normalized === 'offwhite' || normalized === 'off-white') {
+    return 'Off White';
+  }
+  return colorName;
+}
