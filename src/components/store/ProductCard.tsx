@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Product } from '@/hooks/useProducts';
 import { formatPrice } from '@/lib/utils';
@@ -380,7 +380,10 @@ export function ProductCard({ product }: ProductCardProps) {
                           />
                         )}
                         <span className="text-[11px] font-bold shrink-0">{size}</span>
-                        <span className={cn("text-[10px] truncate", stockColor)}>
+                        <span 
+                          key={remaining}
+                          className={cn("text-[10px] truncate animate-pop", stockColor)}
+                        >
                           {stockLabel}
                         </span>
                       </div>
