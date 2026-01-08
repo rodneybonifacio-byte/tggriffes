@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText, Phone, User, MessageSquare, Pencil, History, Clock } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText, Phone, User, MessageSquare, Pencil, History, Clock, AlertTriangle } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { OrderIntent } from '@/hooks/useOrders';
@@ -29,6 +30,7 @@ const AdminOrders = () => {
   const [selectedOrder, setSelectedOrder] = useState<OrderIntent | null>(null);
   const [editingOrder, setEditingOrder] = useState<OrderIntent | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [cancelConfirmOrder, setCancelConfirmOrder] = useState<{ id: string; currentStatus: string } | null>(null);
   
   const { data: orders = [], isLoading } = useOrderIntents();
   const { data: storeSettings } = useStoreSettings();
@@ -97,6 +99,16 @@ const AdminOrders = () => {
     : orders.filter(o => o.status === statusFilter);
 
   const handleStatusChange = async (orderId: string, newStatus: string, currentStatus?: string) => {
+    // Show confirmation dialog for cancellation
+    if (newStatus === 'CANCELADO') {
+      setCancelConfirmOrder({ id: orderId, currentStatus: currentStatus || 'NOVO' });
+      return;
+    }
+    
+    await executeStatusChange(orderId, newStatus, currentStatus);
+  };
+
+  const executeStatusChange = async (orderId: string, newStatus: string, currentStatus?: string) => {
     try {
       await updateStatus({ id: orderId, status: newStatus });
       
@@ -114,6 +126,12 @@ const AdminOrders = () => {
     } catch (error) {
       toast({ title: 'Erro ao atualizar status', variant: 'destructive' });
     }
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!cancelConfirmOrder) return;
+    await executeStatusChange(cancelConfirmOrder.id, 'CANCELADO', cancelConfirmOrder.currentStatus);
+    setCancelConfirmOrder(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -489,6 +507,33 @@ const AdminOrders = () => {
             // Refresh the data
           }}
         />
+
+        {/* Cancel Confirmation Dialog */}
+        <AlertDialog open={!!cancelConfirmOrder} onOpenChange={(open) => !open && setCancelConfirmOrder(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Cancelar Pedido
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-left space-y-2">
+                <p>Tem certeza que deseja cancelar este pedido?</p>
+                <p className="font-medium text-amber-600">
+                  ⚠️ O estoque de todos os itens será restaurado automaticamente.
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Voltar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleConfirmCancel}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                Sim, cancelar pedido
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </AdminLayout>
     </AdminGuard>
   );
