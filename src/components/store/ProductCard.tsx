@@ -315,33 +315,32 @@ export function ProductCard({ product }: ProductCardProps) {
                 : [{ color: null, variant: variants.find(v => v.size === size) }];
               
               return (
-                <div key={size} className="flex items-center gap-2 px-2 py-2">
+                <div key={size} className="flex items-center gap-2 px-2 py-2.5">
                   {/* Size label */}
-                  <span className="text-sm font-bold w-8 text-center shrink-0">{size}</span>
+                  <span className="text-sm font-bold w-7 text-center shrink-0">{size}</span>
                   
                   {/* Color variants for this size */}
-                  <div className="flex items-center gap-1.5 flex-1 flex-wrap">
+                  <div className="flex items-center gap-3 flex-1 flex-wrap">
                     {sizeVariants.map(({ color, variant }) => {
                       if (!variant) return null;
                       
                       const available = variant.stock_qty > 0;
                       const quantityInCart = getQuantityForVariant(variant.id);
                       const remaining = variant.stock_qty - quantityInCart;
-                      const cellKey = `${color || ''}|${size}`;
-                      const isExpanded = expandedCell === cellKey;
                       const colorHex = color ? findColorHex(color) : null;
                       const needsBorder = colorHex ? isLightColor(colorHex) : false;
                       
+                      // Variant esgotada
                       if (!available && quantityInCart === 0) {
                         return (
-                          <div key={color || 'default'} className="flex items-center gap-1 opacity-40">
+                          <div key={color || 'default'} className="flex items-center gap-1.5 opacity-40">
                             {colorHex && (
                               <div 
                                 className={cn("w-5 h-5 rounded-full", needsBorder && "border border-gray-400")}
                                 style={{ backgroundColor: colorHex }}
                               />
                             )}
-                            <span className="text-[10px] text-muted-foreground">Esgotado</span>
+                            <span className="text-[10px] text-muted-foreground">—</span>
                           </div>
                         );
                       }
@@ -358,8 +357,22 @@ export function ProductCard({ product }: ProductCardProps) {
                         handleRemoveFromCart(e, color, size);
                       };
                       
+                      // Renderizar disponibilidade como badge
+                      const stockBadge = (() => {
+                        if (remaining === 0) {
+                          return <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">0</span>;
+                        }
+                        if (remaining === 1) {
+                          return <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-semibold">1 🔥</span>;
+                        }
+                        if (remaining <= 3) {
+                          return <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{remaining} ⚡</span>;
+                        }
+                        return <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-50 text-green-600">{remaining}</span>;
+                      })();
+                      
                       return (
-                        <div key={color || 'default'} className="flex items-center gap-1">
+                        <div key={color || 'default'} className="flex items-center gap-1.5">
                           {/* Color swatch */}
                           {colorHex && (
                             <div 
@@ -369,64 +382,39 @@ export function ProductCard({ product }: ProductCardProps) {
                             />
                           )}
                           
-                          {/* Add/quantity controls */}
-                          {quantityInCart > 0 ? (
-                            isExpanded ? (
-                              <div className="flex items-center gap-0.5 bg-gray-50 rounded-full px-1 py-0.5">
-                                <button
-                                  onClick={(e) => {
-                                    handleRemove(e);
-                                    if (quantityInCart <= 1) setExpandedCell(null);
-                                  }}
-                                  className="w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center active:scale-90"
-                                >
-                                  <Minus className="h-3.5 w-3.5" />
-                                </button>
-                                <span className="w-5 text-center text-sm font-bold text-green-600">
-                                  {quantityInCart}
-                                </span>
-                                <button
-                                  onClick={handleAdd}
-                                  disabled={remaining <= 0}
-                                  className="w-7 h-7 rounded-full bg-green-100 text-green-600 flex items-center justify-center active:scale-90 disabled:opacity-40"
-                                >
-                                  <Plus className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            ) : (
+                          {/* Quantity controls - always visible */}
+                          <div className="flex items-center gap-0.5 bg-gray-50 rounded-full">
+                            {quantityInCart > 0 && (
                               <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setExpandedCell(cellKey);
-                                }}
-                                className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-bold shadow active:scale-90"
+                                onClick={handleRemove}
+                                className="w-7 h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center active:scale-90"
                               >
-                                {quantityInCart}
+                                <Minus className="h-3.5 w-3.5" />
                               </button>
-                            )
-                          ) : (
+                            )}
+                            
+                            {quantityInCart > 0 ? (
+                              <span className="w-5 text-center text-sm font-bold text-green-600">
+                                {quantityInCart}
+                              </span>
+                            ) : null}
+                            
                             <button
                               onClick={handleAdd}
-                              className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center hover:border-green-500 hover:bg-green-50 active:scale-90 active:bg-green-100"
+                              disabled={remaining <= 0}
+                              className={cn(
+                                "w-7 h-7 rounded-full flex items-center justify-center active:scale-90",
+                                quantityInCart > 0 
+                                  ? "bg-green-100 text-green-600 disabled:opacity-40"
+                                  : "border-2 border-dashed border-gray-300 text-gray-500 hover:border-green-500 hover:bg-green-50 hover:text-green-600 disabled:opacity-40"
+                              )}
                             >
-                              <Plus className="h-4 w-4 text-gray-500" />
+                              <Plus className="h-3.5 w-3.5" />
                             </button>
-                          )}
+                          </div>
                           
-                          {/* Stock indicator inline */}
-                          {remaining === 0 && (
-                            <span className="text-[9px] text-gray-400 font-medium whitespace-nowrap">Esgotado</span>
-                          )}
-                          {remaining === 1 && (
-                            <span className="text-[9px] text-red-500 font-semibold whitespace-nowrap">🔥 Última!</span>
-                          )}
-                          {remaining > 1 && remaining <= 3 && (
-                            <span className="text-[9px] text-amber-600 font-medium whitespace-nowrap">⚡ {remaining} disp.</span>
-                          )}
-                          {remaining > 3 && (
-                            <span className="text-[9px] text-green-600 font-medium whitespace-nowrap">✓ {remaining}</span>
-                          )}
+                          {/* Stock badge - always visible */}
+                          {stockBadge}
                         </div>
                       );
                     })}
