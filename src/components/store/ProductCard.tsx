@@ -330,38 +330,22 @@ export function ProductCard({ product }: ProductCardProps) {
                     return "border-border/60 bg-card";
                   })();
 
-                  const stockNode = (() => {
+                  const stockLabel = (() => {
                     if (remaining === 0) {
-                      return isMaxed ? (
-                        <span className="text-[10px] font-semibold text-warning whitespace-nowrap">
-                          Máx. no carrinho
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap">
-                          Esgotado
-                        </span>
-                      );
+                      return isMaxed ? "Máx!" : "Esgotado";
                     }
-                    if (remaining === 1) {
-                      return (
-                        <span className="text-[10px] font-semibold text-destructive whitespace-nowrap">
-                          🔥 Última!
-                        </span>
-                      );
-                    }
-                    if (remaining <= 3) {
-                      return (
-                        <span className="text-[10px] font-semibold text-warning whitespace-nowrap">
-                          ⚡ {remaining} disp.
-                        </span>
-                      );
-                    }
-                    return (
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                        {remaining} disp.
-                      </span>
-                    );
+                    if (remaining === 1) return "🔥 1";
+                    if (remaining <= 3) return `⚡ ${remaining}`;
+                    return `${remaining}`;
                   })();
+
+                  const stockColor = (() => {
+                    if (remaining === 0) return isMaxed ? "text-warning" : "text-muted-foreground";
+                    if (remaining === 1) return "text-destructive font-semibold";
+                    if (remaining <= 3) return "text-warning font-semibold";
+                    return "text-muted-foreground";
+                  })();
+
 
                   const handleAdd = (e: React.MouseEvent) => {
                     e.preventDefault();
@@ -379,66 +363,54 @@ export function ProductCard({ product }: ProductCardProps) {
                     <div
                       key={`${size}-${color || "default"}`}
                       className={cn(
-                        "flex items-center gap-2 min-h-11 rounded-lg border px-2 py-2 transition-colors",
+                        "flex items-center justify-between min-h-9 rounded-md border px-1.5 py-1 transition-colors",
                         rowTone
                       )}
                     >
-                      {/* Left: swatch + tamanho + cor */}
-                      <div className="flex items-center gap-2 min-w-0">
+                      {/* Left: swatch + tamanho + estoque inline */}
+                      <div className="flex items-center gap-1 min-w-0 flex-1">
                         {colorHex && (
                           <div
                             className={cn(
-                              "w-4 h-4 rounded-full shrink-0",
+                              "w-3 h-3 rounded-full shrink-0",
                               needsBorder && "border border-border"
                             )}
                             style={{ backgroundColor: colorHex }}
                             aria-hidden="true"
                           />
                         )}
-                        <span className="text-xs font-semibold">{size}</span>
-                        {color && (
-                          <span className="text-[11px] text-muted-foreground truncate">
-                            {color}
-                          </span>
-                        )}
+                        <span className="text-[11px] font-bold shrink-0">{size}</span>
+                        <span className={cn("text-[10px] truncate", stockColor)}>
+                          {stockLabel}
+                        </span>
                       </div>
 
-                      {/* Middle: estoque */}
-                      <div className="flex-1 flex justify-center">{stockNode}</div>
-
-                      {/* Right: controles (largura fixa) */}
-                      <div className="flex items-center justify-end gap-1 w-[96px]">
-                        <button
-                          onClick={handleRemove}
-                          className={cn(
-                            "w-8 h-8 rounded-full bg-destructive/15 text-destructive flex items-center justify-center active:scale-95 transition-transform",
-                            quantityInCart > 0 ? "opacity-100" : "opacity-0 pointer-events-none"
-                          )}
-                          aria-label="Remover"
-                        >
-                          <Minus className="h-3.5 w-3.5" />
-                        </button>
-
-                        <span
-                          className={cn(
-                            "w-6 text-center text-xs font-semibold text-success",
-                            quantityInCart > 0 ? "opacity-100" : "opacity-0"
-                          )}
-                          aria-hidden={quantityInCart === 0}
-                        >
-                          {quantityInCart}
-                        </span>
-
+                      {/* Right: controles compactos */}
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        {quantityInCart > 0 && (
+                          <>
+                            <button
+                              onClick={handleRemove}
+                              className="w-6 h-6 rounded-full bg-destructive/15 text-destructive flex items-center justify-center active:scale-95 transition-transform"
+                              aria-label="Remover"
+                            >
+                              <Minus className="h-3 w-3" />
+                            </button>
+                            <span className="w-4 text-center text-[11px] font-bold text-success">
+                              {quantityInCart}
+                            </span>
+                          </>
+                        )}
                         <button
                           onClick={handleAdd}
                           disabled={remaining === 0}
                           className={cn(
-                            "w-8 h-8 rounded-full bg-success text-success-foreground flex items-center justify-center active:scale-95 transition-transform",
+                            "w-6 h-6 rounded-full bg-success text-success-foreground flex items-center justify-center active:scale-95 transition-transform",
                             "disabled:bg-muted disabled:text-muted-foreground"
                           )}
                           aria-label="Adicionar"
                         >
-                          <Plus className="h-3.5 w-3.5" />
+                          <Plus className="h-3 w-3" />
                         </button>
                       </div>
                     </div>
