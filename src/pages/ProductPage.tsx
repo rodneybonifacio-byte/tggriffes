@@ -470,17 +470,35 @@ const ProductPage = () => {
                               </button>
                             )}
                             {/* Stock indicator - shows remaining after cart */}
-                            {variant && (
-                              <span className={cn(
-                                "text-[10px] mt-1 font-medium",
-                                (variant.stock_qty - quantityInCart) === 1 ? "text-red-500" : 
-                                (variant.stock_qty - quantityInCart) <= 3 ? "text-amber-600" : "text-muted-foreground"
-                              )}>
-                                {(variant.stock_qty - quantityInCart) === 1 ? 'Última peça!' : 
-                                 (variant.stock_qty - quantityInCart) === 0 ? 'Esgotado' :
-                                 `${variant.stock_qty - quantityInCart} disponíveis`}
-                              </span>
-                            )}
+                            {variant && (() => {
+                              const remaining = variant.stock_qty - quantityInCart;
+                              if (remaining === 0) {
+                                return (
+                                  <span className="text-[10px] mt-1.5 px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 font-semibold">
+                                    Esgotado
+                                  </span>
+                                );
+                              }
+                              if (remaining === 1) {
+                                return (
+                                  <span className="text-[10px] mt-1.5 px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold animate-pulse">
+                                    🔥 Última peça!
+                                  </span>
+                                );
+                              }
+                              if (remaining <= 3) {
+                                return (
+                                  <span className="text-[10px] mt-1.5 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
+                                    ⚡ Só {remaining} restam
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="text-[10px] mt-1.5 px-2 py-0.5 rounded-full bg-green-50 text-green-600 font-medium">
+                                  ✓ {remaining} disponíveis
+                                </span>
+                              );
+                            })()}
                           </>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>
