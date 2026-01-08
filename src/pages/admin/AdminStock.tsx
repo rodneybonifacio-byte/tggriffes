@@ -41,6 +41,109 @@ import { cn } from '@/lib/utils';
 // Size order for sorting
 const SIZE_ORDER = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG', 'XXXG', 'U'];
 
+// Component for entry/exit stock controls
+function StockEntryControls({
+  variantId,
+  currentStock,
+  newStock,
+  hasChange,
+  diff,
+  onAdd,
+  onRemove,
+}: {
+  variantId: string;
+  currentStock: number;
+  newStock: number;
+  hasChange: boolean;
+  diff: number;
+  onAdd: (qty: number) => void;
+  onRemove: (qty: number) => void;
+}) {
+  const [entryQty, setEntryQty] = useState<string>('');
+  const [exitQty, setExitQty] = useState<string>('');
+
+  const handleEntry = () => {
+    const qty = parseInt(entryQty);
+    if (!isNaN(qty) && qty > 0) {
+      onAdd(qty);
+      setEntryQty('');
+    }
+  };
+
+  const handleExit = () => {
+    const qty = parseInt(exitQty);
+    if (!isNaN(qty) && qty > 0 && qty <= newStock) {
+      onRemove(qty);
+      setExitQty('');
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center gap-2">
+      {/* Entry (Entrada) */}
+      <div className="flex items-center gap-1">
+        <Input
+          type="number"
+          placeholder="Qtd"
+          value={entryQty}
+          onChange={(e) => setEntryQty(e.target.value)}
+          className="w-14 h-8 text-center text-sm"
+          min="1"
+          onKeyDown={(e) => e.key === 'Enter' && handleEntry()}
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200"
+          onClick={handleEntry}
+          disabled={!entryQty || parseInt(entryQty) <= 0}
+        >
+          <Plus className="h-3 w-3 mr-1" />
+          Entrada
+        </Button>
+      </div>
+
+      {/* Exit (Saída) */}
+      <div className="flex items-center gap-1">
+        <Input
+          type="number"
+          placeholder="Qtd"
+          value={exitQty}
+          onChange={(e) => setExitQty(e.target.value)}
+          className="w-14 h-8 text-center text-sm"
+          min="1"
+          max={newStock}
+          onKeyDown={(e) => e.key === 'Enter' && handleExit()}
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+          onClick={handleExit}
+          disabled={!exitQty || parseInt(exitQty) <= 0 || parseInt(exitQty) > newStock}
+        >
+          <Minus className="h-3 w-3 mr-1" />
+          Saída
+        </Button>
+      </div>
+
+      {/* New stock indicator */}
+      <div className={cn(
+        "min-w-[60px] text-center font-semibold px-2 py-1 rounded",
+        hasChange && diff > 0 && "bg-green-100 text-green-700",
+        hasChange && diff < 0 && "bg-red-100 text-red-700",
+        !hasChange && "text-muted-foreground"
+      )}>
+        {hasChange ? (
+          <span>{newStock} ({diff > 0 ? `+${diff}` : diff})</span>
+        ) : (
+          <span>{newStock}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface StockItem {
   variantId: string;
   productId: string;
@@ -597,8 +700,8 @@ export default function AdminStock() {
                   <TableHead>Produto</TableHead>
                   <TableHead className="w-24 text-center">Tamanho</TableHead>
                   <TableHead className="w-24 text-center">Cor</TableHead>
-                  <TableHead className="w-32 text-center">Estoque Atual</TableHead>
-                  <TableHead className="w-40 text-center">Novo Estoque</TableHead>
+                  <TableHead className="w-24 text-center">Atual</TableHead>
+                  <TableHead className="w-64 text-center">Entrada / Saída</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -701,46 +804,15 @@ export default function AdminStock() {
                             </span>
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center justify-center gap-1">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => handleIncrement(variant.variantId, -1)}
-                                disabled={variant.newStock <= 0}
-                              >
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              
-                              <Input
-                                type="number"
-                                value={variant.newStock}
-                                onChange={(e) => handleStockChange(variant.variantId, parseInt(e.target.value) || 0)}
-                                className={cn(
-                                  "w-16 h-8 text-center",
-                                  hasChange && "border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20"
-                                )}
-                                min="0"
-                              />
-                              
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => handleIncrement(variant.variantId, 1)}
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                              
-                              {hasChange && (
-                                <Badge 
-                                  variant={diff > 0 ? "default" : "destructive"}
-                                  className="ml-2"
-                                >
-                                  {diff > 0 ? `+${diff}` : diff}
-                                </Badge>
-                              )}
-                            </div>
+                            <StockEntryControls
+                              variantId={variant.variantId}
+                              currentStock={variant.currentStock}
+                              newStock={variant.newStock}
+                              hasChange={hasChange}
+                              diff={diff}
+                              onAdd={(qty) => handleIncrement(variant.variantId, qty)}
+                              onRemove={(qty) => handleIncrement(variant.variantId, -qty)}
+                            />
                           </TableCell>
                         </TableRow>
                       );
