@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { CartItem } from '@/hooks/useCart';
 import { getColorDisplayName } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { Layers, Palette, Ruler } from 'lucide-react';
 
 interface VariationsSummaryProps {
   items: CartItem[];
@@ -71,111 +70,139 @@ export function VariationsSummary({ items }: VariationsSummaryProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-[1px]"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="relative overflow-hidden"
     >
-      {/* Gradient border effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 via-transparent to-violet-500/20 rounded-2xl" />
-      
-      <div className="relative bg-gradient-to-br from-zinc-900 via-zinc-800/95 to-zinc-900 rounded-2xl p-5">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 border border-emerald-500/30">
-              <Layers className="w-4.5 h-4.5 text-emerald-400" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white tracking-tight">Resumo das Variações</h3>
-              <p className="text-[11px] text-zinc-400">Conferência rápida do pedido</p>
-            </div>
+      {/* Main container with animated gradient border */}
+      <div className="relative rounded-3xl p-[2px] bg-gradient-to-br from-amber-400 via-orange-500 to-red-500">
+        <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 blur-xl opacity-40 animate-pulse" />
+        
+        <div className="relative rounded-3xl bg-black p-6 overflow-hidden">
+          {/* Animated background pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,rgba(251,191,36,0.4),transparent_40%)]" />
+            <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,rgba(239,68,68,0.4),transparent_40%)]" />
           </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
-            <span className="text-[10px] text-zinc-400 uppercase tracking-wider font-medium">Total</span>
-            <span className="text-lg font-black text-white tabular-nums">{totalPieces}</span>
-            <span className="text-[10px] text-zinc-500">pcs</span>
-          </div>
-        </div>
 
-        {/* Two columns grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Sizes Column */}
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1, duration: 0.3 }}
-            className="space-y-2.5"
+          {/* Header */}
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="relative flex items-center justify-between mb-6"
           >
-            <div className="flex items-center gap-2 px-1">
-              <Ruler className="w-3.5 h-3.5 text-sky-400" />
-              <span className="text-[10px] uppercase tracking-widest font-semibold text-sky-400">Tamanhos</span>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl blur-md opacity-60" />
+                <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                  <span className="text-2xl">📦</span>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-white tracking-tight uppercase">Conferência</h3>
+                <p className="text-xs text-amber-400/80 font-medium">Resumo do pedido</p>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              {sizesSummary.map((item, index) => (
-                <motion.div
-                  key={item.size}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.15 + index * 0.05, duration: 0.25 }}
-                  className="group relative flex items-center justify-between px-3 py-2 rounded-xl bg-gradient-to-r from-sky-500/10 to-transparent border border-sky-500/20 hover:border-sky-500/40 transition-all duration-300"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-sky-400 group-hover:scale-125 transition-transform" />
-                    <span className="text-sm font-bold text-white">{item.size}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-lg font-black text-sky-400 tabular-nums">{item.count}</span>
-                    <span className="text-[10px] text-zinc-500">un</span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+            
+            {/* Total badge */}
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+              className="relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl blur-lg opacity-50" />
+              <div className="relative px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500">
+                <div className="text-center">
+                  <span className="block text-3xl font-black text-black tabular-nums leading-none">{totalPieces}</span>
+                  <span className="text-[10px] font-bold text-black/70 uppercase tracking-widest">peças</span>
+                </div>
+              </div>
+            </motion.div>
           </motion.div>
 
-          {/* Colors Column */}
-          <motion.div
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2, duration: 0.3 }}
-            className="space-y-2.5"
-          >
-            <div className="flex items-center gap-2 px-1">
-              <Palette className="w-3.5 h-3.5 text-violet-400" />
-              <span className="text-[10px] uppercase tracking-widest font-semibold text-violet-400">Cores</span>
-            </div>
-            <div className="space-y-1.5">
-              {colorsSummary.length > 0 ? (
-                colorsSummary.map((item, index) => (
+          {/* Two columns */}
+          <div className="relative grid grid-cols-2 gap-4">
+            {/* Sizes Column */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="space-y-3"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl">📏</span>
+                <span className="text-xs font-bold text-white/60 uppercase tracking-[0.2em]">Tamanhos</span>
+              </div>
+              
+              <div className="space-y-2">
+                {sizesSummary.map((item, index) => (
                   <motion.div
-                    key={item.color}
-                    initial={{ opacity: 0, x: 10 }}
+                    key={item.size}
+                    initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.25 + index * 0.05, duration: 0.25 }}
-                    className="group relative flex items-center justify-between px-3 py-2 rounded-xl bg-gradient-to-r from-violet-500/10 to-transparent border border-violet-500/20 hover:border-violet-500/40 transition-all duration-300"
+                    transition={{ delay: 0.25 + index * 0.05 }}
+                    className="group relative"
                   >
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-violet-400 group-hover:scale-125 transition-transform" />
-                      <span className="text-sm font-medium text-white truncate max-w-[80px]">{item.displayName}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-lg font-black text-violet-400 tabular-nums">{item.count}</span>
-                      <span className="text-[10px] text-zinc-500">un</span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="relative flex items-center justify-between px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-cyan-500/50 transition-all">
+                      <span className="text-base font-bold text-white">{item.size}</span>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-black text-cyan-400 tabular-nums">{item.count}</span>
+                        <span className="text-[10px] text-white/40 font-medium">un</span>
+                      </div>
                     </div>
                   </motion.div>
-                ))
-              ) : (
-                <div className="px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700/50">
-                  <span className="text-xs text-zinc-500 italic">Sem cores</span>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </div>
+                ))}
+              </div>
+            </motion.div>
 
-        {/* Glowing orbs for visual effect */}
-        <div className="absolute -top-20 -right-20 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-violet-500/10 rounded-full blur-3xl pointer-events-none" />
+            {/* Colors Column */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 }}
+              className="space-y-3"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl">🎨</span>
+                <span className="text-xs font-bold text-white/60 uppercase tracking-[0.2em]">Cores</span>
+              </div>
+              
+              <div className="space-y-2">
+                {colorsSummary.length > 0 ? (
+                  colorsSummary.map((item, index) => (
+                    <motion.div
+                      key={item.color}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.35 + index * 0.05 }}
+                      className="group relative"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-500/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="relative flex items-center justify-between px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:border-fuchsia-500/50 transition-all">
+                        <span className="text-sm font-medium text-white truncate max-w-[70px]">{item.displayName}</span>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-black text-fuchsia-400 tabular-nums">{item.count}</span>
+                          <span className="text-[10px] text-white/40 font-medium">un</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="px-4 py-3 rounded-xl bg-white/5 border border-white/10">
+                    <span className="text-sm text-white/40 italic">Cor única</span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Bottom sparkle effect */}
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
+        </div>
       </div>
     </motion.div>
   );
