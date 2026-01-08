@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { StoreHeader } from '@/components/store/StoreHeader';
 import { ProductCard } from '@/components/store/ProductCard';
@@ -6,21 +6,22 @@ import { ProductFilters } from '@/components/store/ProductFilters';
 import { WhatsAppButton } from '@/components/store/WhatsAppButton';
 import { PromoBanner } from '@/components/store/PromoBanner';
 import { useProducts, useCategories } from '@/hooks/useProducts';
-import { Loader2, LayoutGrid, Square } from 'lucide-react';
+import { Loader2, LayoutGrid, Square, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || '');
-  const [selectedCategory, setSelectedCategory] = useState<string | undefined>(
-    searchParams.get('category') || undefined
-  );
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000]);
   const [inStockOnly, setInStockOnly] = useState(false);
   const [sortBy, setSortBy] = useState('relevance');
   const [gridCols, setGridCols] = useState<1 | 2>(2);
+
+  // Sync category from URL
+  const selectedCategory = searchParams.get('category') || undefined;
 
   const { data: categories = [] } = useCategories();
   const { data: products = [], isLoading } = useProducts({
@@ -77,7 +78,6 @@ const Index = () => {
   };
 
   const handleCategoryChange = (slug: string | undefined) => {
-    setSelectedCategory(slug);
     if (slug) {
       searchParams.set('category', slug);
     } else {
@@ -87,16 +87,20 @@ const Index = () => {
   };
 
   const clearFilters = () => {
-    setSelectedCategory(undefined);
     setSelectedSizes([]);
     setPriceRange([0, 50000]);
     setInStockOnly(false);
+    setSearch('');
     searchParams.delete('category');
+    searchParams.delete('search');
     setSearchParams(searchParams);
   };
 
   // Calculate max price for slider
   const maxPrice = Math.max(...products.map(p => p.price_cents), 50000);
+
+  // Check if any filter is active
+  const hasActiveFilters = selectedCategory || selectedSizes.length > 0 || inStockOnly || priceRange[0] > 0 || priceRange[1] < maxPrice || search;
 
   // Get unique categories that are actually used by products
   const usedCategories = useMemo(() => {
@@ -169,11 +173,45 @@ const Index = () => {
       <PromoBanner />
 
       <main className="container py-4 md:py-6">
+        {/* Active filters indicator with clear button */}
+        {hasActiveFilters && (
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            {selectedCategory && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
+                {categories.find(c => c.slug === selectedCategory)?.name}
+                <button onClick={() => handleCategoryChange(undefined)} className="hover:bg-primary/20 rounded-full p-0.5">
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+            {selectedSizes.map(size => (
+              <span key={size} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
+                {size}
+                <button onClick={() => setSelectedSizes(prev => prev.filter(s => s !== size))} className="hover:bg-primary/20 rounded-full p-0.5">
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            {search && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm">
+                "{search}"
+                <button onClick={() => { setSearch(''); searchParams.delete('search'); setSearchParams(searchParams); }} className="hover:bg-primary/20 rounded-full p-0.5">
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground hover:text-foreground">
+              Limpar tudo
+            </Button>
+          </div>
+        )}
+
         {/* Mobile: Filters + Sort in one row */}
         <div className="flex items-center justify-between gap-3 mb-4 lg:hidden">
           <ProductFilters
             categories={usedCategories}
             availableSizes={availableSizes}
+            selectedCategory={selectedCategory}
             selectedSizes={selectedSizes}
             priceRange={priceRange}
             maxPrice={maxPrice}
@@ -218,6 +256,7 @@ const Index = () => {
             <ProductFilters
               categories={usedCategories}
               availableSizes={availableSizes}
+              selectedCategory={selectedCategory}
               selectedSizes={selectedSizes}
               priceRange={priceRange}
               maxPrice={maxPrice}
