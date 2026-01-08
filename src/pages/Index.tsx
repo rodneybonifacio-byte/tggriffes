@@ -19,7 +19,7 @@ const Index = () => {
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000]);
   const [inStockOnly, setInStockOnly] = useState(false);
-  const [sortBy, setSortBy] = useState('relevance');
+  const [sortBy, setSortBy] = useState('color');
   const [gridCols, setGridCols] = useState<1 | 2>(2);
 
   const { data: categories = [] } = useCategories();
