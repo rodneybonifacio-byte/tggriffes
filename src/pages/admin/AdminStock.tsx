@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useProducts, useCategories, useUpdateVariantStock, Product, ProductVariant } from '@/hooks/useProducts';
+import { useStockMovements, useCreateBatchStockMovements } from '@/hooks/useStockMovements';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Search, 
   Save, 
@@ -33,10 +35,15 @@ import {
   Filter,
   X,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  History,
+  ArrowUpCircle,
+  ArrowDownCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 // Size order for sorting
 const SIZE_ORDER = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG', 'XXXG', 'U'];
@@ -155,8 +162,11 @@ interface GroupedProduct {
 export default function AdminStock() {
   const { data: products, isLoading } = useProducts({ status: 'all' });
   const { data: categories } = useCategories();
+  const { data: movements, isLoading: isLoadingMovements } = useStockMovements();
   const updateStock = useUpdateVariantStock();
+  const createMovements = useCreateBatchStockMovements();
   
+  const [activeTab, setActiveTab] = useState<string>('stock');
   // Filters
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -405,9 +415,32 @@ export default function AdminStock() {
       id,
       stock_qty,
     }));
+
+    // Build movements for history
+    const movementRecords = Object.entries(stockChanges).map(([variantId, newQty]) => {
+      const item = stockItems.find(i => i.variantId === variantId);
+      if (!item) return null;
+      
+      const diff = newQty - item.currentStock;
+      return {
+        variant_id: variantId,
+        product_id: item.productId,
+        movement_type: diff > 0 ? 'entrada' : 'saida' as const,
+        quantity: Math.abs(diff),
+        stock_before: item.currentStock,
+        stock_after: newQty,
+        reason: 'Ajuste manual de estoque',
+      };
+    }).filter(Boolean) as any[];
     
     try {
       await updateStock.mutateAsync(updates);
+      
+      // Register movements in history
+      if (movementRecords.length > 0) {
+        await createMovements.mutateAsync(movementRecords);
+      }
+      
       setStockChanges({});
       setSelectedItems(new Set());
       toast.success(`${updates.length} variações atualizadas com sucesso!`);
@@ -502,7 +535,22 @@ export default function AdminStock() {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
+          <TabsList>
+            <TabsTrigger value="stock" className="gap-2">
+              <Package className="h-4 w-4" />
+              Estoque
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-2">
+              <History className="h-4 w-4" />
+              Histórico
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {activeTab === 'stock' && (
+          <>
         <div className="bg-card rounded-lg border p-4 mb-4">
           <div className="flex flex-wrap gap-3">
             <div className="flex-1 min-w-[200px]">
@@ -781,6 +829,86 @@ export default function AdminStock() {
                     })}
                   </>
                 ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+        </>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="bg-card rounded-lg border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-40">Data</TableHead>
+                  <TableHead>Produto</TableHead>
+                  <TableHead className="w-24 text-center">Variação</TableHead>
+                  <TableHead className="w-24 text-center">Tipo</TableHead>
+                  <TableHead className="w-20 text-center">Qtd</TableHead>
+                  <TableHead className="w-32 text-center">Estoque</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoadingMovements ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                    </TableCell>
+                  </TableRow>
+                ) : movements && movements.length > 0 ? (
+                  movements.map((movement) => (
+                    <TableRow key={movement.id}>
+                      <TableCell className="text-sm">
+                        {format(new Date(movement.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium">{movement.product_name}</span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Badge variant="outline">{movement.variant_size}</Badge>
+                          {movement.variant_color && (
+                            <Badge variant="secondary" className="text-xs">{movement.variant_color}</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {movement.movement_type === 'entrada' || movement.movement_type === 'cancelamento' ? (
+                          <Badge className="bg-green-100 text-green-700 hover:bg-green-100 gap-1">
+                            <ArrowUpCircle className="h-3 w-3" />
+                            {movement.movement_type === 'entrada' ? 'Entrada' : 'Cancelam.'}
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-red-100 text-red-700 hover:bg-red-100 gap-1">
+                            <ArrowDownCircle className="h-3 w-3" />
+                            {movement.movement_type === 'saida' ? 'Saída' : movement.movement_type === 'venda' ? 'Venda' : 'Ajuste'}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center font-bold">
+                        <span className={cn(
+                          movement.movement_type === 'entrada' || movement.movement_type === 'cancelamento'
+                            ? "text-green-600"
+                            : "text-red-600"
+                        )}>
+                          {movement.movement_type === 'entrada' || movement.movement_type === 'cancelamento' ? '+' : '-'}
+                          {movement.quantity}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center text-sm text-muted-foreground">
+                        {movement.stock_before} → {movement.stock_after}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>Nenhuma movimentação registrada</p>
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>

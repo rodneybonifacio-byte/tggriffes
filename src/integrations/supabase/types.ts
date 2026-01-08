@@ -413,6 +413,60 @@ export type Database = {
           },
         ]
       }
+      stock_movements: {
+        Row: {
+          created_at: string
+          id: string
+          movement_type: string
+          product_id: string
+          quantity: number
+          reason: string | null
+          stock_after: number
+          stock_before: number
+          user_id: string | null
+          variant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          movement_type: string
+          product_id: string
+          quantity: number
+          reason?: string | null
+          stock_after: number
+          stock_before: number
+          user_id?: string | null
+          variant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          movement_type?: string
+          product_id?: string
+          quantity?: number
+          reason?: string | null
+          stock_after?: number
+          stock_before?: number
+          user_id?: string | null
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       store_settings: {
         Row: {
           created_at: string
