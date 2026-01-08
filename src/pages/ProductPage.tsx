@@ -469,13 +469,14 @@ const ProductPage = () => {
                                 <Plus className="h-5 w-5" />
                               </button>
                             )}
-                            {/* Stock indicator - show when low stock */}
-                            {variant && variant.stock_qty <= 3 && (
+                            {/* Stock indicator */}
+                            {variant && (
                               <span className={cn(
                                 "text-[10px] mt-1 font-medium",
-                                variant.stock_qty === 1 ? "text-red-500" : "text-amber-600"
+                                variant.stock_qty === 1 ? "text-red-500" : 
+                                variant.stock_qty <= 3 ? "text-amber-600" : "text-muted-foreground"
                               )}>
-                                {variant.stock_qty === 1 ? 'Última peça!' : `${variant.stock_qty} restantes`}
+                                {variant.stock_qty === 1 ? 'Última peça!' : `${variant.stock_qty} disponíveis`}
                               </span>
                             )}
                           </>
