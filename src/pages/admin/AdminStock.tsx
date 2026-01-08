@@ -41,7 +41,7 @@ import { cn } from '@/lib/utils';
 // Size order for sorting
 const SIZE_ORDER = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG', 'XXXG', 'U'];
 
-// Compact stock adjustment component
+// Stock adjustment component with Entry/Exit controls
 function StockAdjuster({
   currentStock,
   newStock,
@@ -55,64 +55,77 @@ function StockAdjuster({
   diff: number;
   onAdjust: (amount: number) => void;
 }) {
-  const [qty, setQty] = useState<string>('1');
+  const [qty, setQty] = useState<string>('');
 
-  const handleAdd = () => {
-    const amount = parseInt(qty) || 1;
-    if (amount > 0) onAdjust(amount);
+  const handleEntry = () => {
+    const amount = parseInt(qty) || 0;
+    if (amount > 0) {
+      onAdjust(amount);
+      setQty('');
+    }
   };
 
-  const handleRemove = () => {
-    const amount = parseInt(qty) || 1;
-    if (amount > 0 && amount <= newStock) onAdjust(-amount);
+  const handleExit = () => {
+    const amount = parseInt(qty) || 0;
+    if (amount > 0 && amount <= newStock) {
+      onAdjust(-amount);
+      setQty('');
+    }
   };
 
   return (
-    <div className="flex items-center gap-3">
-      {/* Current/New Stock Display */}
+    <div className="flex items-center gap-2">
+      {/* Stock Display */}
       <div className={cn(
-        "flex items-center justify-center min-w-[80px] h-10 rounded-lg font-bold text-lg",
-        hasChange && diff > 0 && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-        hasChange && diff < 0 && "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+        "flex items-center justify-center min-w-[70px] h-9 rounded-md font-bold text-base px-2",
+        hasChange && diff > 0 && "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400",
+        hasChange && diff < 0 && "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
         !hasChange && "bg-muted text-foreground"
       )}>
         {newStock}
         {hasChange && (
-          <span className="text-xs ml-1 font-medium">
-            ({diff > 0 ? `+${diff}` : diff})
+          <span className="text-xs ml-1 opacity-80">
+            {diff > 0 ? `+${diff}` : diff}
           </span>
         )}
       </div>
 
-      {/* Quick adjustment buttons */}
-      <div className="flex items-center bg-muted rounded-lg p-1 gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30"
-          onClick={handleRemove}
-          disabled={newStock <= 0}
-        >
-          <Minus className="h-4 w-4" />
-        </Button>
-        
-        <Input
-          type="number"
-          value={qty}
-          onChange={(e) => setQty(e.target.value)}
-          className="w-12 h-8 text-center text-sm border-0 bg-background"
-          min="1"
-        />
-        
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 hover:bg-green-100 hover:text-green-600 dark:hover:bg-green-900/30"
-          onClick={handleAdd}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
+      {/* Quantity Input */}
+      <Input
+        type="number"
+        placeholder="Qtd"
+        value={qty}
+        onChange={(e) => setQty(e.target.value)}
+        className="w-16 h-9 text-center"
+        min="1"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') handleEntry();
+        }}
+      />
+
+      {/* Entry Button */}
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-9 px-3 gap-1 border-green-300 text-green-700 hover:bg-green-50 hover:text-green-800 dark:border-green-700 dark:text-green-400 dark:hover:bg-green-900/30"
+        onClick={handleEntry}
+        disabled={!qty || parseInt(qty) <= 0}
+      >
+        <Plus className="h-4 w-4" />
+        Entrada
+      </Button>
+
+      {/* Exit Button */}
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-9 px-3 gap-1 border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30"
+        onClick={handleExit}
+        disabled={!qty || parseInt(qty) <= 0 || parseInt(qty) > newStock}
+      >
+        <Minus className="h-4 w-4" />
+        Saída
+      </Button>
     </div>
   );
 }
