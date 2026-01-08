@@ -420,17 +420,35 @@ export function ProductCard({ product }: ProductCardProps) {
                                 </button>
                               )}
                               {/* Stock indicator - shows remaining after cart */}
-                              {variant && (
-                                <span className={cn(
-                                  "text-[8px] mt-0.5 font-medium",
-                                  (variant.stock_qty - quantityInCart) === 1 ? "text-red-500" : 
-                                  (variant.stock_qty - quantityInCart) <= 3 ? "text-amber-600" : "text-muted-foreground"
-                                )}>
-                                  {(variant.stock_qty - quantityInCart) === 1 ? 'Última!' : 
-                                   (variant.stock_qty - quantityInCart) === 0 ? 'Esgotado' :
-                                   `${variant.stock_qty - quantityInCart} disp.`}
-                                </span>
-                              )}
+                              {variant && (() => {
+                                const remaining = variant.stock_qty - quantityInCart;
+                                if (remaining === 0) {
+                                  return (
+                                    <span className="text-[9px] mt-1 px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600 font-semibold">
+                                      Esgotado
+                                    </span>
+                                  );
+                                }
+                                if (remaining === 1) {
+                                  return (
+                                    <span className="text-[9px] mt-1 px-1.5 py-0.5 rounded-full bg-red-100 text-red-600 font-semibold animate-pulse">
+                                      🔥 Última!
+                                    </span>
+                                  );
+                                }
+                                if (remaining <= 3) {
+                                  return (
+                                    <span className="text-[9px] mt-1 px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
+                                      ⚡ {remaining} restam
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <span className="text-[9px] mt-1 px-1.5 py-0.5 rounded-full bg-green-50 text-green-600 font-medium">
+                                    ✓ {remaining} disp.
+                                  </span>
+                                );
+                              })()}
                             </>
                           ) : (
                             <span className="text-[10px] text-muted-foreground">—</span>
