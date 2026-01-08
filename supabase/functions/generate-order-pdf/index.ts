@@ -467,7 +467,7 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       
       y -= 18;
       
-      // ========== VARIATIONS SUMMARY - Epic Design ==========
+      // ========== VARIATIONS SUMMARY - Clean Design ==========
       // Calculate summaries
       const sizesSummary = new Map<string, number>();
       const colorsSummary = new Map<string, number>();
@@ -496,85 +496,81 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       const sortedColors = Array.from(colorsSummary.entries())
         .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'));
       
-      // Draw variations summary box
-      const summaryBoxWidth = CONTENT_WIDTH;
-      const summaryBoxHeight = 70;
+      // Simple clean box
+      const summaryBoxHeight = 55;
       const summaryBoxY = y - summaryBoxHeight;
       
-      // Dark gradient background
       page.drawRectangle({
         x: MARGIN,
         y: summaryBoxY,
-        width: summaryBoxWidth,
+        width: CONTENT_WIDTH,
         height: summaryBoxHeight,
-        color: rgb(0.12, 0.12, 0.14),
-        borderColor: rgb(0.25, 0.25, 0.28),
-        borderWidth: 1,
+        color: rgb(0.96, 0.96, 0.96),
+        borderColor: rgb(0.85, 0.85, 0.85),
+        borderWidth: 0.5,
       });
       
-      // Header
+      // Header row
       const headerY = y - 14;
-      page.drawText("RESUMO DAS VARIAÇÕES", {
-        x: MARGIN + 12,
+      page.drawText("RESUMO", {
+        x: MARGIN + 10,
         y: headerY,
-        size: 9,
+        size: 8,
         font: fontBold,
-        color: rgb(0.3, 0.85, 0.55), // emerald
+        color: gray,
       });
       
-      // Total pieces badge
-      const totalText = `TOTAL: ${totalPieces} pcs`;
-      const totalWidth = fontBold.widthOfTextAtSize(totalText, 9);
-      page.drawText(totalText, {
-        x: PAGE_WIDTH - MARGIN - totalWidth - 12,
+      const totalLabel = `${totalPieces} peças`;
+      const totalLabelWidth = fontBold.widthOfTextAtSize(totalLabel, 10);
+      page.drawText(totalLabel, {
+        x: PAGE_WIDTH - MARGIN - totalLabelWidth - 10,
         y: headerY,
-        size: 9,
-        font: fontBold,
-        color: rgb(1, 1, 1),
-      });
-      
-      // Sizes column
-      const sizesStartX = MARGIN + 12;
-      const sizesY = headerY - 18;
-      
-      page.drawText("TAMANHOS", {
-        x: sizesStartX,
-        y: sizesY,
-        size: 7,
-        font: fontBold,
-        color: rgb(0.35, 0.65, 0.95), // sky blue
-      });
-      
-      let sizeTextY = sizesY - 12;
-      const sizesText = sortedSizes.map(([size, count]) => `${size}: ${count}`).join('  •  ');
-      page.drawText(sizesText.length > 50 ? sizesText.substring(0, 47) + '...' : sizesText, {
-        x: sizesStartX,
-        y: sizeTextY,
         size: 10,
         font: fontBold,
-        color: rgb(1, 1, 1),
+        color: black,
       });
       
-      // Colors column
-      const colorsStartX = MARGIN + summaryBoxWidth / 2;
+      // Content row - two columns
+      const contentY = headerY - 22;
+      const colWidth = (CONTENT_WIDTH - 30) / 2;
       
-      page.drawText("CORES", {
-        x: colorsStartX,
-        y: sizesY,
+      // Sizes
+      page.drawText("Tamanhos:", {
+        x: MARGIN + 10,
+        y: contentY,
         size: 7,
+        font: fontRegular,
+        color: gray,
+      });
+      
+      const sizesText = sortedSizes.map(([size, count]) => `${size}: ${count}`).join('   ');
+      page.drawText(sizesText.length > 35 ? sizesText.substring(0, 32) + '...' : sizesText, {
+        x: MARGIN + 10,
+        y: contentY - 12,
+        size: 9,
         font: fontBold,
-        color: rgb(0.65, 0.45, 0.95), // violet
+        color: black,
+      });
+      
+      // Colors
+      const colorsX = MARGIN + 10 + colWidth + 10;
+      page.drawText("Cores:", {
+        x: colorsX,
+        y: contentY,
+        size: 7,
+        font: fontRegular,
+        color: gray,
       });
       
       const colorsText = sortedColors.length > 0 
-        ? sortedColors.map(([color, count]) => `${color}: ${count}`).join('  •  ')
-        : 'Sem cores';
-      page.drawText(colorsText.length > 50 ? colorsText.substring(0, 47) + '...' : colorsText, {
-        x: colorsStartX,
-        y: sizeTextY,
-        size: 10,
+        ? sortedColors.map(([color, count]) => `${color}: ${count}`).join('   ')
+        : '—';
+      page.drawText(colorsText.length > 35 ? colorsText.substring(0, 32) + '...' : colorsText, {
+        x: colorsX,
+        y: contentY - 12,
+        size: 9,
         font: sortedColors.length > 0 ? fontBold : fontRegular,
-        color: sortedColors.length > 0 ? rgb(1, 1, 1) : rgb(0.5, 0.5, 0.5),
+        color: sortedColors.length > 0 ? black : gray,
       });
       
       y = summaryBoxY - 15;
