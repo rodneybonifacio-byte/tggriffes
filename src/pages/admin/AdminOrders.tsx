@@ -19,9 +19,9 @@ import { supabase } from '@/integrations/supabase/client';
 
 const STATUS_OPTIONS = [
   { value: 'NOVO', label: 'Novo', color: 'bg-primary/10 text-primary' },
-  { value: 'CONTATADO', label: 'Contatado', color: 'bg-blue-500/10 text-blue-600' },
-  { value: 'FECHADO', label: 'Fechado', color: 'bg-success/10 text-success' },
-  { value: 'PERDIDO', label: 'Perdido', color: 'bg-destructive/10 text-destructive' },
+  { value: 'EM_SEPARACAO', label: 'Em separação', color: 'bg-amber-500/10 text-amber-600' },
+  { value: 'FINALIZADO', label: 'Finalizado', color: 'bg-success/10 text-success' },
+  { value: 'CANCELADO', label: 'Cancelado', color: 'bg-destructive/10 text-destructive' },
 ];
 
 const AdminOrders = () => {
