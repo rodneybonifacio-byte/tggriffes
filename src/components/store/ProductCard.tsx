@@ -370,54 +370,65 @@ export function ProductCard({ product }: ProductCardProps) {
                         <div 
                           key={size}
                           className={cn(
-                            "flex items-center justify-center py-2 border-l",
+                            "flex flex-col items-center justify-center py-1.5 border-l relative",
                             !available && "bg-muted/50"
                           )}
                         >
                           {available ? (
-                            quantityInCart > 0 ? (
-                              isExpanded ? (
-                                <div className="flex items-center gap-0.5 sm:gap-1">
+                            <>
+                              {quantityInCart > 0 ? (
+                                isExpanded ? (
+                                  <div className="flex items-center gap-0.5 sm:gap-1">
+                                    <button
+                                      onClick={(e) => {
+                                        handleRemove(e);
+                                        const newQty = quantityInCart - 1;
+                                        if (newQty <= 0) setExpandedCell(null);
+                                      }}
+                                      className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                                    >
+                                      <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    </button>
+                                    <span className="w-3 sm:w-4 text-center text-[10px] sm:text-xs font-bold text-green-600">
+                                      {quantityInCart}
+                                    </span>
+                                    <button
+                                      onClick={handleAdd}
+                                      className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
+                                    >
+                                      <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    </button>
+                                  </div>
+                                ) : (
                                   <button
                                     onClick={(e) => {
-                                      handleRemove(e);
-                                      const newQty = quantityInCart - 1;
-                                      if (newQty <= 0) setExpandedCell(null);
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setExpandedCell(cellKey);
                                     }}
-                                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                                    className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all active:scale-90"
                                   >
-                                    <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  </button>
-                                  <span className="w-3 sm:w-4 text-center text-[10px] sm:text-xs font-bold text-green-600">
                                     {quantityInCart}
-                                  </span>
-                                  <button
-                                    onClick={handleAdd}
-                                    className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
-                                  >
-                                    <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                                   </button>
-                                </div>
+                                )
                               ) : (
                                 <button
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setExpandedCell(cellKey);
-                                  }}
-                                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all active:scale-90"
+                                  onClick={handleAdd}
+                                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
                                 >
-                                  {quantityInCart}
+                                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                 </button>
-                              )
-                            ) : (
-                              <button
-                                onClick={handleAdd}
-                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
-                              >
-                                <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                              </button>
-                            )
+                              )}
+                              {/* Stock indicator - show when low stock */}
+                              {variant && variant.stock_qty <= 3 && (
+                                <span className={cn(
+                                  "text-[8px] mt-0.5 font-medium",
+                                  variant.stock_qty === 1 ? "text-red-500" : "text-amber-600"
+                                )}>
+                                  {variant.stock_qty === 1 ? 'Última!' : `${variant.stock_qty} rest.`}
+                                </span>
+                              )}
+                            </>
                           ) : (
                             <span className="text-[10px] text-muted-foreground">—</span>
                           )}
@@ -461,54 +472,65 @@ export function ProductCard({ product }: ProductCardProps) {
                     <div 
                       key={size}
                       className={cn(
-                        "flex items-center justify-center py-2 border-l",
+                        "flex flex-col items-center justify-center py-1.5 border-l",
                         !available && "bg-muted/50"
                       )}
                     >
                       {available ? (
-                        quantityInCart > 0 ? (
-                          isExpanded ? (
-                            <div className="flex items-center gap-0.5 sm:gap-1">
+                        <>
+                          {quantityInCart > 0 ? (
+                            isExpanded ? (
+                              <div className="flex items-center gap-0.5 sm:gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    handleRemove(e);
+                                    const newQty = quantityInCart - 1;
+                                    if (newQty <= 0) setExpandedCell(null);
+                                  }}
+                                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                                >
+                                  <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </button>
+                                <span className="w-3 sm:w-4 text-center text-[10px] sm:text-xs font-bold text-green-600">
+                                  {quantityInCart}
+                                </span>
+                                <button
+                                  onClick={handleAdd}
+                                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
+                                >
+                                  <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </button>
+                              </div>
+                            ) : (
                               <button
                                 onClick={(e) => {
-                                  handleRemove(e);
-                                  const newQty = quantityInCart - 1;
-                                  if (newQty <= 0) setExpandedCell(null);
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setExpandedCell(cellKey);
                                 }}
-                                className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-red-100 text-red-600 flex items-center justify-center transition-all active:scale-90 active:bg-red-200"
+                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all active:scale-90"
                               >
-                                <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
-                              </button>
-                              <span className="w-3 sm:w-4 text-center text-[10px] sm:text-xs font-bold text-green-600">
                                 {quantityInCart}
-                              </span>
-                              <button
-                                onClick={handleAdd}
-                                className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
-                              >
-                                <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
                               </button>
-                            </div>
+                            )
                           ) : (
                             <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setExpandedCell(cellKey);
-                              }}
-                              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-[10px] sm:text-xs font-bold transition-all active:scale-90"
+                              onClick={handleAdd}
+                              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
                             >
-                              {quantityInCart}
+                              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </button>
-                          )
-                        ) : (
-                          <button
-                            onClick={handleAdd}
-                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-90 active:bg-green-100"
-                          >
-                            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          </button>
-                        )
+                          )}
+                          {/* Stock indicator - show when low stock */}
+                          {variant && variant.stock_qty <= 3 && (
+                            <span className={cn(
+                              "text-[8px] mt-0.5 font-medium",
+                              variant.stock_qty === 1 ? "text-red-500" : "text-amber-600"
+                            )}>
+                              {variant.stock_qty === 1 ? 'Última!' : `${variant.stock_qty} rest.`}
+                            </span>
+                          )}
+                        </>
                       ) : (
                         <span className="text-[10px] text-muted-foreground">—</span>
                       )}
