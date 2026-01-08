@@ -48,6 +48,11 @@ export function StoreHeader({ onSearch, searchValue = '' }: StoreHeaderProps) {
                     key={cat.id}
                     to={`/?category=${cat.slug}`}
                     className="block py-2 hover:text-primary/80"
+                    onClick={() => {
+                      // Close the sheet after clicking
+                      const closeButton = document.querySelector('[data-sheet-close]') as HTMLButtonElement;
+                      closeButton?.click();
+                    }}
                   >
                     {cat.name}
                   </Link>
