@@ -154,6 +154,8 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
   const black = rgb(0, 0, 0);
   const gray = rgb(0.45, 0.45, 0.45);
   const lightGray = rgb(0.88, 0.88, 0.88);
+  const red = rgb(0.85, 0.1, 0.1);
+  const green = rgb(0.1, 0.6, 0.2);
   
   // Pre-fetch logo image
   let logoImage: any = null;
@@ -393,13 +395,13 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         color: black,
       });
       
-      // Size - LARGER prominent display (11pt)
+      // Size - LARGER prominent display (11pt) - RED COLOR
       page.drawText(`Tam: ${item.size}`, {
         x: textX,
         y: textY - 18,
         size: 11,
         font: fontBold,
-        color: gray,
+        color: red,
       });
       
       // Color - if available, show next to size (11pt)
@@ -425,15 +427,15 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         color: black,
       });
       
-      // Unit price column
+      // Unit price column - GREEN COLOR
       const unitPriceText = formatPrice(item.unitPriceCents);
-      const unitWidth = fontRegular.widthOfTextAtSize(unitPriceText, 9);
+      const unitWidth = fontBold.widthOfTextAtSize(unitPriceText, 10);
       page.drawText(unitPriceText, {
         x: PAGE_WIDTH - MARGIN - 85 + (40 - unitWidth) / 2,
         y: textY - 6,
-        size: 9,
-        font: fontRegular,
-        color: gray,
+        size: 10,
+        font: fontBold,
+        color: green,
       });
       
       // Line total column - right aligned
@@ -468,14 +470,14 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       const totalsLabelX = PAGE_WIDTH - MARGIN - 180;
       const totalsValueX = PAGE_WIDTH - MARGIN;
       
-      // Subtotal
+      // Subtotal - LARGER font for total items count
       const itemsCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
       page.drawText(`Subtotal (${itemsCount} ${itemsCount === 1 ? 'item' : 'itens'})`, {
         x: totalsLabelX,
         y,
-        size: 9,
-        font: fontRegular,
-        color: gray,
+        size: 12,
+        font: fontBold,
+        color: black,
       });
       const subtotalText = formatPrice(order.subtotalCents);
       const subtotalWidth = fontRegular.widthOfTextAtSize(subtotalText, 9);
