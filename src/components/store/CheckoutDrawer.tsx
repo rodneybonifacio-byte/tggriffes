@@ -102,15 +102,16 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const finalTotalCents = subtotalAfterDiscount + shippingCents;
 
   const handleWhatsappChange = (value: string) => {
-    const formatted = formatWhatsApp(value);
-    setCustomerWhatsapp(formatted);
+    // Permite apenas números e o caractere + para código de país
+    const cleaned = value.replace(/[^\d+]/g, '');
+    setCustomerWhatsapp(cleaned);
   };
 
   const handleCepChange = (cep: string) => {
     setDestCep(cep);
   };
 
-  const canProceedToShipping = customerName.trim().length >= 2 && customerWhatsapp.replace(/\D/g, '').length >= 10;
+  const canProceedToShipping = customerName.trim().length >= 2 && customerWhatsapp.replace(/\D/g, '').length >= 7;
   const canProceedToReview = selectedShipping !== null || skipShipping;
 
   const generateOrderSummaryText = (orderNumber?: number, pdfUrl?: string) => {
@@ -442,13 +443,13 @@ ${pdfUrl}`;
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="whatsapp">WhatsApp</Label>
+                <Label htmlFor="whatsapp">WhatsApp (com código do país)</Label>
                 <Input
                   id="whatsapp"
-                  placeholder="(11) 99999-9999"
+                  placeholder="+5511999999999"
                   value={customerWhatsapp}
                   onChange={(e) => handleWhatsappChange(e.target.value)}
-                  maxLength={15}
+                  maxLength={20}
                 />
               </div>
 
