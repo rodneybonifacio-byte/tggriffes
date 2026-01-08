@@ -58,6 +58,12 @@ const Index = () => {
     filteredProducts = [...filteredProducts].sort((a, b) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
+  } else if (sortBy === 'color') {
+    filteredProducts = [...filteredProducts].sort((a, b) => {
+      const colorA = a.product_variants?.[0]?.color?.toLowerCase() || 'zzz';
+      const colorB = b.product_variants?.[0]?.color?.toLowerCase() || 'zzz';
+      return colorA.localeCompare(colorB, 'pt-BR');
+    });
   }
 
   const handleSearch = (query: string) => {
@@ -243,6 +249,7 @@ const Index = () => {
                     <SelectItem value="newest">Mais recentes</SelectItem>
                     <SelectItem value="price-asc">Menor preço</SelectItem>
                     <SelectItem value="price-desc">Maior preço</SelectItem>
+                    <SelectItem value="color">Por cor</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
