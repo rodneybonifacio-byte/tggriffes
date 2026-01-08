@@ -415,11 +415,17 @@ export function ProductCard({ product }: ProductCardProps) {
                           )}
                           
                           {/* Stock indicator inline */}
+                          {remaining === 0 && (
+                            <span className="text-[9px] text-gray-400 font-medium whitespace-nowrap">Esgotado</span>
+                          )}
                           {remaining === 1 && (
                             <span className="text-[9px] text-red-500 font-semibold whitespace-nowrap">🔥 Última!</span>
                           )}
                           {remaining > 1 && remaining <= 3 && (
-                            <span className="text-[9px] text-amber-600 whitespace-nowrap">⚡{remaining}</span>
+                            <span className="text-[9px] text-amber-600 font-medium whitespace-nowrap">⚡ {remaining} disp.</span>
+                          )}
+                          {remaining > 3 && (
+                            <span className="text-[9px] text-green-600 font-medium whitespace-nowrap">✓ {remaining}</span>
                           )}
                         </div>
                       );
