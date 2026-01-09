@@ -46,6 +46,10 @@ const AdminDashboard = () => {
   // Vendas do dia (TODOS os pedidos criados hoje, independente do status)
   const todayRevenue = todayOrders.reduce((sum, o) => sum + o.total_cents, 0);
 
+  // Vendas acumuladas (todos os pedidos que não estão cancelados)
+  const activeOrders = orders.filter(o => o.status !== 'CANCELADO');
+  const accumulatedRevenue = activeOrders.reduce((sum, o) => sum + o.total_cents, 0);
+
   // Vendas fechadas (total FINALIZADO)
   const closedOrders = orders.filter(o => o.status === 'FINALIZADO');
   const closedRevenue = closedOrders.reduce((sum, o) => sum + o.total_cents, 0);
@@ -100,6 +104,21 @@ const AdminDashboard = () => {
               <div className="text-2xl font-bold text-green-600">{formatPrice(todayRevenue)}</div>
               <p className="text-xs text-muted-foreground">
                 {todayOrders.length} pedidos hoje
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-blue-600">
+                Vendas Acumuladas
+              </CardTitle>
+              <TrendingUp className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">{formatPrice(accumulatedRevenue)}</div>
+              <p className="text-xs text-muted-foreground">
+                {activeOrders.length} pedidos ativos
               </p>
             </CardContent>
           </Card>
