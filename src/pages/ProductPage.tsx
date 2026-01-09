@@ -354,10 +354,9 @@ const ProductPage = () => {
               <Badge variant="secondary">{product.categories.name}</Badge>
             )}
 
-            {/* Name & Price */}
+            {/* Name */}
             <div>
               <h1 className="font-display text-2xl md:text-3xl font-bold">{product.name}</h1>
-              <p className="text-2xl font-semibold mt-2">{formatPrice(product.price_cents)}</p>
             </div>
 
             {/* Description */}
