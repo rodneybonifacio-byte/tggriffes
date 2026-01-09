@@ -118,12 +118,13 @@ export function CartDrawer() {
                           <Plus className="h-3 w-3" />
                         </Button>
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 ml-auto text-destructive hover:text-destructive"
+                          variant="destructive"
+                          size="sm"
+                          className="h-8 ml-auto gap-1"
                           onClick={() => removeItem(item.id)}
                         >
                           <Trash2 className="h-4 w-4" />
+                          <span className="text-xs">Remover</span>
                         </Button>
                       </div>
                     </div>
