@@ -4,7 +4,6 @@ import { StoreHeader } from '@/components/store/StoreHeader';
 import { ProductCard } from '@/components/store/ProductCard';
 import { ProductFilters } from '@/components/store/ProductFilters';
 import { WhatsAppButton } from '@/components/store/WhatsAppButton';
-import { PromoBanner } from '@/components/store/PromoBanner';
 import { useProducts, useCategories } from '@/hooks/useProducts';
 import { Loader2, LayoutGrid, Square, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -131,46 +130,6 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <StoreHeader onSearch={handleSearch} searchValue={search} />
       
-      {/* Top Promo Banner - IMPACTANTE - sem espaço */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-rose-600 via-pink-600 to-orange-500 -mt-px">
-        {/* Animated background shimmer */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
-        
-        {/* Floating particles */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/2 left-[10%] w-2 h-2 bg-yellow-300 rounded-full animate-bounce opacity-80" style={{ animationDelay: '0s' }} />
-          <div className="absolute top-1/2 left-[25%] w-1.5 h-1.5 bg-white rounded-full animate-bounce opacity-60" style={{ animationDelay: '0.3s' }} />
-          <div className="absolute top-1/2 right-[25%] w-1.5 h-1.5 bg-white rounded-full animate-bounce opacity-60" style={{ animationDelay: '0.5s' }} />
-          <div className="absolute top-1/2 right-[10%] w-2 h-2 bg-yellow-300 rounded-full animate-bounce opacity-80" style={{ animationDelay: '0.7s' }} />
-        </div>
-        
-        <div className="relative py-3 md:py-4 px-4">
-          <div className="flex items-center justify-center gap-2 md:gap-4">
-            {/* Fire emoji with pulse */}
-            <span className="text-2xl md:text-3xl animate-pulse">🔥</span>
-            
-            {/* Main text */}
-            <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
-              <span className="text-white font-black text-sm md:text-lg tracking-wide uppercase">
-                Promoção Imperdível
-              </span>
-              
-              {/* Price badge */}
-              <div className="relative">
-                <div className="absolute inset-0 bg-yellow-400 rounded-lg blur-sm animate-pulse" />
-                <div className="relative bg-gradient-to-br from-yellow-300 to-yellow-500 text-gray-900 font-black text-lg md:text-2xl px-4 py-1 rounded-lg shadow-lg transform hover:scale-105 transition-transform">
-                  QUALQUER PEÇA R$ 38
-                </div>
-              </div>
-            </div>
-            
-            {/* Fire emoji with pulse */}
-            <span className="text-2xl md:text-3xl animate-pulse">🔥</span>
-          </div>
-        </div>
-      </div>
-      
-      <PromoBanner />
 
       <main className="container py-4 md:py-6">
         {/* Active filters indicator with clear button */}
