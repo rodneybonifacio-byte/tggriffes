@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Search, Menu, X } from 'lucide-react';
+import { Search, Menu, X, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,6 +40,10 @@ export function StoreHeader({ onSearch, searchValue = '' }: StoreHeaderProps) {
             <nav className="flex flex-col gap-4 mt-8">
               <Link to="/" className="text-lg font-medium hover:text-primary/80">
                 Início
+              </Link>
+              <Link to="/admin" className="text-lg font-medium hover:text-primary/80 flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Painel Admin
               </Link>
               <div className="border-t pt-4">
                 <p className="text-sm font-semibold text-muted-foreground mb-2">Categorias</p>
