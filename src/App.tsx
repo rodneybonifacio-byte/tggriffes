@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -24,47 +23,45 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const PWAWrapper = ({ children }: { children: React.ReactNode }) => {
+const App = () => {
   usePWA();
-  return <>{children}</>;
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <CartProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                {/* Public Store */}
+                <Route path="/" element={<Index />} />
+                <Route path="/produto/:slug" element={<ProductPage />} />
+                <Route path="/instalar" element={<Install />} />
+                <Route path="/pedidos/pdf/:orderNumber" element={<PedidoPDF />} />
+
+                {/* Admin */}
+                <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/produtos" element={<AdminProducts />} />
+                <Route path="/admin/produtos/novo" element={<AdminProductForm />} />
+                <Route path="/admin/produtos/:id" element={<AdminProductForm />} />
+                <Route path="/admin/estoque" element={<AdminStock />} />
+                <Route path="/admin/promocoes" element={<AdminPromotions />} />
+                <Route path="/admin/pedidos" element={<AdminOrders />} />
+                <Route path="/admin/clientes" element={<AdminCustomers />} />
+                <Route path="/admin/configuracoes" element={<AdminSettings />} />
+
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </CartProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
 };
 
-const App = () => (
-  <PWAWrapper>
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <CartProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              {/* Public Store */}
-              <Route path="/" element={<Index />} />
-              <Route path="/produto/:slug" element={<ProductPage />} />
-              <Route path="/instalar" element={<Install />} />
-              <Route path="/pedidos/pdf/:orderNumber" element={<PedidoPDF />} />
-              
-              {/* Admin */}
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/produtos" element={<AdminProducts />} />
-              <Route path="/admin/produtos/novo" element={<AdminProductForm />} />
-              <Route path="/admin/produtos/:id" element={<AdminProductForm />} />
-              <Route path="/admin/estoque" element={<AdminStock />} />
-              <Route path="/admin/promocoes" element={<AdminPromotions />} />
-              <Route path="/admin/pedidos" element={<AdminOrders />} />
-              <Route path="/admin/clientes" element={<AdminCustomers />} />
-              <Route path="/admin/configuracoes" element={<AdminSettings />} />
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </CartProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-  </PWAWrapper>
-);
-
 export default App;
+
