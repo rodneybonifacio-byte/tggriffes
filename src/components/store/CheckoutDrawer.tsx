@@ -118,7 +118,7 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const generateOrderSummaryText = (orderNumber?: number, pdfUrl?: string) => {
     const itemsList = items.map(item => {
       const colorText = item.color ? ` • ${getColorDisplayName(item.color)}` : '';
-      return `📌 ${item.quantity}x ${item.productName}\n   Tam: ${item.size}${colorText}\n💲 ${formatPrice(item.unitPriceCents * item.quantity)}`;
+      return `📌 ${item.quantity}x ${item.productName}\n   Tam: ${item.size}${colorText}`;
     }).join('\n\n');
 
     const orderLabel = orderNumber ? `#${orderNumber}` : '';
@@ -144,13 +144,9 @@ ${itemsList}
 
 ┈┈┈┈┈┈┈┈┈┈┈
 
-💰 RESUMO FINANCEIRO
+📦 ENVIO
 
-Subtotal: ${formatPrice(subtotalCents)}
-${discountCents > 0 ? `\n🏷️ Desconto (${promoDescription}): -${formatPrice(discountCents)}\n` : ''}
-Frete: ${skipShipping ? 'A combinar' : formatPrice(shippingCents)}
-
-🏷️ TOTAL: ${skipShipping ? formatPrice(subtotalAfterDiscount) + ' + Frete' : formatPrice(finalTotalCents)}`;
+Frete: ${skipShipping ? 'A combinar' : (selectedShipping?.service || 'A combinar')}`;
 
     if (observations.trim()) {
       message += `
@@ -484,34 +480,9 @@ ${pdfUrl}`;
                       <p className="text-xs text-muted-foreground">
                         Tam: {item.size} {item.color && `• ${getColorDisplayName(item.color)}`} • Qtd: {item.quantity}
                       </p>
-                      <p className="text-sm font-semibold mt-1">
-                        {formatPrice(item.unitPriceCents * item.quantity)}
-                      </p>
                     </div>
                   </div>
                 ))}
-              </div>
-
-              <div className="space-y-2 pt-4">
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal:</span>
-                  <span>{formatPrice(subtotalCents)}</span>
-                </div>
-                
-                {discountCents > 0 && (
-                  <div className="flex items-center justify-between text-sm text-green-600">
-                    <span className="flex items-center gap-1">
-                      <Tag className="h-3 w-3" />
-                      {promoDescription}
-                    </span>
-                    <span>-{formatPrice(discountCents)}</span>
-                  </div>
-                )}
-                
-                <div className="flex justify-between text-lg font-semibold">
-                  <span>Total:</span>
-                  <span>{formatPrice(subtotalAfterDiscount)}</span>
-                </div>
               </div>
             </div>
           )}
@@ -582,16 +553,8 @@ ${pdfUrl}`;
                   <div className="pt-4 space-y-2">
                     <Separator />
                     <div className="flex justify-between text-sm pt-2">
-                      <span>Subtotal:</span>
-                      <span>{formatPrice(subtotalCents)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
                       <span>Frete:</span>
                       <span className="text-muted-foreground">A combinar</span>
-                    </div>
-                    <div className="flex justify-between text-lg font-semibold pt-2">
-                      <span>Total:</span>
-                      <span>{formatPrice(subtotalCents)} + Frete</span>
                     </div>
                     
                     <div className="pt-4 space-y-2">
@@ -635,16 +598,8 @@ ${pdfUrl}`;
                     <div className="pt-4 space-y-2">
                       <Separator />
                       <div className="flex justify-between text-sm pt-2">
-                        <span>Subtotal:</span>
-                        <span>{formatPrice(subtotalCents)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
                         <span>Frete ({selectedShipping.service}):</span>
-                        <span>{formatPrice(shippingCents)}</span>
-                      </div>
-                      <div className="flex justify-between text-lg font-semibold pt-2">
-                        <span>Total:</span>
-                        <span>{formatPrice(finalTotalCents)}</span>
+                        <span>Calculado</span>
                       </div>
                       
                       <div className="pt-4 space-y-2">
@@ -704,7 +659,6 @@ ${pdfUrl}`;
                     <span className="text-muted-foreground">
                       {item.quantity}x {item.productName} ({item.size}{item.color ? ` - ${getColorDisplayName(item.color)}` : ''})
                     </span>
-                    <span>{formatPrice(item.unitPriceCents * item.quantity)}</span>
                   </div>
                 ))}
               </div>
@@ -713,27 +667,8 @@ ${pdfUrl}`;
 
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Subtotal:</span>
-                  <span>{formatPrice(subtotalCents)}</span>
-                </div>
-                
-                {discountCents > 0 && (
-                  <div className="flex items-center justify-between text-sm text-green-600">
-                    <span className="flex items-center gap-1">
-                      <Tag className="h-3 w-3" />
-                      {promoDescription}
-                    </span>
-                    <span>-{formatPrice(discountCents)}</span>
-                  </div>
-                )}
-                
-                <div className="flex justify-between text-sm">
                   <span>Frete:</span>
-                  <span>{skipShipping ? 'A combinar' : formatPrice(shippingCents)}</span>
-                </div>
-                <div className="flex justify-between text-xl font-bold pt-2">
-                  <span>Total:</span>
-                  <span>{skipShipping ? `${formatPrice(subtotalAfterDiscount)} + Frete` : formatPrice(finalTotalCents)}</span>
+                  <span>{skipShipping ? 'A combinar' : (selectedShipping?.service || 'A combinar')}</span>
                 </div>
               </div>
 

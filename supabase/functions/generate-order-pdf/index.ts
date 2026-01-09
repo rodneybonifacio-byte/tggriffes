@@ -328,10 +328,8 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       // Column headers
       page.drawText("ITENS DO PEDIDO", { x: MARGIN, y, size: 8, font: fontBold, color: gray });
       
-      // Right side column headers - increased spacing
-      page.drawText("QTD", { x: PAGE_WIDTH - MARGIN - 160, y, size: 7, font: fontBold, color: gray });
-      page.drawText("UNIT.", { x: PAGE_WIDTH - MARGIN - 110, y, size: 7, font: fontBold, color: gray });
-      page.drawText("TOTAL", { x: PAGE_WIDTH - MARGIN - 50, y, size: 7, font: fontBold, color: gray });
+      // Right side column header - only quantity
+      page.drawText("QTD", { x: PAGE_WIDTH - MARGIN - 50, y, size: 7, font: fontBold, color: gray });
       y -= 12;
     }
     
@@ -416,35 +414,13 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         });
       }
       
-      // Quantity column - LARGER (12pt) - adjusted position
+      // Quantity column - LARGER (12pt) - right aligned
       const qtyText = `${item.quantity}`;
       const qtyWidth = fontBold.widthOfTextAtSize(qtyText, 12);
       page.drawText(qtyText, {
-        x: PAGE_WIDTH - MARGIN - 160 + (20 - qtyWidth) / 2,
+        x: PAGE_WIDTH - MARGIN - qtyWidth - 10,
         y: textY - 6,
         size: 12,
-        font: fontBold,
-        color: black,
-      });
-      
-      // Unit price column - GREEN COLOR - adjusted position
-      const unitPriceText = formatPrice(item.unitPriceCents);
-      const unitWidth = fontBold.widthOfTextAtSize(unitPriceText, 10);
-      page.drawText(unitPriceText, {
-        x: PAGE_WIDTH - MARGIN - 115,
-        y: textY - 6,
-        size: 10,
-        font: fontBold,
-        color: green,
-      });
-      
-      // Line total column - right aligned
-      const lineTotalText = formatPrice(item.unitPriceCents * item.quantity);
-      const lineTotalWidth = fontBold.widthOfTextAtSize(lineTotalText, 10);
-      page.drawText(lineTotalText, {
-        x: PAGE_WIDTH - MARGIN - lineTotalWidth,
-        y: textY - 6,
-        size: 10,
         font: fontBold,
         color: black,
       });
@@ -575,7 +551,7 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       
       y = summaryBoxY - 15;
       
-      // Divider before totals
+      // ========== SHIPPING SECTION ==========
       page.drawLine({
         start: { x: MARGIN, y },
         end: { x: PAGE_WIDTH - MARGIN, y },
@@ -586,28 +562,6 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       y -= 18;
       
       const totalsLabelX = PAGE_WIDTH - MARGIN - 180;
-      const totalsValueX = PAGE_WIDTH - MARGIN;
-      
-      // Subtotal - LARGER font for total items count
-      const itemsCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
-      page.drawText(`Subtotal (${itemsCount} ${itemsCount === 1 ? 'item' : 'itens'})`, {
-        x: totalsLabelX,
-        y,
-        size: 12,
-        font: fontBold,
-        color: black,
-      });
-      const subtotalText = formatPrice(order.subtotalCents);
-      const subtotalWidth = fontRegular.widthOfTextAtSize(subtotalText, 9);
-      page.drawText(subtotalText, {
-        x: totalsValueX - subtotalWidth,
-        y,
-        size: 9,
-        font: fontRegular,
-        color: black,
-      });
-      
-      y -= 14;
       
       // Shipping
       const shippingLabel = order.skipShipping ? 'Frete' : `Frete (${order.shippingService})`;
@@ -618,47 +572,13 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         font: fontRegular,
         color: gray,
       });
-      const shippingText = order.skipShipping ? 'A combinar' : formatPrice(order.shippingPriceCents);
+      const shippingText = order.skipShipping ? 'A combinar' : order.shippingService;
       const shippingWidth = fontRegular.widthOfTextAtSize(shippingText, 9);
       page.drawText(shippingText, {
-        x: totalsValueX - shippingWidth,
+        x: PAGE_WIDTH - MARGIN - shippingWidth,
         y,
         size: 9,
         font: fontRegular,
-        color: black,
-      });
-      
-      y -= 28;
-      
-      // Total highlight box - positioned lower to avoid overlap
-      const totalBoxHeight = 28;
-      page.drawRectangle({
-        x: totalsLabelX - 10,
-        y: y - 8,
-        width: PAGE_WIDTH - MARGIN - totalsLabelX + 10,
-        height: totalBoxHeight,
-        color: rgb(0.95, 0.95, 0.95),
-        borderColor: rgb(0.85, 0.85, 0.85),
-        borderWidth: 1,
-      });
-      
-      // TOTAL - larger and centered in box
-      page.drawText("TOTAL", {
-        x: totalsLabelX,
-        y: y + 4,
-        size: 14,
-        font: fontBold,
-        color: black,
-      });
-      const totalPriceText = order.skipShipping 
-        ? `${formatPrice(order.subtotalCents)} + Frete` 
-        : formatPrice(order.totalCents);
-      const totalPriceWidth = fontBold.widthOfTextAtSize(totalPriceText, 14);
-      page.drawText(totalPriceText, {
-        x: totalsValueX - totalPriceWidth,
-        y: y + 4,
-        size: 14,
-        font: fontBold,
         color: black,
       });
       

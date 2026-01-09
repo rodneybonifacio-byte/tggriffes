@@ -297,9 +297,6 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </h3>
         </button>
-        <p className="text-xs sm:text-sm font-semibold">
-          {formatPrice(product.price_cents)}
-        </p>
 
         {!isOutOfStock && sizes.length > 0 && (
           <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
