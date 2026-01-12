@@ -14,6 +14,7 @@ interface OrderItem {
   quantity: number;
   unitPriceCents: number;
   imageUrl?: string;
+  category?: string;
 }
 
 interface OrderData {
@@ -193,25 +194,62 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
     }
   }
   
+  // Group items by category
+  const itemsByCategory = new Map<string, OrderItem[]>();
+  for (const item of order.items) {
+    const category = item.category || 'Outros';
+    if (!itemsByCategory.has(category)) {
+      itemsByCategory.set(category, []);
+    }
+    itemsByCategory.get(category)!.push(item);
+  }
+  
+  // Sort categories alphabetically, but keep "Outros" at the end
+  const sortedCategories = Array.from(itemsByCategory.keys()).sort((a, b) => {
+    if (a === 'Outros') return 1;
+    if (b === 'Outros') return -1;
+    return a.localeCompare(b, 'pt-BR');
+  });
+  
+  // Flatten items with category headers for page calculation
+  const itemsWithHeaders: { type: 'category' | 'item'; category?: string; item?: OrderItem }[] = [];
+  for (const category of sortedCategories) {
+    itemsWithHeaders.push({ type: 'category', category });
+    for (const item of itemsByCategory.get(category)!) {
+      itemsWithHeaders.push({ type: 'item', item, category });
+    }
+  }
+  
   // Calculate how many items fit per page - optimized for compact layout
   const headerHeight = 130; // Reduced header + customer info
   const totalsHeight = 100; // Reduced totals section
   const itemsHeaderHeight = 20; // "ITENS DO PEDIDO" label
+  const categoryHeaderHeight = 28; // Height for category headers
   const availableHeightFirstPage = PAGE_HEIGHT - MARGIN - headerHeight - totalsHeight - FOOTER_HEIGHT;
   const availableHeightOtherPages = PAGE_HEIGHT - MARGIN * 2 - itemsHeaderHeight - FOOTER_HEIGHT;
   
-  // With ITEM_HEIGHT = 38, we can fit ~20 items per page
+  // With ITEM_HEIGHT = 68, calculate items per page
   const itemsPerFirstPage = Math.floor(availableHeightFirstPage / ITEM_HEIGHT);
   const itemsPerOtherPage = Math.floor(availableHeightOtherPages / ITEM_HEIGHT);
   
-  // Determine total pages needed
+  // Determine total pages needed (accounting for category headers)
   let totalPages = 1;
-  if (order.items.length > itemsPerFirstPage) {
-    const remainingItems = order.items.length - itemsPerFirstPage;
-    totalPages = 1 + Math.ceil(remainingItems / itemsPerOtherPage);
-  }
+  let tempHeight = availableHeightFirstPage;
+  let currentPage = 1;
   
-  let currentItemIndex = 0;
+  for (const entry of itemsWithHeaders) {
+    const entryHeight = entry.type === 'category' ? categoryHeaderHeight : ITEM_HEIGHT;
+    if (tempHeight < entryHeight) {
+      currentPage++;
+      tempHeight = availableHeightOtherPages;
+    }
+    tempHeight -= entryHeight;
+  }
+  totalPages = currentPage;
+  
+  let currentEntryIndex = 0;
+  let itemRowIndex = 0; // For alternating colors
+  let lastCategory = '';
   
   for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
     const page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
@@ -333,100 +371,160 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       y -= 12;
     }
     
-    const itemsThisPage = isFirstPage ? itemsPerFirstPage : itemsPerOtherPage;
-    const endIndex = Math.min(currentItemIndex + itemsThisPage, order.items.length);
+    // Render items with category headers
+    const availableHeight = isFirstPage ? availableHeightFirstPage : availableHeightOtherPages;
+    let usedHeight = 0;
     
-    for (let i = currentItemIndex; i < endIndex; i++) {
-      const item = order.items[i];
-      const rowStartY = y;
+    while (currentEntryIndex < itemsWithHeaders.length) {
+      const entry = itemsWithHeaders[currentEntryIndex];
+      const entryHeight = entry.type === 'category' ? categoryHeaderHeight : ITEM_HEIGHT;
       
-      // Alternating row background for readability
-      if (i % 2 === 0) {
+      // Check if entry fits on current page
+      if (usedHeight + entryHeight > availableHeight) {
+        break;
+      }
+      
+      if (entry.type === 'category') {
+        // Draw category header
+        const categoryName = entry.category || 'Outros';
+        
+        // Draw category separator line
+        page.drawLine({
+          start: { x: MARGIN, y: y - 2 },
+          end: { x: PAGE_WIDTH - MARGIN, y: y - 2 },
+          thickness: 1,
+          color: rgb(0.2, 0.2, 0.2),
+        });
+        
+        // Draw category label with background
         page.drawRectangle({
           x: MARGIN,
-          y: rowStartY - ITEM_HEIGHT + 4,
+          y: y - categoryHeaderHeight + 2,
           width: CONTENT_WIDTH,
-          height: ITEM_HEIGHT - 2,
-          color: rgb(0.97, 0.97, 0.97),
+          height: categoryHeaderHeight - 4,
+          color: rgb(0.92, 0.92, 0.92),
         });
-      }
-      
-      // Product image - compact 32x32
-      const productImageUrl = resolveUrl(item.imageUrl, order.siteUrl);
-      const productImg = productImageUrl ? productImages.get(productImageUrl) : null;
-      
-      const imgY = rowStartY - IMG_SIZE - 2;
-      
-      if (productImg) {
-        page.drawImage(productImg, {
-          x: MARGIN + 3,
-          y: imgY,
-          width: IMG_SIZE,
-          height: IMG_SIZE,
+        
+        page.drawText(categoryName.toUpperCase(), {
+          x: MARGIN + 10,
+          y: y - 18,
+          size: 10,
+          font: fontBold,
+          color: rgb(0.25, 0.25, 0.25),
         });
-      } else {
-        // Draw placeholder
-        page.drawRectangle({
-          x: MARGIN + 3,
-          y: imgY,
-          width: IMG_SIZE,
-          height: IMG_SIZE,
-          color: rgb(0.9, 0.9, 0.9),
-          borderColor: lightGray,
-          borderWidth: 0.5,
-        });
-      }
-      
-      const textX = MARGIN + IMG_SIZE + 14;
-      const textY = rowStartY - 18;
-      
-      // Product name - LARGER font (13pt)
-      const productText = item.productName.length > 26 
-        ? item.productName.substring(0, 24) + "..." 
-        : item.productName;
-      
-      page.drawText(productText, {
-        x: textX,
-        y: textY,
-        size: 13,
-        font: fontBold,
-        color: black,
-      });
-      
-      // Size - LARGER prominent display (11pt) - RED COLOR
-      page.drawText(`Tam: ${item.size}`, {
-        x: textX,
-        y: textY - 18,
-        size: 11,
-        font: fontBold,
-        color: red,
-      });
-      
-      // Color - if available, show next to size (11pt)
-      const colorText = item.color ? `Cor: ${item.color}` : '';
-      if (colorText) {
-        page.drawText(colorText, {
-          x: textX + 70,
-          y: textY - 18,
-          size: 11,
+        
+        // Count items in this category
+        const categoryItems = itemsByCategory.get(categoryName) || [];
+        const categoryTotal = categoryItems.reduce((sum, it) => sum + it.quantity, 0);
+        const countText = `${categoryTotal} peças`;
+        const countWidth = fontRegular.widthOfTextAtSize(countText, 9);
+        page.drawText(countText, {
+          x: PAGE_WIDTH - MARGIN - countWidth - 10,
+          y: y - 18,
+          size: 9,
           font: fontRegular,
           color: gray,
         });
+        
+        y -= categoryHeaderHeight;
+        usedHeight += categoryHeaderHeight;
+        lastCategory = categoryName;
+        itemRowIndex = 0; // Reset alternating for new category
+      } else if (entry.item) {
+        const item = entry.item;
+        const rowStartY = y;
+        
+        // Alternating row background for readability
+        if (itemRowIndex % 2 === 0) {
+          page.drawRectangle({
+            x: MARGIN,
+            y: rowStartY - ITEM_HEIGHT + 4,
+            width: CONTENT_WIDTH,
+            height: ITEM_HEIGHT - 2,
+            color: rgb(0.97, 0.97, 0.97),
+          });
+        }
+        
+        // Product image - compact 60x60
+        const productImageUrl = resolveUrl(item.imageUrl, order.siteUrl);
+        const productImg = productImageUrl ? productImages.get(productImageUrl) : null;
+        
+        const imgY = rowStartY - IMG_SIZE - 2;
+        
+        if (productImg) {
+          page.drawImage(productImg, {
+            x: MARGIN + 3,
+            y: imgY,
+            width: IMG_SIZE,
+            height: IMG_SIZE,
+          });
+        } else {
+          // Draw placeholder
+          page.drawRectangle({
+            x: MARGIN + 3,
+            y: imgY,
+            width: IMG_SIZE,
+            height: IMG_SIZE,
+            color: rgb(0.9, 0.9, 0.9),
+            borderColor: lightGray,
+            borderWidth: 0.5,
+          });
+        }
+        
+        const textX = MARGIN + IMG_SIZE + 14;
+        const textY = rowStartY - 18;
+        
+        // Product name - LARGER font (13pt)
+        const productText = item.productName.length > 26 
+          ? item.productName.substring(0, 24) + "..." 
+          : item.productName;
+        
+        page.drawText(productText, {
+          x: textX,
+          y: textY,
+          size: 13,
+          font: fontBold,
+          color: black,
+        });
+        
+        // Size - LARGER prominent display (11pt) - RED COLOR
+        page.drawText(`Tam: ${item.size}`, {
+          x: textX,
+          y: textY - 18,
+          size: 11,
+          font: fontBold,
+          color: red,
+        });
+        
+        // Color - if available, show next to size (11pt)
+        const colorText = item.color ? `Cor: ${item.color}` : '';
+        if (colorText) {
+          page.drawText(colorText, {
+            x: textX + 70,
+            y: textY - 18,
+            size: 11,
+            font: fontRegular,
+            color: gray,
+          });
+        }
+        
+        // Quantity column - LARGER (12pt) - right aligned
+        const qtyText = `${item.quantity}`;
+        const qtyWidth = fontBold.widthOfTextAtSize(qtyText, 12);
+        page.drawText(qtyText, {
+          x: PAGE_WIDTH - MARGIN - qtyWidth - 10,
+          y: textY - 6,
+          size: 12,
+          font: fontBold,
+          color: black,
+        });
+        
+        y -= ITEM_HEIGHT;
+        usedHeight += ITEM_HEIGHT;
+        itemRowIndex++;
       }
       
-      // Quantity column - LARGER (12pt) - right aligned
-      const qtyText = `${item.quantity}`;
-      const qtyWidth = fontBold.widthOfTextAtSize(qtyText, 12);
-      page.drawText(qtyText, {
-        x: PAGE_WIDTH - MARGIN - qtyWidth - 10,
-        y: textY - 6,
-        size: 12,
-        font: fontBold,
-        color: black,
-      });
-      
-      y = rowStartY - ITEM_HEIGHT;
-      currentItemIndex++;
+      currentEntryIndex++;
     }
     
     // ========== TOTALS SECTION (last page only) ==========
