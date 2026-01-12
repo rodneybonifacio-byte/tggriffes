@@ -570,8 +570,44 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       const sortedColors = Array.from(colorsSummary.entries())
         .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'));
       
-      // Simple clean box
-      const summaryBoxHeight = 55;
+      // Calculate how many lines we need for sizes and colors
+      const sizesText = sortedSizes.map(([size, count]) => `${size}: ${count}`).join('   ');
+      const colorsText = sortedColors.length > 0 
+        ? sortedColors.map(([color, count]) => `${color}: ${count}`).join('   ')
+        : '—';
+      
+      // Calculate column width for each section
+      const halfWidth = (CONTENT_WIDTH - 30) / 2;
+      const maxCharsPerLine = 32;
+      
+      // Split text into multiple lines if needed
+      const wrapText = (text: string, maxWidth: number, font: PDFFont, fontSize: number): string[] => {
+        const items = text.split('   ');
+        const lines: string[] = [];
+        let currentLine = '';
+        
+        for (const item of items) {
+          const testLine = currentLine ? `${currentLine}   ${item}` : item;
+          const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+          
+          if (testWidth > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = item;
+          } else {
+            currentLine = testLine;
+          }
+        }
+        if (currentLine) lines.push(currentLine);
+        return lines;
+      };
+      
+      const sizesLines = wrapText(sizesText, halfWidth - 10, fontBold, 9);
+      const colorsLines = wrapText(colorsText, halfWidth - 10, fontBold, 9);
+      const maxLines = Math.max(sizesLines.length, colorsLines.length);
+      const lineHeight = 14;
+      
+      // Dynamic box height
+      const summaryBoxHeight = 35 + (maxLines * lineHeight);
       const summaryBoxY = y - summaryBoxHeight;
       
       page.drawRectangle({
@@ -605,8 +641,7 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       });
       
       // Content row - two columns
-      const contentY = headerY - 22;
-      const colWidth = (CONTENT_WIDTH - 30) / 2;
+      const contentY = headerY - 20;
       
       // Sizes
       page.drawText("Tamanhos:", {
@@ -617,17 +652,18 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         color: gray,
       });
       
-      const sizesText = sortedSizes.map(([size, count]) => `${size}: ${count}`).join('   ');
-      page.drawText(sizesText.length > 35 ? sizesText.substring(0, 32) + '...' : sizesText, {
-        x: MARGIN + 10,
-        y: contentY - 12,
-        size: 9,
-        font: fontBold,
-        color: black,
+      sizesLines.forEach((line, i) => {
+        page.drawText(line, {
+          x: MARGIN + 10,
+          y: contentY - 12 - (i * lineHeight),
+          size: 9,
+          font: fontBold,
+          color: black,
+        });
       });
       
       // Colors
-      const colorsX = MARGIN + 10 + colWidth + 10;
+      const colorsX = MARGIN + 10 + halfWidth + 10;
       page.drawText("Cores:", {
         x: colorsX,
         y: contentY,
@@ -636,15 +672,14 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         color: gray,
       });
       
-      const colorsText = sortedColors.length > 0 
-        ? sortedColors.map(([color, count]) => `${color}: ${count}`).join('   ')
-        : '—';
-      page.drawText(colorsText.length > 35 ? colorsText.substring(0, 32) + '...' : colorsText, {
-        x: colorsX,
-        y: contentY - 12,
-        size: 9,
-        font: sortedColors.length > 0 ? fontBold : fontRegular,
-        color: sortedColors.length > 0 ? black : gray,
+      colorsLines.forEach((line, i) => {
+        page.drawText(line, {
+          x: colorsX,
+          y: contentY - 12 - (i * lineHeight),
+          size: 9,
+          font: sortedColors.length > 0 ? fontBold : fontRegular,
+          color: sortedColors.length > 0 ? black : gray,
+        });
       });
       
       y = summaryBoxY - 15;
