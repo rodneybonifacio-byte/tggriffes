@@ -303,6 +303,7 @@ ${pdfUrl}`;
           quantity: item.quantity,
           unitPriceCents: item.unitPriceCents,
           imageUrl: item.imageUrl,
+          category: item.category,
         })),
         subtotalCents,
         shippingService: skipShipping ? 'A combinar' : (selectedShipping?.service || ''),
