@@ -52,10 +52,11 @@ const AdminOrders = () => {
         return {
           productName: item.product_name,
           size: item.size,
-          color: null,
+          color: item.color || null,
           quantity: item.qty,
           unitPriceCents: item.unit_price_cents,
           imageUrl: product?.main_image_url || undefined,
+          category: product?.categories?.name || 'Outros',
         };
       }) || [];
 
