@@ -20,10 +20,85 @@ import { useApplicablePromotions, calculatePromotionDiscount } from '@/hooks/use
 import { formatPrice, getColorDisplayName } from '@/lib/utils';
 import { CurrencyInput } from './CurrencyInput';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Plus, Save, Tag } from 'lucide-react';
+import { Loader2, Plus, Minus, Save, Tag } from 'lucide-react';
 import { Tables } from '@/integrations/supabase/types';
 import { BulkEditPanel } from './BulkEditPanel';
+import { cn } from '@/lib/utils';
 
+const COLOR_MAP: Record<string, string> = {
+  preto: '#000000',
+  branco: '#FFFFFF',
+  azul: '#2563eb',
+  vermelho: '#dc2626',
+  verde: '#16a34a',
+  amarelo: '#eab308',
+  rosa: '#ec4899',
+  roxo: '#9333ea',
+  laranja: '#f97316',
+  marrom: '#78350f',
+  cinza: '#6b7280',
+  bege: '#d4a574',
+  vinho: '#722f37',
+  bordo: '#800020',
+  burgundy: '#800020',
+  navy: '#000080',
+  marinho: '#000080',
+  creme: '#fffdd0',
+  off: '#f5f5dc',
+  offwhite: '#f5f5dc',
+  'off-white': '#f5f5dc',
+  'off white': '#f5f5dc',
+  caramelo: '#a0522d',
+  mostarda: '#e4a010',
+  oliva: '#808000',
+  coral: '#ff7f50',
+  salmao: '#fa8072',
+  salmon: '#fa8072',
+  turquesa: '#40e0d0',
+  aqua: '#00ffff',
+  lilas: '#c8a2c8',
+  lavanda: '#e6e6fa',
+  grafite: '#474747',
+  chumbo: '#4a4a4a',
+  nude: '#e3bc9a',
+  terracota: '#e2725b',
+  pessego: '#ffcba4',
+  menta: '#98ff98',
+  oceano: '#1e90ff',
+  jeans: '#4169e1',
+  cafe: '#6f4e37',
+  chocolate: '#7b3f00',
+  ouro: '#ffd700',
+  prata: '#c0c0c0',
+  bronze: '#cd7f32',
+  cobre: '#b87333',
+};
+
+const isLightColor = (hex: string): boolean => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.7;
+};
+
+const findColorHex = (colorName: string): string => {
+  const normalized = colorName
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '');
+  
+  if (COLOR_MAP[normalized]) return COLOR_MAP[normalized];
+  
+  for (const [key, value] of Object.entries(COLOR_MAP)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return value;
+    }
+  }
+  
+  return '#888888';
+};
 interface OrderEditModalProps {
   order: OrderIntent | null;
   open: boolean;
@@ -400,17 +475,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
 
           {/* Items with Bulk Edit */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <Label className="text-base font-semibold">Itens do Pedido</Label>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setShowAddItem(true)}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Adicionar Item
-              </Button>
-            </div>
+            <Label className="text-base font-semibold mb-3 block">Itens do Pedido</Label>
 
             <BulkEditPanel
               items={editedItems}
@@ -421,9 +486,38 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
               products={products.map(p => ({ id: p.id, main_image_url: p.main_image_url }))}
             />
 
+            {/* Add New Item Button - Below existing items */}
+            {!showAddItem && (
+              <Button 
+                variant="outline" 
+                className="w-full mt-3 border-dashed"
+                onClick={() => setShowAddItem(true)}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Adicionar Item
+              </Button>
+            )}
+
             {/* Add New Item Form */}
             {showAddItem && (
-              <div className="mt-3 p-3 border rounded-lg bg-secondary/30 space-y-3">
+              <div className="mt-3 p-4 border rounded-lg bg-secondary/30 space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">Adicionar Novo Item</Label>
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => {
+                      setShowAddItem(false);
+                      setNewProductId('');
+                      setNewColor('');
+                      setNewSize('');
+                      setNewQty(1);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+                
                 <div>
                   <Label className="text-xs">Produto</Label>
                   <Select value={newProductId} onValueChange={setNewProductId}>
@@ -445,7 +539,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
                                 <div className="w-full h-full bg-muted" />
                               )}
                             </div>
-                            <span className="truncate">{product.name} - {formatPrice(product.price_cents)}</span>
+                            <span className="truncate">{product.name}</span>
                           </div>
                         </SelectItem>
                       ))}
@@ -453,98 +547,267 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
                   </Select>
                 </div>
 
+                {/* Selected Product Display with Large Image and Catalog-style Grid */}
                 {selectedProduct && (
-                  <div className="flex items-center gap-3 p-2 bg-background rounded border">
-                    <div className="w-16 h-16 rounded overflow-hidden bg-muted flex-shrink-0">
-                      {selectedProduct.main_image_url ? (
-                        <img 
-                          src={selectedProduct.main_image_url} 
-                          alt={selectedProduct.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
-                          Sem foto
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{selectedProduct.name}</p>
-                      <p className="text-sm text-muted-foreground">{formatPrice(selectedProduct.price_cents)}</p>
-                    </div>
-                  </div>
-                )}
-
-                {availableColors.length > 0 && (
-                  <div>
-                    <Label className="text-xs">Cor</Label>
-                    <Select value={newColor} onValueChange={setNewColor}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a cor" />
-                      </SelectTrigger>
-                      <SelectContent position="popper" className="z-[9999]">
-                        {availableColors.map((color) => (
-                          <SelectItem key={color} value={color}>{color}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs">Tamanho</Label>
-                    <Select 
-                      value={newSize} 
-                      onValueChange={setNewSize}
-                      disabled={availableColors.length > 0 && !newColor}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={availableColors.length > 0 && !newColor ? "Selecione cor primeiro" : "Tam"} />
-                      </SelectTrigger>
-                      <SelectContent position="popper" className="z-[9999]">
-                        {availableSizes.length > 0 ? (
-                          availableSizes.map((size) => (
-                            <SelectItem key={size} value={size}>{size}</SelectItem>
-                          ))
+                  <div className="space-y-4">
+                    {/* Large product image and info */}
+                    <div className="flex items-start gap-4 p-3 bg-background rounded-lg border">
+                      <div className="w-28 h-28 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                        {selectedProduct.main_image_url ? (
+                          <img 
+                            src={selectedProduct.main_image_url} 
+                            alt={selectedProduct.name}
+                            className="w-full h-full object-cover"
+                          />
                         ) : (
-                          <SelectItem value="__no-sizes" disabled>
-                            Sem tamanhos cadastrados
-                          </SelectItem>
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                            Sem foto
+                          </div>
                         )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-xs">Quantidade</Label>
-                    <Input 
-                      type="number"
-                      min={1}
-                      value={newQty}
-                      onChange={(e) => setNewQty(parseInt(e.target.value) || 1)}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  {selectedProduct && (
-                    <div className="text-sm font-medium">
-                      Total: {formatPrice(newQty * selectedProduct.price_cents)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">{selectedProduct.name}</p>
+                        {selectedProduct.categories && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{selectedProduct.categories.name}</p>
+                        )}
+                      </div>
                     </div>
-                  )}
-                  <div className="flex gap-2 ml-auto">
+
+                    {/* Catalog-style variant grid */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Selecione as variantes:</Label>
+                      {(() => {
+                        const variants = selectedProduct.product_variants || [];
+                        const colors = availableColors;
+                        const sizes = availableSizes;
+
+                        // Build items array sorted by color first, then by size
+                        const items = colors.length > 0
+                          ? colors.flatMap((color) =>
+                              sizes.map((size) => {
+                                const variant = variants.find(v => v.size === size && v.color === color);
+                                if (!variant) return null;
+                                return { color, size, variant };
+                              }).filter(Boolean)
+                            )
+                          : sizes.map((size) => {
+                              const variant = variants.find((v) => v.size === size);
+                              if (!variant) return null;
+                              return { color: null as string | null, size, variant };
+                            }).filter(Boolean);
+
+                        // Get current quantities being added
+                        const getAddQtyForVariant = (variantId: string) => {
+                          // Find if there's already a pending new item with this variant
+                          const existingNewItem = editedItems.find(
+                            item => item.id.startsWith('new-') && item.variant_id === variantId
+                          );
+                          return existingNewItem?.qty || 0;
+                        };
+
+                        const handleAddVariant = (color: string | null, size: string, variant: { id: string; stock_qty: number }) => {
+                          const existingIndex = editedItems.findIndex(item => 
+                            item.product_id === selectedProduct.id && 
+                            item.size === size && 
+                            item.color === color
+                          );
+
+                          if (existingIndex >= 0) {
+                            const existingItem = editedItems[existingIndex];
+                            const currentQty = existingItem.qty;
+                            const stockQty = variant.stock_qty;
+                            
+                            if (currentQty >= stockQty) {
+                              toast({ title: 'Limite de estoque atingido', variant: 'destructive' });
+                              return;
+                            }
+
+                            setEditedItems(items => 
+                              items.map((item, index) => {
+                                if (index === existingIndex) {
+                                  const newTotalQty = item.qty + 1;
+                                  return {
+                                    ...item,
+                                    qty: newTotalQty,
+                                    line_total_cents: newTotalQty * item.unit_price_cents,
+                                  };
+                                }
+                                return item;
+                              })
+                            );
+                          } else {
+                            const newItem: OrderItem = {
+                              id: `new-${Date.now()}-${Math.random()}`,
+                              order_intent_id: order!.id,
+                              product_id: selectedProduct.id,
+                              product_name: selectedProduct.name,
+                              variant_id: variant.id,
+                              size: size,
+                              color: color,
+                              qty: 1,
+                              unit_price_cents: selectedProduct.price_cents,
+                              line_total_cents: selectedProduct.price_cents,
+                              created_at: new Date().toISOString(),
+                            };
+                            setEditedItems([...editedItems, newItem]);
+                          }
+                          toast({ title: 'Item adicionado!' });
+                        };
+
+                        const handleRemoveVariant = (color: string | null, size: string) => {
+                          const existingIndex = editedItems.findIndex(item => 
+                            item.product_id === selectedProduct.id && 
+                            item.size === size && 
+                            item.color === color
+                          );
+
+                          if (existingIndex >= 0) {
+                            const existingItem = editedItems[existingIndex];
+                            if (existingItem.qty <= 1) {
+                              setEditedItems(items => items.filter((_, i) => i !== existingIndex));
+                            } else {
+                              setEditedItems(items => 
+                                items.map((item, index) => {
+                                  if (index === existingIndex) {
+                                    const newTotalQty = item.qty - 1;
+                                    return {
+                                      ...item,
+                                      qty: newTotalQty,
+                                      line_total_cents: newTotalQty * item.unit_price_cents,
+                                    };
+                                  }
+                                  return item;
+                                })
+                              );
+                            }
+                          }
+                        };
+
+                        return items.map((item) => {
+                          if (!item) return null;
+                          const { color, size, variant } = item;
+
+                          // Get quantity in editedItems for this variant
+                          const quantityInOrder = (() => {
+                            const found = editedItems.find(i => 
+                              i.product_id === selectedProduct.id && 
+                              i.size === size && 
+                              i.color === color
+                            );
+                            return found?.qty || 0;
+                          })();
+
+                          const remaining = Math.max(0, variant.stock_qty - quantityInOrder);
+                          const colorHex = color ? findColorHex(color) : null;
+                          const needsBorder = colorHex ? isLightColor(colorHex) : false;
+
+                          const isLastOne = remaining === 1;
+                          const isLowStock = remaining > 1 && remaining <= 3;
+                          const isMaxed = remaining === 0 && quantityInOrder > 0;
+                          const isSoldOut = variant.stock_qty === 0 && quantityInOrder === 0;
+
+                          const rowTone = (() => {
+                            if (quantityInOrder > 0) return "border-success/40 bg-success/10";
+                            if (isLastOne) return "border-destructive/40 bg-destructive/10";
+                            if (isLowStock) return "border-warning/40 bg-warning/10";
+                            if (isSoldOut) return "border-border/40 bg-muted/60 opacity-70";
+                            return "border-border/60 bg-background";
+                          })();
+
+                          const stockLabel = (() => {
+                            if (remaining === 0) return isMaxed ? "Máx!" : "0";
+                            if (remaining === 1) return "🔥 1";
+                            if (remaining <= 3) return `⚡ ${remaining}`;
+                            return `${remaining}`;
+                          })();
+
+                          const stockColor = (() => {
+                            if (remaining === 0) return isMaxed ? "text-amber-600 font-bold" : "text-muted-foreground";
+                            if (remaining === 1) return "text-red-600 font-bold";
+                            if (remaining <= 3) return "text-amber-600 font-semibold";
+                            return "text-emerald-600 font-semibold";
+                          })();
+
+                          return (
+                            <div
+                              key={`${color || "default"}-${size}`}
+                              className={cn(
+                                "flex items-center justify-between min-h-10 rounded-md border px-2 py-1.5 transition-colors",
+                                rowTone
+                              )}
+                            >
+                              {/* Left: swatch + tamanho + estoque inline */}
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                {colorHex && (
+                                  <div
+                                    className={cn(
+                                      "w-4 h-4 rounded-full shrink-0",
+                                      needsBorder && "border border-border"
+                                    )}
+                                    style={{ backgroundColor: colorHex }}
+                                    title={getColorDisplayName(color!)}
+                                  />
+                                )}
+                                {color && (
+                                  <span className="text-xs truncate max-w-20">{getColorDisplayName(color)}</span>
+                                )}
+                                <span className="text-sm font-bold shrink-0">{size}</span>
+                                <span className={cn("text-xs truncate", stockColor)}>
+                                  {stockLabel} disp.
+                                </span>
+                              </div>
+
+                              {/* Right: +/- controls */}
+                              <div className="flex items-center gap-1 shrink-0">
+                                {quantityInOrder > 0 && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveVariant(color, size)}
+                                      className="w-7 h-7 rounded-full bg-destructive/15 text-destructive flex items-center justify-center active:scale-95 transition-transform"
+                                      aria-label="Remover"
+                                    >
+                                      <Minus className="h-3.5 w-3.5" />
+                                    </button>
+                                    <span className="w-5 text-center text-sm font-bold text-success">
+                                      {quantityInOrder}
+                                    </span>
+                                  </>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddVariant(color, size, variant)}
+                                  disabled={remaining === 0}
+                                  className={cn(
+                                    "w-7 h-7 rounded-full bg-success text-success-foreground flex items-center justify-center active:scale-95 transition-transform",
+                                    "disabled:bg-muted disabled:text-muted-foreground"
+                                  )}
+                                  aria-label="Adicionar"
+                                >
+                                  <Plus className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+
+                    {/* Done button */}
                     <Button 
-                      size="sm" 
-                      variant="ghost"
-                      onClick={() => setShowAddItem(false)}
+                      className="w-full"
+                      onClick={() => {
+                        setShowAddItem(false);
+                        setNewProductId('');
+                        setNewColor('');
+                        setNewSize('');
+                        setNewQty(1);
+                      }}
                     >
-                      Cancelar
-                    </Button>
-                    <Button size="sm" onClick={handleAddNewItem}>
-                      Adicionar
+                      Concluído
                     </Button>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>
