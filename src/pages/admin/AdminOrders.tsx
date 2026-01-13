@@ -26,6 +26,10 @@ const STATUS_OPTIONS = [
   { value: 'FINALIZADO', label: 'Finalizado', color: 'bg-green-100 text-green-700' },
 ];
 
+const getStatusColor = (status: string) => {
+  return STATUS_OPTIONS.find(opt => opt.value === status)?.color || '';
+};
+
 const AdminOrders = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedOrder, setSelectedOrder] = useState<OrderIntent | null>(null);
@@ -247,7 +251,7 @@ const AdminOrders = () => {
                             onValueChange={(value) => handleStatusChange(order.id, value, order.status)}
                             disabled={isUpdating}
                           >
-                            <SelectTrigger className="w-32 h-8">
+                            <SelectTrigger className={`w-32 h-8 ${getStatusColor(order.status)}`}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -346,7 +350,7 @@ const AdminOrders = () => {
                         onValueChange={(value) => handleStatusChange(order.id, value, order.status)}
                         disabled={isUpdating}
                       >
-                        <SelectTrigger className="flex-1">
+                        <SelectTrigger className={`flex-1 ${getStatusColor(order.status)}`}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
