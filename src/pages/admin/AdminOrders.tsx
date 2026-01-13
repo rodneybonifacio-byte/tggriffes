@@ -19,10 +19,11 @@ import { OrderIntent } from '@/hooks/useOrders';
 import { supabase } from '@/integrations/supabase/client';
 
 const STATUS_OPTIONS = [
-  { value: 'NOVO', label: 'Novo', color: 'bg-primary/10 text-primary' },
-  { value: 'EM_SEPARACAO', label: 'Em separação', color: 'bg-amber-500/10 text-amber-600' },
-  { value: 'FINALIZADO', label: 'Finalizado', color: 'bg-success/10 text-success' },
-  { value: 'CANCELADO', label: 'Cancelado', color: 'bg-destructive/10 text-destructive' },
+  { value: 'NOVO', label: 'Novo', color: 'bg-blue-500/10 text-blue-600' },
+  { value: 'CONFIRMADO', label: 'Confirmado', color: 'bg-orange-500/10 text-orange-600' },
+  { value: 'EM_SEPARACAO', label: 'Em separação', color: 'bg-yellow-500/10 text-yellow-700' },
+  { value: 'CANCELADO', label: 'Cancelado', color: 'bg-red-500/10 text-red-600' },
+  { value: 'FINALIZADO', label: 'Finalizado', color: 'bg-green-500/10 text-green-600' },
 ];
 
 const AdminOrders = () => {
