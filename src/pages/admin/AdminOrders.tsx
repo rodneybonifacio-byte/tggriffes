@@ -167,11 +167,12 @@ const AdminOrders = () => {
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               {STATUS_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${opt.color.replace('/10', '').replace('text-', 'bg-')}`} />
-                    {opt.label}
-                  </div>
+                <SelectItem 
+                  key={opt.value} 
+                  value={opt.value}
+                  className={`${opt.color} rounded-sm my-0.5`}
+                >
+                  {opt.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -251,11 +252,12 @@ const AdminOrders = () => {
                             </SelectTrigger>
                             <SelectContent>
                               {STATUS_OPTIONS.map((opt) => (
-                                <SelectItem key={opt.value} value={opt.value}>
-                                  <div className="flex items-center gap-2">
-                                    <span className={`w-2 h-2 rounded-full ${opt.color.replace('/10', '').replace('text-', 'bg-')}`} />
-                                    {opt.label}
-                                  </div>
+                                <SelectItem 
+                                  key={opt.value} 
+                                  value={opt.value}
+                                  className={`${opt.color} rounded-sm my-0.5`}
+                                >
+                                  {opt.label}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -349,11 +351,12 @@ const AdminOrders = () => {
                         </SelectTrigger>
                         <SelectContent>
                           {STATUS_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              <div className="flex items-center gap-2">
-                                <span className={`w-2 h-2 rounded-full ${opt.color.replace('/10', '').replace('text-', 'bg-')}`} />
-                                {opt.label}
-                              </div>
+                            <SelectItem 
+                              key={opt.value} 
+                              value={opt.value}
+                              className={`${opt.color} rounded-sm my-0.5`}
+                            >
+                              {opt.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
