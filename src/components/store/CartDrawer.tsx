@@ -98,6 +98,9 @@ export function CartDrawer() {
                       <p className="text-xs text-muted-foreground">
                         Tam: {item.size} {item.color && `• ${getColorDisplayName(item.color)}`}
                       </p>
+                      <p className="text-sm font-semibold text-primary mt-1">
+                        {formatPrice(item.unitPriceCents * item.quantity)}
+                      </p>
                       
                       <div className="flex items-center gap-2 mt-2">
                         <Button
@@ -138,6 +141,26 @@ export function CartDrawer() {
             <SheetFooter className="border-t pt-4">
               <div className="w-full space-y-3">
                 <VariationsSummary items={items} />
+                
+                <div className="space-y-1 py-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <span className="font-semibold">{formatPrice(totalCents)}</span>
+                  </div>
+                  {discountCents > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span className="flex items-center gap-1">
+                        <Tag className="h-3 w-3" />
+                        {description}
+                      </span>
+                      <span>-{formatPrice(discountCents)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-lg pt-1">
+                    <span>Total:</span>
+                    <span>{formatPrice(finalCents)}</span>
+                  </div>
+                </div>
                 
                 <Button
                   className="w-full gap-2" 
