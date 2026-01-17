@@ -1,18 +1,17 @@
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart, Trash2, Plus, Minus, Tag } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus } from 'lucide-react';
 import { useCart } from '@/hooks/useCart';
-import { formatPrice, getColorDisplayName } from '@/lib/utils';
+import { getColorDisplayName } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { CheckoutDrawer } from './CheckoutDrawer';
-import { useApplicablePromotions, calculatePromotionDiscount } from '@/hooks/usePromotions';
 import { useProducts } from '@/hooks/useProducts';
 import { useToast } from '@/hooks/use-toast';
 import { VariationsSummary } from './VariationsSummary';
 
 export function CartDrawer() {
-  const { items, removeItem, updateQuantity, totalItems, totalCents } = useCart();
+  const { items, removeItem, updateQuantity, totalItems } = useCart();
   const [open, setOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const { toast } = useToast();
@@ -20,12 +19,6 @@ export function CartDrawer() {
   // Fetch products to get current stock info
   const { data: products } = useProducts();
   
-  const { data: promotion } = useApplicablePromotions(totalItems);
-  const { discountCents, finalCents, description } = calculatePromotionDiscount(
-    promotion,
-    totalCents,
-    totalItems
-  );
 
   // Get stock for a variant
   const getVariantStock = (variantId: string): number => {
