@@ -118,8 +118,7 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const generateOrderSummaryText = (orderNumber?: number, pdfUrl?: string) => {
     const itemsList = items.map(item => {
       const colorText = item.color ? ` • ${getColorDisplayName(item.color)}` : '';
-      const lineTotal = formatPrice(item.unitPriceCents * item.quantity);
-      return `📌 ${item.quantity}x ${item.productName}\n   Tam: ${item.size}${colorText}\n   ${lineTotal}`;
+      return `📌 ${item.quantity}x ${item.productName}\n   Tam: ${item.size}${colorText}`;
     }).join('\n\n');
 
     const orderLabel = orderNumber ? `#${orderNumber}` : '';
@@ -145,18 +144,9 @@ ${itemsList}
 
 ┈┈┈┈┈┈┈┈┈┈┈
 
-💰 RESUMO
+📦 ENVIO
 
-Subtotal: ${formatPrice(subtotalCents)}`;
-
-    if (discountCents > 0) {
-      message += `
-Desconto (${promoDescription}): -${formatPrice(discountCents)}`;
-    }
-
-    message += `
-Frete: ${skipShipping ? 'A combinar' : (shippingCents > 0 ? formatPrice(shippingCents) : 'A combinar')}
-*TOTAL: ${formatPrice(finalTotalCents)}*`;
+Frete: ${skipShipping ? 'A combinar' : (selectedShipping?.service || 'A combinar')}`;
 
     if (observations.trim()) {
       message += `
@@ -670,7 +660,6 @@ ${pdfUrl}`;
                     <span className="text-muted-foreground">
                       {item.quantity}x {item.productName} ({item.size}{item.color ? ` - ${getColorDisplayName(item.color)}` : ''})
                     </span>
-                    <span className="font-medium">{formatPrice(item.unitPriceCents * item.quantity)}</span>
                   </div>
                 ))}
               </div>
@@ -679,25 +668,8 @@ ${pdfUrl}`;
 
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Subtotal:</span>
-                  <span>{formatPrice(subtotalCents)}</span>
-                </div>
-                {discountCents > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span className="flex items-center gap-1">
-                      <Tag className="h-3 w-3" />
-                      {promoDescription}
-                    </span>
-                    <span>-{formatPrice(discountCents)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
                   <span>Frete:</span>
-                  <span>{skipShipping ? 'A combinar' : (shippingCents > 0 ? formatPrice(shippingCents) : 'A combinar')}</span>
-                </div>
-                <div className="flex justify-between font-bold text-lg pt-2">
-                  <span>Total:</span>
-                  <span>{formatPrice(finalTotalCents)}</span>
+                  <span>{skipShipping ? 'A combinar' : (selectedShipping?.service || 'A combinar')}</span>
                 </div>
               </div>
 

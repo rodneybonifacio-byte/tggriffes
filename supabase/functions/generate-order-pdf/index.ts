@@ -366,10 +366,8 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       // Column headers
       page.drawText("ITENS DO PEDIDO", { x: MARGIN, y, size: 8, font: fontBold, color: gray });
       
-      // Right side column headers - QTD, UNIT, TOTAL
-      page.drawText("QTD", { x: PAGE_WIDTH - MARGIN - 160, y, size: 7, font: fontBold, color: gray });
-      page.drawText("UNIT", { x: PAGE_WIDTH - MARGIN - 115, y, size: 7, font: fontBold, color: gray });
-      page.drawText("TOTAL", { x: PAGE_WIDTH - MARGIN - 50, y, size: 7, font: fontBold, color: gray });
+      // Right side column header - only quantity
+      page.drawText("QTD", { x: PAGE_WIDTH - MARGIN - 50, y, size: 7, font: fontBold, color: gray });
       y -= 12;
     }
     
@@ -510,36 +508,13 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
           });
         }
         
-        // Quantity column - right aligned
+        // Quantity column - LARGER (12pt) - right aligned
         const qtyText = `${item.quantity}`;
-        const qtyWidth = fontBold.widthOfTextAtSize(qtyText, 10);
+        const qtyWidth = fontBold.widthOfTextAtSize(qtyText, 12);
         page.drawText(qtyText, {
-          x: PAGE_WIDTH - MARGIN - 155 - qtyWidth / 2,
+          x: PAGE_WIDTH - MARGIN - qtyWidth - 10,
           y: textY - 6,
-          size: 10,
-          font: fontBold,
-          color: black,
-        });
-        
-        // Unit price column - GREEN color
-        const unitPriceText = formatPrice(item.unitPriceCents);
-        const unitWidth = fontBold.widthOfTextAtSize(unitPriceText, 9);
-        page.drawText(unitPriceText, {
-          x: PAGE_WIDTH - MARGIN - 110 - unitWidth / 2,
-          y: textY - 6,
-          size: 9,
-          font: fontBold,
-          color: green,
-        });
-        
-        // Line total column
-        const lineTotalCents = item.unitPriceCents * item.quantity;
-        const totalText = formatPrice(lineTotalCents);
-        const totalWidth = fontBold.widthOfTextAtSize(totalText, 10);
-        page.drawText(totalText, {
-          x: PAGE_WIDTH - MARGIN - totalWidth,
-          y: textY - 6,
-          size: 10,
+          size: 12,
           font: fontBold,
           color: black,
         });
@@ -721,26 +696,6 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       
       const totalsLabelX = PAGE_WIDTH - MARGIN - 180;
       
-      // Subtotal
-      page.drawText("Subtotal", {
-        x: totalsLabelX,
-        y,
-        size: 9,
-        font: fontRegular,
-        color: gray,
-      });
-      const subtotalText = formatPrice(order.subtotalCents);
-      const subtotalWidth = fontBold.widthOfTextAtSize(subtotalText, 9);
-      page.drawText(subtotalText, {
-        x: PAGE_WIDTH - MARGIN - subtotalWidth,
-        y,
-        size: 9,
-        font: fontBold,
-        color: black,
-      });
-      
-      y -= 16;
-      
       // Shipping
       const shippingLabel = order.skipShipping ? 'Frete' : `Frete (${order.shippingService})`;
       page.drawText(shippingLabel, {
@@ -750,33 +705,13 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         font: fontRegular,
         color: gray,
       });
-      const shippingText = order.skipShipping ? 'A combinar' : formatPrice(order.shippingPriceCents);
+      const shippingText = order.skipShipping ? 'A combinar' : order.shippingService;
       const shippingWidth = fontRegular.widthOfTextAtSize(shippingText, 9);
       page.drawText(shippingText, {
         x: PAGE_WIDTH - MARGIN - shippingWidth,
         y,
         size: 9,
         font: fontRegular,
-        color: black,
-      });
-      
-      y -= 20;
-      
-      // Grand Total - emphasized
-      page.drawText("TOTAL", {
-        x: totalsLabelX,
-        y,
-        size: 11,
-        font: fontBold,
-        color: black,
-      });
-      const grandTotalText = formatPrice(order.totalCents);
-      const grandTotalWidth = fontBold.widthOfTextAtSize(grandTotalText, 12);
-      page.drawText(grandTotalText, {
-        x: PAGE_WIDTH - MARGIN - grandTotalWidth,
-        y,
-        size: 12,
-        font: fontBold,
         color: black,
       });
       

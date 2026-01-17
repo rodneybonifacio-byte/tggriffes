@@ -358,7 +358,6 @@ const ProductPage = () => {
             {/* Name */}
             <div>
               <h1 className="font-display text-2xl md:text-3xl font-bold">{product.name}</h1>
-              <p className="text-xl font-bold text-primary mt-2">{formatPrice(product.price_cents)}</p>
             </div>
 
             {/* Description */}
