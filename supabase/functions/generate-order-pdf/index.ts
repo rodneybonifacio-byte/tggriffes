@@ -729,9 +729,11 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         
         y -= 14;
         
-        // Word wrap observations text
+        // Word wrap observations text - sanitize newlines first
         const maxWidth = CONTENT_WIDTH;
-        const words = order.observations.split(' ');
+        // Replace newlines with spaces to avoid WinAnsi encoding errors
+        const sanitizedObservations = order.observations.replace(/[\r\n]+/g, ' ').trim();
+        const words = sanitizedObservations.split(' ').filter(w => w.length > 0);
         let line = '';
         const lines: string[] = [];
         
