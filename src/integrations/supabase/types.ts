@@ -448,6 +448,106 @@ export type Database = {
           },
         ]
       }
+      shopify_product_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          last_synced_at: string | null
+          product_id: string
+          shopify_product_handle: string | null
+          shopify_product_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          product_id: string
+          shopify_product_handle?: string | null
+          shopify_product_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          product_id?: string
+          shopify_product_handle?: string | null
+          shopify_product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopify_product_mappings_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shopify_sync_logs: {
+        Row: {
+          created_at: string
+          errors: Json | null
+          id: string
+          products_synced: number | null
+          status: string
+          sync_type: string
+          variants_synced: number | null
+        }
+        Insert: {
+          created_at?: string
+          errors?: Json | null
+          id?: string
+          products_synced?: number | null
+          status: string
+          sync_type: string
+          variants_synced?: number | null
+        }
+        Update: {
+          created_at?: string
+          errors?: Json | null
+          id?: string
+          products_synced?: number | null
+          status?: string
+          sync_type?: string
+          variants_synced?: number | null
+        }
+        Relationships: []
+      }
+      shopify_variant_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          last_synced_at: string | null
+          shopify_inventory_item_id: string | null
+          shopify_variant_id: string
+          variant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          shopify_inventory_item_id?: string | null
+          shopify_variant_id: string
+          variant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_synced_at?: string | null
+          shopify_inventory_item_id?: string | null
+          shopify_variant_id?: string
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopify_variant_mappings_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: true
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_movements: {
         Row: {
           created_at: string

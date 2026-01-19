@@ -251,6 +251,17 @@ export function useUpdateVariantStock() {
       );
       
       await Promise.all(promises);
+      
+      // Auto-sync to Shopify (background, non-blocking)
+      for (const v of variants) {
+        supabase.functions.invoke('shopify-sync', {
+          body: { 
+            action: 'sync_variant_inventory',
+            variantId: v.id,
+            stockQty: v.stock_qty 
+          },
+        }).catch(err => console.error('Shopify auto-sync failed:', err));
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });

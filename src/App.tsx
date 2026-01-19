@@ -19,6 +19,7 @@ import AdminPromotions from "./pages/admin/AdminPromotions";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminAbandonedCarts from "./pages/admin/AdminAbandonedCarts";
+import AdminShopify from "./pages/admin/AdminShopify";
 import AdminSettings from "./pages/admin/AdminSettings";
 import NotFound from "./pages/NotFound";
 
@@ -53,6 +54,7 @@ const App = () => {
                 <Route path="/admin/pedidos" element={<AdminOrders />} />
                 <Route path="/admin/clientes" element={<AdminCustomers />} />
                 <Route path="/admin/carrinhos" element={<AdminAbandonedCarts />} />
+                <Route path="/admin/shopify" element={<AdminShopify />} />
                 <Route path="/admin/configuracoes" element={<AdminSettings />} />
 
                 <Route path="*" element={<NotFound />} />
