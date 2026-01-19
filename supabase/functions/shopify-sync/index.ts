@@ -146,13 +146,17 @@ serve(async (req) => {
       // Build variants with size and color options - fixed price R$69,90
       const FIXED_PRICE = '69.90';
       const variants = product.variants || [];
+      
+      // Check if any variant has a color defined
+      const hasColors = variants.some((v: any) => v.color && v.color.trim() !== '');
+      
       if (variants.length > 0) {
         shopifyProduct.variants = variants.map((v: any) => ({
           price: FIXED_PRICE,
           option1: v.size,
-          option2: v.color || null,
+          option2: hasColors ? (v.color || 'Única') : null,
           sku: v.sku || `${product.slug}-${v.size}-${v.color || 'default'}`,
-          title: v.color ? `${v.size} / ${v.color}` : v.size,
+          title: hasColors && v.color ? `${v.size} / ${v.color}` : v.size,
           inventory_management: 'shopify',
           inventory_quantity: v.stock_qty,
         }));
@@ -191,14 +195,19 @@ serve(async (req) => {
           .eq('id', existingMapping.id);
 
       } else {
-        // Create new product with options for size and color
+        // Create new product with options based on variants
+        // Only add Color option if at least one variant has a color
+        const hasColors = variants.some((v: any) => v.color && v.color.trim() !== '');
+        
+        const productOptions = [{ name: 'Tamanho' }];
+        if (hasColors) {
+          productOptions.push({ name: 'Cor' });
+        }
+        
         const createData: any = {
           product: {
             ...shopifyProduct,
-            options: [
-              { name: 'Tamanho' },
-              { name: 'Cor' }
-            ],
+            options: productOptions,
           }
         };
 
