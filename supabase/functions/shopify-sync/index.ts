@@ -22,6 +22,7 @@ interface ShopifyVariant {
   id?: string;
   product_id?: string;
   title: string;
+  price: string;
   option1: string | null;
   option2: string | null;
   sku: string | null;
@@ -48,11 +49,17 @@ serve(async (req) => {
     
     const { action, productId } = await req.json();
 
-    // Shopify API base URL
-    const shopifyApiUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-01`;
+    // Shopify API base URL - ensure no trailing slashes or extra chars
+    const cleanDomain = SHOPIFY_STORE_DOMAIN.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const shopifyApiUrl = `https://${cleanDomain}/admin/api/2024-01`;
+
+    console.log(`Using Shopify API URL: ${shopifyApiUrl}`);
 
     async function shopifyRequest(endpoint: string, method: string = 'GET', body?: any) {
-      const response = await fetch(`${shopifyApiUrl}${endpoint}`, {
+      const url = `${shopifyApiUrl}${endpoint}`;
+      console.log(`Shopify request: ${method} ${url}`);
+      
+      const response = await fetch(url, {
         method,
         headers: {
           'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN!,
@@ -61,13 +68,20 @@ serve(async (req) => {
         body: body ? JSON.stringify(body) : undefined,
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Shopify API error: ${response.status} - ${errorText}`);
-        throw new Error(`Shopify API error: ${response.status} - ${errorText}`);
+      const responseText = await response.text();
+      
+      // Check if response is HTML (error page)
+      if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
+        console.error(`Shopify returned HTML instead of JSON: ${responseText.substring(0, 200)}`);
+        throw new Error(`Shopify API returned HTML - check domain format and API access. Domain: ${cleanDomain}`);
       }
 
-      return response.json();
+      if (!response.ok) {
+        console.error(`Shopify API error: ${response.status} - ${responseText}`);
+        throw new Error(`Shopify API error: ${response.status} - ${responseText}`);
+      }
+
+      return JSON.parse(responseText);
     }
 
     // Get location ID for inventory updates
@@ -102,10 +116,12 @@ serve(async (req) => {
         shopifyProduct.images = [{ src: product.main_image_url }];
       }
 
-      // Build variants with size and color options
+      // Build variants with size and color options - fixed price R$69,90
+      const FIXED_PRICE = '69.90';
       const variants = product.variants || [];
       if (variants.length > 0) {
         shopifyProduct.variants = variants.map((v: any) => ({
+          price: FIXED_PRICE,
           option1: v.size,
           option2: v.color || null,
           sku: v.sku || `${product.slug}-${v.size}-${v.color || 'default'}`,
