@@ -23,6 +23,7 @@ import {
   useShopifySyncLogs,
   useShopifyProductMappings,
   useSyncAllProducts,
+  useSyncPendingProducts,
   useSyncInventory,
 } from '@/hooks/useShopifySync';
 import { useProducts } from '@/hooks/useProducts';
@@ -33,6 +34,7 @@ export default function AdminShopify() {
   const { data: products } = useProducts({ status: 'active' });
   
   const syncAllProducts = useSyncAllProducts();
+  const syncPendingProducts = useSyncPendingProducts();
   const syncInventory = useSyncInventory();
 
   const syncedProductIds = new Set(mappings?.map(m => m.product_id) || []);
@@ -83,7 +85,7 @@ export default function AdminShopify() {
               </p>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button
                 variant="outline"
                 onClick={() => syncInventory.mutate()}
@@ -96,6 +98,22 @@ export default function AdminShopify() {
                 )}
                 Sincronizar Estoque
               </Button>
+              
+              {unsyncedProducts.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                  onClick={() => syncPendingProducts.mutate()}
+                  disabled={syncPendingProducts.isPending}
+                >
+                  {syncPendingProducts.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Package className="w-4 h-4 mr-2" />
+                  )}
+                  Sincronizar Pendentes ({unsyncedProducts.length})
+                </Button>
+              )}
               
               <Button
                 onClick={() => syncAllProducts.mutate()}

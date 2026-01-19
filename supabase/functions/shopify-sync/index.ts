@@ -293,9 +293,16 @@ serve(async (req) => {
     };
 
     try {
-      if (action === 'sync_all') {
-        // Sync all active products
-        const { data: products } = await supabase
+      if (action === 'sync_all' || action === 'sync_pending') {
+        // Get already synced product IDs
+        const { data: mappings } = await supabase
+          .from('shopify_product_mappings')
+          .select('product_id');
+        
+        const syncedIds = new Set((mappings || []).map(m => m.product_id));
+
+        // Get all active products
+        const { data: allProducts } = await supabase
           .from('products')
           .select(`
             *,
@@ -304,22 +311,42 @@ serve(async (req) => {
           `)
           .eq('active', true);
 
+        // Separate pending and already synced
+        const pendingProducts = (allProducts || []).filter(p => !syncedIds.has(p.id));
+        const syncedProducts = (allProducts || []).filter(p => syncedIds.has(p.id));
+        
+        // For sync_pending, only process pending. For sync_all, prioritize pending first
+        const productsToSync = action === 'sync_pending' 
+          ? pendingProducts 
+          : [...pendingProducts, ...syncedProducts];
+
+        console.log(`Syncing ${productsToSync.length} products (${pendingProducts.length} pending, ${syncedProducts.length} existing)`);
+
         const results = [];
         const errors = [];
+        const BATCH_SIZE = 15; // Process in smaller batches
 
-        for (const product of products || []) {
+        for (let i = 0; i < productsToSync.length; i++) {
+          const product = productsToSync[i];
           try {
+            console.log(`Processing ${i + 1}/${productsToSync.length}: ${product.name}`);
             const syncResult = await syncProduct(product);
             results.push(syncResult);
             syncLog.products_synced++;
             syncLog.variants_synced += syncResult.variantCount;
             
-            // Delay between products to avoid rate limiting (500ms)
-            await delay(500);
+            // Longer delay every BATCH_SIZE products
+            if ((i + 1) % BATCH_SIZE === 0) {
+              console.log(`Batch complete, pausing 2s...`);
+              await delay(2000);
+            } else {
+              // Normal delay between products
+              await delay(600);
+            }
           } catch (err: any) {
-            errors.push({ productId: product.id, error: err.message });
-            // Small delay even on errors
-            await delay(300);
+            console.error(`Error syncing ${product.name}: ${err.message}`);
+            errors.push({ productId: product.id, productName: product.name, error: err.message });
+            await delay(500);
           }
         }
 
@@ -329,8 +356,10 @@ serve(async (req) => {
         }
 
         result = { 
-          message: 'Sync completed', 
+          message: action === 'sync_pending' ? 'Pending products synced' : 'Sync completed', 
           productsProcessed: results.length,
+          pendingCount: pendingProducts.length,
+          existingCount: syncedProducts.length,
           errors 
         };
 
