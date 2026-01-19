@@ -38,7 +38,9 @@ import {
   ChevronRight,
   History,
   ArrowUpCircle,
-  ArrowDownCircle
+  ArrowDownCircle,
+  Store,
+  ShoppingBag
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -918,8 +920,21 @@ export default function AdminStock() {
                       <TableCell className="text-center text-sm text-muted-foreground">
                         {movement.stock_before} → {movement.stock_after}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {movement.reason || '-'}
+                      <TableCell>
+                        {movement.reason?.toLowerCase().includes('shopify') ? (
+                          <Badge variant="outline" className="gap-1 bg-green-50 text-green-700 border-green-200">
+                            <ShoppingBag className="h-3 w-3" />
+                            Shopify
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="gap-1 bg-blue-50 text-blue-700 border-blue-200">
+                            <Store className="h-3 w-3" />
+                            Local
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {movement.reason?.replace(/shopify/gi, '').replace(/local/gi, '').trim() || ''}
+                        </span>
                       </TableCell>
                     </TableRow>
                   ))
