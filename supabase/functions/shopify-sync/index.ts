@@ -55,33 +55,60 @@ serve(async (req) => {
 
     console.log(`Using Shopify API URL: ${shopifyApiUrl}`);
 
-    async function shopifyRequest(endpoint: string, method: string = 'GET', body?: any) {
+    // Helper function to delay execution
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    async function shopifyRequest(endpoint: string, method: string = 'GET', body?: any, retries = 3): Promise<any> {
       const url = `${shopifyApiUrl}${endpoint}`;
       console.log(`Shopify request: ${method} ${url}`);
       
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN!,
-          'Content-Type': 'application/json',
-        },
-        body: body ? JSON.stringify(body) : undefined,
-      });
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          const response = await fetch(url, {
+            method,
+            headers: {
+              'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN!,
+              'Content-Type': 'application/json',
+            },
+            body: body ? JSON.stringify(body) : undefined,
+          });
 
-      const responseText = await response.text();
-      
-      // Check if response is HTML (error page)
-      if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
-        console.error(`Shopify returned HTML instead of JSON: ${responseText.substring(0, 200)}`);
-        throw new Error(`Shopify API returned HTML - check domain format and API access. Domain: ${cleanDomain}`);
+          const responseText = await response.text();
+          
+          // Check if response is HTML (error page) - likely rate limiting
+          if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
+            if (attempt < retries) {
+              console.log(`Shopify returned HTML, retry ${attempt}/${retries} after delay...`);
+              await delay(2000 * attempt); // Exponential backoff: 2s, 4s, 6s
+              continue;
+            }
+            console.error(`Shopify returned HTML after ${retries} retries: ${responseText.substring(0, 200)}`);
+            throw new Error(`Shopify API rate limited - please try again later`);
+          }
+
+          // Handle 429 Too Many Requests
+          if (response.status === 429) {
+            if (attempt < retries) {
+              const retryAfter = parseInt(response.headers.get('Retry-After') || '2');
+              console.log(`Rate limited, waiting ${retryAfter}s before retry ${attempt}/${retries}`);
+              await delay(retryAfter * 1000);
+              continue;
+            }
+            throw new Error('Shopify API rate limited - please try again later');
+          }
+
+          if (!response.ok) {
+            console.error(`Shopify API error: ${response.status} - ${responseText}`);
+            throw new Error(`Shopify API error: ${response.status} - ${responseText}`);
+          }
+
+          return JSON.parse(responseText);
+        } catch (err: any) {
+          if (attempt === retries) throw err;
+          console.log(`Request failed, retry ${attempt}/${retries}: ${err.message}`);
+          await delay(1000 * attempt);
+        }
       }
-
-      if (!response.ok) {
-        console.error(`Shopify API error: ${response.status} - ${responseText}`);
-        throw new Error(`Shopify API error: ${response.status} - ${responseText}`);
-      }
-
-      return JSON.parse(responseText);
     }
 
     // Get location ID for inventory updates
@@ -286,8 +313,13 @@ serve(async (req) => {
             results.push(syncResult);
             syncLog.products_synced++;
             syncLog.variants_synced += syncResult.variantCount;
+            
+            // Delay between products to avoid rate limiting (500ms)
+            await delay(500);
           } catch (err: any) {
             errors.push({ productId: product.id, error: err.message });
+            // Small delay even on errors
+            await delay(300);
           }
         }
 
