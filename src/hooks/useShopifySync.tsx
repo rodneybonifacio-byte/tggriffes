@@ -80,6 +80,34 @@ export function useSyncAllProducts() {
   });
 }
 
+export function useSyncPendingProducts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('shopify-sync', {
+        body: { action: 'sync_pending' },
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['shopify-sync-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['shopify-product-mappings'] });
+      
+      if (data.errors?.length > 0) {
+        toast.warning(`Sincronização parcial: ${data.productsProcessed} de ${data.pendingCount} pendentes, ${data.errors.length} erros`);
+      } else {
+        toast.success(`${data.productsProcessed} produtos pendentes sincronizados!`);
+      }
+    },
+    onError: (error: any) => {
+      toast.error(`Erro na sincronização: ${error.message}`);
+    },
+  });
+}
+
 export function useSyncSingleProduct() {
   const queryClient = useQueryClient();
 
