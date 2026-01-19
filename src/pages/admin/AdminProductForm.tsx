@@ -6,6 +6,7 @@ import { ImageUpload } from '@/components/admin/ImageUpload';
 import { VariantEditor, VariantData } from '@/components/admin/VariantEditor';
 import { CurrencyInput } from '@/components/admin/CurrencyInput';
 import { useProduct, useCategories, useCreateProduct, useUpdateProduct, useCreateCategory, useCreateVariant, useDeleteVariant } from '@/hooks/useProducts';
+import { useSyncSingleProduct } from '@/hooks/useShopifySync';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,7 @@ const AdminProductForm = () => {
   const { mutateAsync: createCategory } = useCreateCategory();
   const { mutateAsync: createVariant } = useCreateVariant();
   const { mutateAsync: deleteVariant } = useDeleteVariant();
+  const syncToShopify = useSyncSingleProduct();
 
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
@@ -184,6 +186,14 @@ const AdminProductForm = () => {
               color: variant.color || null
             });
           }
+        }
+
+        // Auto-sync to Shopify after saving product with variants
+        if (productId && active) {
+          // Small delay to ensure variants are saved before syncing
+          setTimeout(() => {
+            syncToShopify.mutate(productId);
+          }, 1000);
         }
       }
 
