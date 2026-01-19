@@ -865,12 +865,13 @@ export default function AdminStock() {
                   <TableHead className="w-24 text-center">Tipo</TableHead>
                   <TableHead className="w-20 text-center">Qtd</TableHead>
                   <TableHead className="w-32 text-center">Estoque</TableHead>
+                  <TableHead>Origem</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoadingMovements ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                     </TableCell>
                   </TableRow>
@@ -917,11 +918,14 @@ export default function AdminStock() {
                       <TableCell className="text-center text-sm text-muted-foreground">
                         {movement.stock_before} → {movement.stock_after}
                       </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {movement.reason || '-'}
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p>Nenhuma movimentação registrada</p>
                     </TableCell>
