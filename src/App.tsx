@@ -18,6 +18,7 @@ import AdminStock from "./pages/admin/AdminStock";
 import AdminPromotions from "./pages/admin/AdminPromotions";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminCustomers from "./pages/admin/AdminCustomers";
+import AdminAbandonedCarts from "./pages/admin/AdminAbandonedCarts";
 import AdminSettings from "./pages/admin/AdminSettings";
 import NotFound from "./pages/NotFound";
 
@@ -51,6 +52,7 @@ const App = () => {
                 <Route path="/admin/promocoes" element={<AdminPromotions />} />
                 <Route path="/admin/pedidos" element={<AdminOrders />} />
                 <Route path="/admin/clientes" element={<AdminCustomers />} />
+                <Route path="/admin/carrinhos" element={<AdminAbandonedCarts />} />
                 <Route path="/admin/configuracoes" element={<AdminSettings />} />
 
                 <Route path="*" element={<NotFound />} />
