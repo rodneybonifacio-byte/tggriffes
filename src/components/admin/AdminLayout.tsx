@@ -10,7 +10,8 @@ import {
   Warehouse,
   Tag,
   Users,
-  ShoppingBasket
+  ShoppingBasket,
+  Store
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ const menuItems = [
   { icon: ShoppingCart, label: 'Pedidos', href: '/admin/pedidos' },
   { icon: ShoppingBasket, label: 'Abandonados', href: '/admin/carrinhos' },
   { icon: Users, label: 'Clientes', href: '/admin/clientes' },
+  { icon: Store, label: 'Shopify', href: '/admin/shopify' },
   { icon: Settings, label: 'Configurações', href: '/admin/configuracoes' },
 ];
 
