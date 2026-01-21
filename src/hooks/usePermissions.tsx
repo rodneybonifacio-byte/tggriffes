@@ -79,7 +79,7 @@ export function usePermissions(): Permissions & { isLoading: boolean } {
     canViewAbandonedCarts: isAdmin || isCollaborator,
     
     // Edição
-    canEditProducts: isAdmin, // Colaborador não edita produtos
+    canEditProducts: isAdmin || isCollaborator, // Colaborador pode editar produtos (exceto preços)
     canEditOrders: isAdmin || isCollaborator, // Pode atualizar status
     canEditStock: isAdmin || isCollaborator, // Pode ajustar estoque
     canEditSettings: isAdmin, // Apenas admin
