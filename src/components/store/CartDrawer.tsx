@@ -10,6 +10,7 @@ import { useProducts } from '@/hooks/useProducts';
 import { useToast } from '@/hooks/use-toast';
 import { VariationsSummary } from './VariationsSummary';
 import { PromotionCelebrationModal } from './PromotionCelebrationModal';
+import { PromotionProgress } from './PromotionProgress';
 import { usePromotionCelebration } from '@/hooks/usePromotionCelebration';
 
 export function CartDrawer() {
@@ -139,6 +140,7 @@ export function CartDrawer() {
           {items.length > 0 && (
             <SheetFooter className="border-t pt-4">
               <div className="w-full space-y-3">
+                <PromotionProgress totalItems={totalItems} />
                 <VariationsSummary items={items} />
                 
                 <Button
