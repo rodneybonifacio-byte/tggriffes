@@ -727,6 +727,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      convert_reservations_to_order: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
       generate_slug: { Args: { name: string }; Returns: string }
       get_next_order_number: { Args: never; Returns: number }
       has_role: {
