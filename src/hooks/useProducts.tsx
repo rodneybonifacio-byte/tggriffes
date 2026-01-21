@@ -187,6 +187,12 @@ export function useDeleteProduct() {
   
   return useMutation({
     mutationFn: async (id: string) => {
+      // First, archive in Shopify (non-blocking)
+      supabase.functions.invoke('shopify-sync', {
+        body: { action: 'delete_product', productId: id },
+      }).catch(err => console.error('Shopify delete sync failed:', err));
+
+      // Deactivate locally
       const { error } = await supabase
         .from('products')
         .update({ active: false })

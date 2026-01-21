@@ -47,7 +47,7 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     
-    const { action, productId } = await req.json();
+    const { action, productId, variantId, stockQty } = await req.json();
 
     // Shopify API base URL - ensure no trailing slashes or extra chars
     const cleanDomain = SHOPIFY_STORE_DOMAIN.replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -292,6 +292,118 @@ serve(async (req) => {
       return { synced: true, shopifyVariantId: mapping.shopify_variant_id };
     }
 
+    // Archive/delete product from Shopify
+    async function archiveShopifyProduct(productId: string) {
+      // Get mapping
+      const { data: mapping } = await supabase
+        .from('shopify_product_mappings')
+        .select('*')
+        .eq('product_id', productId)
+        .single();
+
+      if (!mapping) {
+        console.log(`No Shopify mapping for product ${productId}`);
+        return { archived: false, reason: 'No mapping found' };
+      }
+
+      try {
+        // Set product status to 'archived' in Shopify (keeps the product but hides it)
+        await shopifyRequest(
+          `/products/${mapping.shopify_product_id}.json`,
+          'PUT',
+          { product: { id: mapping.shopify_product_id, status: 'archived' } }
+        );
+
+        // Delete local mappings
+        await supabase
+          .from('shopify_variant_mappings')
+          .delete()
+          .in('variant_id', (
+            await supabase
+              .from('product_variants')
+              .select('id')
+              .eq('product_id', productId)
+          ).data?.map(v => v.id) || []);
+
+        await supabase
+          .from('shopify_product_mappings')
+          .delete()
+          .eq('product_id', productId);
+
+        return { archived: true, shopifyProductId: mapping.shopify_product_id };
+      } catch (err: any) {
+        console.error(`Failed to archive Shopify product: ${err.message}`);
+        // Even if Shopify fails, clean up local mappings
+        await supabase
+          .from('shopify_product_mappings')
+          .delete()
+          .eq('product_id', productId);
+        
+        return { archived: false, error: err.message };
+      }
+    }
+
+    // Cleanup orphaned products (exist in Shopify but not locally)
+    async function cleanupOrphans() {
+      // Get all local product IDs
+      const { data: localProducts } = await supabase
+        .from('products')
+        .select('id')
+        .eq('active', true);
+      
+      const localProductIds = new Set((localProducts || []).map(p => p.id));
+
+      // Get all mappings
+      const { data: mappings } = await supabase
+        .from('shopify_product_mappings')
+        .select('*');
+
+      const orphanedMappings = (mappings || []).filter(m => !localProductIds.has(m.product_id));
+      
+      console.log(`Found ${orphanedMappings.length} orphaned product mappings`);
+
+      const results = [];
+      const errors = [];
+
+      for (const mapping of orphanedMappings) {
+        try {
+          // Archive in Shopify
+          await shopifyRequest(
+            `/products/${mapping.shopify_product_id}.json`,
+            'PUT',
+            { product: { id: mapping.shopify_product_id, status: 'archived' } }
+          );
+          
+          // Delete variant mappings first
+          const { data: variants } = await supabase
+            .from('product_variants')
+            .select('id')
+            .eq('product_id', mapping.product_id);
+          
+          if (variants && variants.length > 0) {
+            await supabase
+              .from('shopify_variant_mappings')
+              .delete()
+              .in('variant_id', variants.map(v => v.id));
+          }
+
+          // Delete product mapping
+          await supabase
+            .from('shopify_product_mappings')
+            .delete()
+            .eq('id', mapping.id);
+
+          results.push({ productId: mapping.product_id, shopifyId: mapping.shopify_product_id });
+          await delay(500);
+        } catch (err: any) {
+          console.error(`Error cleaning up ${mapping.shopify_product_id}: ${err.message}`);
+          errors.push({ shopifyId: mapping.shopify_product_id, error: err.message });
+        }
+      }
+
+      return { cleaned: results.length, errors };
+    }
+
     let result: any;
     let syncLog: any = {
       sync_type: action,
@@ -432,9 +544,6 @@ serve(async (req) => {
 
       } else if (action === 'sync_variant_inventory') {
         // Sync single variant inventory (called automatically on stock change)
-        const body = await req.clone().json();
-        const { variantId, stockQty } = body;
-        
         if (!variantId || stockQty === undefined) {
           throw new Error('Missing variantId or stockQty');
         }
@@ -444,6 +553,33 @@ serve(async (req) => {
         syncLog.sync_type = 'inventory';
 
         result = syncResult;
+
+      } else if (action === 'delete_product' && productId) {
+        // Archive product in Shopify when deleted locally
+        const archiveResult = await archiveShopifyProduct(productId);
+        syncLog.sync_type = 'delete';
+        syncLog.products_synced = archiveResult.archived ? 1 : 0;
+
+        result = { 
+          message: archiveResult.archived ? 'Product archived in Shopify' : 'Product not found in Shopify',
+          ...archiveResult
+        };
+
+      } else if (action === 'cleanup_orphans') {
+        // Clean up products that exist in Shopify but not locally
+        const cleanupResult = await cleanupOrphans();
+        syncLog.sync_type = 'cleanup';
+        syncLog.products_synced = cleanupResult.cleaned;
+        
+        if (cleanupResult.errors.length > 0) {
+          syncLog.status = 'partial';
+          syncLog.errors = cleanupResult.errors;
+        }
+
+        result = { 
+          message: `Cleaned up ${cleanupResult.cleaned} orphaned products`,
+          ...cleanupResult
+        };
 
       } else {
         throw new Error('Invalid action');

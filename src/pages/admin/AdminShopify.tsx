@@ -15,7 +15,8 @@ import {
   AlertCircle,
   ExternalLink,
   Loader2,
-  Store
+  Store,
+  Trash2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -25,6 +26,7 @@ import {
   useSyncAllProducts,
   useSyncPendingProducts,
   useSyncInventory,
+  useCleanupOrphans,
 } from '@/hooks/useShopifySync';
 import { useProducts } from '@/hooks/useProducts';
 
@@ -36,9 +38,14 @@ export default function AdminShopify() {
   const syncAllProducts = useSyncAllProducts();
   const syncPendingProducts = useSyncPendingProducts();
   const syncInventory = useSyncInventory();
+  const cleanupOrphans = useCleanupOrphans();
 
   const syncedProductIds = new Set(mappings?.map(m => m.product_id) || []);
+  const activeProductIds = new Set(products?.map(p => p.id) || []);
   const unsyncedProducts = products?.filter(p => !syncedProductIds.has(p.id)) || [];
+  
+  // Count orphaned mappings (synced to Shopify but not active locally)
+  const orphanedMappings = mappings?.filter(m => !activeProductIds.has(m.product_id)) || [];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -62,6 +69,10 @@ export default function AdminShopify() {
         return <Badge variant="outline"><Boxes className="w-3 h-3 mr-1" /> Estoque</Badge>;
       case 'sync_product':
         return <Badge variant="outline"><Package className="w-3 h-3 mr-1" /> Produto</Badge>;
+      case 'delete':
+        return <Badge variant="outline" className="text-red-600"><Trash2 className="w-3 h-3 mr-1" /> Remoção</Badge>;
+      case 'cleanup':
+        return <Badge variant="outline" className="text-orange-600"><Trash2 className="w-3 h-3 mr-1" /> Limpeza</Badge>;
       default:
         return <Badge variant="outline">{type}</Badge>;
     }
@@ -114,6 +125,22 @@ export default function AdminShopify() {
                   Sincronizar Pendentes ({unsyncedProducts.length})
                 </Button>
               )}
+
+              {orphanedMappings.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="border-red-500 text-red-700 hover:bg-red-50"
+                  onClick={() => cleanupOrphans.mutate()}
+                  disabled={cleanupOrphans.isPending}
+                >
+                  {cleanupOrphans.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4 mr-2" />
+                  )}
+                  Limpar Órfãos ({orphanedMappings.length})
+                </Button>
+              )}
               
               <Button
                 onClick={() => syncAllProducts.mutate()}
@@ -130,7 +157,7 @@ export default function AdminShopify() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -153,6 +180,19 @@ export default function AdminShopify() {
               <CardContent>
                 <div className="text-2xl font-bold text-amber-600">
                   {unsyncedProducts.length}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Órfãos no Shopify
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {orphanedMappings.length}
                 </div>
               </CardContent>
             </Card>

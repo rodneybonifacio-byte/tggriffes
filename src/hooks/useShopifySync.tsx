@@ -158,6 +158,34 @@ export function useSyncInventory() {
   });
 }
 
+export function useCleanupOrphans() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('shopify-sync', {
+        body: { action: 'cleanup_orphans' },
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['shopify-sync-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['shopify-product-mappings'] });
+      
+      if (data.cleaned > 0) {
+        toast.success(`${data.cleaned} produtos órfãos arquivados no Shopify!`);
+      } else {
+        toast.info('Nenhum produto órfão encontrado.');
+      }
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao limpar órfãos: ${error.message}`);
+    },
+  });
+}
+
 // Function to sync inventory automatically (call from stock update hooks)
 export async function syncVariantInventoryToShopify(variantId: string, stockQty: number) {
   try {
