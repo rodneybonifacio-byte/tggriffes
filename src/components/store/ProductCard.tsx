@@ -297,6 +297,9 @@ export function ProductCard({ product }: ProductCardProps) {
           <h3 className="text-[11px] sm:text-xs font-medium line-clamp-2 leading-tight group-hover:text-primary/80 transition-colors">
             {product.name}
           </h3>
+          <p className="text-xs sm:text-sm font-bold text-primary mt-0.5">
+            {formatPrice(product.price_cents)}
+          </p>
         </button>
 
         {!isOutOfStock && sizes.length > 0 && (
