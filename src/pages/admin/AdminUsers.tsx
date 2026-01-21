@@ -6,30 +6,36 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Users, Search, Shield, ShieldCheck, UserX, Loader2, Crown, UserCog } from 'lucide-react';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Users, Search, Shield, UserX, Loader2, Crown, UserCog, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Navigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
 
 const AdminUsers = () => {
   const [search, setSearch] = useState('');
-  const { data: users = [], isLoading } = useUsers();
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState<'admin' | 'seller'>('seller');
+  const [isCreating, setIsCreating] = useState(false);
+  
+  const { data: users = [], isLoading, refetch } = useUsers();
   const { mutateAsync: assignRole, isPending: isAssigning } = useAssignRole();
   const { mutateAsync: removeRole, isPending: isRemoving } = useRemoveRole();
   const { isAdmin } = usePermissions();
@@ -75,6 +81,66 @@ const AdminUsers = () => {
         description: 'Não foi possível remover a role.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUserEmail || !newUserPassword || !newUserName) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Preencha nome, email e senha.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (newUserPassword.length < 6) {
+      toast({
+        title: 'Senha muito curta',
+        description: 'A senha deve ter pelo menos 6 caracteres.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      // Criar usuário via Supabase Admin API (signUp cria o usuário)
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newUserEmail,
+        password: newUserPassword,
+        options: {
+          data: { name: newUserName },
+          emailRedirectTo: window.location.origin,
+        },
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Atribuir role
+        await assignRole({ userId: authData.user.id, role: newUserRole });
+      }
+
+      toast({
+        title: 'Usuário criado!',
+        description: `${newUserName} foi adicionado como ${newUserRole === 'admin' ? 'Administrador' : 'Colaborador'}.`,
+      });
+
+      setShowAddDialog(false);
+      setNewUserEmail('');
+      setNewUserName('');
+      setNewUserPassword('');
+      setNewUserRole('seller');
+      refetch();
+    } catch (error: any) {
+      toast({
+        title: 'Erro ao criar usuário',
+        description: error.message || 'Não foi possível criar o usuário.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -163,7 +229,7 @@ const AdminUsers = () => {
           </CardContent>
         </Card>
 
-        {/* Search */}
+        {/* Search and Add Button */}
         <div className="flex gap-4 mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -174,7 +240,99 @@ const AdminUsers = () => {
               className="pl-10"
             />
           </div>
+          <Button onClick={() => setShowAddDialog(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Novo Usuário
+          </Button>
         </div>
+
+        {/* Add User Dialog */}
+        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Adicionar Novo Usuário</DialogTitle>
+              <DialogDescription>
+                Crie uma conta para um novo colaborador ou administrador.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="newName">Nome</Label>
+                <Input
+                  id="newName"
+                  placeholder="Nome completo"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="newEmail">Email</Label>
+                <Input
+                  id="newEmail"
+                  type="email"
+                  placeholder="email@exemplo.com"
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">Senha</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  placeholder="Mínimo 6 caracteres"
+                  value={newUserPassword}
+                  onChange={(e) => setNewUserPassword(e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="newRole">Nível de Acesso</Label>
+                <Select value={newUserRole} onValueChange={(v) => setNewUserRole(v as 'admin' | 'seller')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="seller">
+                      <span className="flex items-center gap-2">
+                        <UserCog className="h-3 w-3 text-blue-600" />
+                        Colaborador
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="admin">
+                      <span className="flex items-center gap-2">
+                        <Crown className="h-3 w-3 text-amber-600" />
+                        Administrador
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleCreateUser} disabled={isCreating}>
+                {isCreating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Criando...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Criar Usuário
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
