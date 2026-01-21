@@ -117,6 +117,7 @@ export default {
         "fade-in": "fade-in 0.3s ease-out",
         "slide-up": "slide-up 0.4s ease-out",
         "pop": "pop 0.2s ease-out",
+        "shimmer": "shimmer 2s ease-in-out infinite",
       },
     },
   },
