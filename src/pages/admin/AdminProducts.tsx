@@ -54,7 +54,7 @@ const AdminProducts = () => {
   const { mutateAsync: deleteProduct, isPending: isDeleting } = useDeleteProduct();
   const { mutateAsync: toggleProductActive, isPending: isToggling } = useToggleProductActive();
   const { toast } = useToast();
-  const { canViewPrices, canEditProducts, canDeleteProducts, canEditStock } = usePermissions();
+  const { canViewPrices, canEditProducts, canDeleteProducts, canEditStock, canToggleProductActive } = usePermissions();
 
   const handleToggleActive = async (product: Product) => {
     try {
@@ -246,7 +246,7 @@ const AdminProducts = () => {
                                 <Boxes className="h-4 w-4" />
                               </Button>
                             )}
-                            {canEditProducts && (
+                            {canToggleProductActive && (
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
@@ -362,6 +362,21 @@ const AdminProducts = () => {
                             onClick={() => setStockModalProduct(product)}
                           >
                             <Boxes className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canToggleProductActive && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            title={product.active ? 'Desativar' : 'Ativar'}
+                            onClick={() => handleToggleActive(product)}
+                            disabled={isToggling}
+                          >
+                            {product.active ? (
+                              <ToggleRight className="h-4 w-4" />
+                            ) : (
+                              <ToggleLeft className="h-4 w-4" />
+                            )}
                           </Button>
                         )}
                         {canDeleteProducts && (

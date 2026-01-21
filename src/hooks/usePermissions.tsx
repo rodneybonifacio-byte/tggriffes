@@ -23,6 +23,7 @@ interface Permissions {
   canEditStock: boolean;
   canEditSettings: boolean;
   canEditPromotions: boolean;
+  canToggleProductActive: boolean;
   
   // Deleção
   canDeleteProducts: boolean;
@@ -83,6 +84,7 @@ export function usePermissions(): Permissions & { isLoading: boolean } {
     canEditStock: isAdmin || isCollaborator, // Pode ajustar estoque
     canEditSettings: isAdmin, // Apenas admin
     canEditPromotions: isAdmin, // Apenas admin
+    canToggleProductActive: isAdmin || isCollaborator, // Colaborador pode ativar/desativar
     
     // Deleção
     canDeleteProducts: isAdmin, // Apenas admin
