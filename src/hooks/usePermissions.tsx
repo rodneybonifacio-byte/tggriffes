@@ -2,7 +2,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export type UserRole = 'admin' | 'seller' | null;
+export type UserRole = 'admin' | 'seller' | 'customer' | null;
 
 interface Permissions {
   // Visualização
@@ -35,6 +35,7 @@ interface Permissions {
   role: UserRole;
   isAdmin: boolean;
   isCollaborator: boolean;
+  isCustomer: boolean;
 }
 
 export function usePermissions(): Permissions & { isLoading: boolean } {
@@ -59,6 +60,7 @@ export function usePermissions(): Permissions & { isLoading: boolean } {
 
   const isAdmin = role === 'admin';
   const isCollaborator = role === 'seller';
+  const isCustomer = role === 'customer';
 
   // Administrador: acesso total
   // Colaborador (seller): acesso limitado - sem configurações, sem preços
@@ -93,6 +95,7 @@ export function usePermissions(): Permissions & { isLoading: boolean } {
     role,
     isAdmin,
     isCollaborator,
+    isCustomer,
   };
 
   return { ...permissions, isLoading };
