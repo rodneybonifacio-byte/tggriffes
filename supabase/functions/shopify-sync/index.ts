@@ -550,45 +550,88 @@ serve(async (req) => {
         };
 
       } else if (action === 'sync_inventory') {
-        // Sync inventory (somente itens com mapeamento e produtos ativos)
-        const { data: mapped } = await supabase
+        // Sync inventory
+        console.log('Starting inventory sync...');
+        
+        // Get all variant mappings with inventory IDs
+        const { data: mappings, error: mappingError } = await supabase
           .from('shopify_variant_mappings')
-          .select('id, variant_id, shopify_inventory_item_id')
+          .select('variant_id, shopify_variant_id, shopify_inventory_item_id')
           .not('shopify_inventory_item_id', 'is', null);
 
-        const mappedVariantIds = (mapped || []).map(m => m.variant_id);
-        if (mappedVariantIds.length === 0) {
+        if (mappingError) {
+          console.error('Mapping query error:', mappingError);
+          throw mappingError;
+        }
+
+        console.log(`Found ${mappings?.length || 0} variant mappings`);
+
+        if (!mappings || mappings.length === 0) {
           result = { message: 'No mapped variants to sync', variantsSynced: 0, errors: [] };
         } else {
-          const { data: localVariants } = await supabase
-            .from('product_variants')
-            .select('id, stock_qty, product_id')
-            .in('id', mappedVariantIds);
+          // Create a lookup map for quick access
+          const mappingLookup = new Map(mappings.map(m => [m.variant_id, m]));
+          const variantIds = mappings.map(m => m.variant_id);
 
-          const productIds = Array.from(new Set((localVariants || []).map(v => v.product_id)));
-          const { data: activeProducts } = await supabase
-            .from('products')
-            .select('id')
-            .in('id', productIds)
-            .eq('active', true);
+          // Get variants with their products (paginated for large datasets)
+          const CHUNK_SIZE = 500;
+          let allVariants: any[] = [];
+          
+          for (let i = 0; i < variantIds.length; i += CHUNK_SIZE) {
+            const chunk = variantIds.slice(i, i + CHUNK_SIZE);
+            const { data: variants } = await supabase
+              .from('product_variants')
+              .select('id, stock_qty, product_id, products(active)')
+              .in('id', chunk);
+            if (variants) allVariants = [...allVariants, ...variants];
+          }
 
-          const activeProductIdSet = new Set((activeProducts || []).map(p => p.id));
-          const variants = (localVariants || []).filter(v => activeProductIdSet.has(v.product_id));
+          // Filter only active products
+          const activeVariants = allVariants.filter(v => v.products?.active === true);
+          console.log(`Found ${activeVariants.length} active variants to sync`);
 
           const results = [];
           const errors = [];
+          const BATCH_SIZE = 20;
+          let locationId: string | null = null;
 
-          for (const variant of variants || []) {
+          for (let i = 0; i < activeVariants.length; i++) {
+            const variant = activeVariants[i];
+            const mapping = mappingLookup.get(variant.id);
+            
             try {
-              const syncResult = await syncVariantInventory(variant.id, variant.stock_qty);
-              if (syncResult.synced) {
-                results.push(syncResult);
-                syncLog.variants_synced++;
+              if (!mapping?.shopify_inventory_item_id) {
+                continue;
+              }
+
+              // Get location ID once
+              if (!locationId) {
+                locationId = await getLocationId();
+                console.log(`Using location ID: ${locationId}`);
+              }
+
+              // Set inventory level
+              await shopifyRequest('/inventory_levels/set.json', 'POST', {
+                location_id: parseInt(locationId),
+                inventory_item_id: parseInt(mapping.shopify_inventory_item_id),
+                available: variant.stock_qty,
+              });
+
+              results.push({ variantId: variant.id, stock: variant.stock_qty });
+              syncLog.variants_synced++;
+
+              // Log progress and pause every batch
+              if ((i + 1) % BATCH_SIZE === 0) {
+                console.log(`Synced ${i + 1}/${activeVariants.length} variants`);
+                await delay(300);
               }
             } catch (err: any) {
+              console.error(`Error syncing variant ${variant.id}: ${err.message}`);
               errors.push({ variantId: variant.id, error: err.message });
             }
           }
+
+          console.log(`Inventory sync completed: ${results.length} synced, ${errors.length} errors`);
 
           if (errors.length > 0) {
             syncLog.status = 'partial';
