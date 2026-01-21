@@ -22,6 +22,9 @@ import AdminAbandonedCarts from "./pages/admin/AdminAbandonedCarts";
 import AdminShopify from "./pages/admin/AdminShopify";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
+import CustomerLogin from "./pages/customer/CustomerLogin";
+import CustomerRegister from "./pages/customer/CustomerRegister";
+import CustomerDashboard from "./pages/customer/CustomerDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,11 +41,16 @@ const App = () => {
             <Sonner />
             <BrowserRouter>
               <Routes>
-                {/* Public Store */}
+              {/* Public Store */}
                 <Route path="/" element={<Index />} />
                 <Route path="/produto/:slug" element={<ProductPage />} />
                 <Route path="/instalar" element={<Install />} />
                 <Route path="/pedidos/pdf/:orderNumber" element={<PedidoPDF />} />
+                
+                {/* Customer Area */}
+                <Route path="/entrar" element={<CustomerLogin />} />
+                <Route path="/criar-conta" element={<CustomerRegister />} />
+                <Route path="/minha-conta" element={<CustomerDashboard />} />
 
                 {/* Admin */}
                 <Route path="/admin/login" element={<AdminLogin />} />
