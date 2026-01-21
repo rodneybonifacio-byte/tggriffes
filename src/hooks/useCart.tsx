@@ -1,5 +1,13 @@
-import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
-import { ProductVariant } from './useProducts';
+import { createContext, useContext, ReactNode, useCallback, useMemo } from 'react';
+import { 
+  useMyCartReservations, 
+  useCreateReservation, 
+  useUpdateReservation, 
+  useDeleteReservation,
+  useClearSessionReservations,
+  CartReservation
+} from './useCartReservations';
+import { useToast } from '@/hooks/use-toast';
 
 export interface CartItem {
   id: string;
@@ -21,109 +29,97 @@ export interface AddItemResult {
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (item: Omit<CartItem, 'id'>, stockQty: number) => AddItemResult;
+  addItem: (item: Omit<CartItem, 'id'>, stockQty: number) => Promise<AddItemResult>;
   removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number, stockQty?: number) => AddItemResult;
+  updateQuantity: (id: string, quantity: number, stockQty?: number) => Promise<AddItemResult>;
   clearCart: () => void;
   getQuantityForVariant: (variantId: string) => number;
   totalItems: number;
   totalCents: number;
+  isLoading: boolean;
 }
-
-const CART_STORAGE_KEY = 'tg-cart';
-
-const getStoredCart = (): CartItem[] => {
-  try {
-    const stored = localStorage.getItem(CART_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveCart = (items: CartItem[]) => {
-  try {
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
-  } catch {
-    // Ignore storage errors
-  }
-};
 
 const CartContext = createContext<CartContextType | null>(null);
 
+// Convert reservation to CartItem format
+function reservationToCartItem(reservation: CartReservation): CartItem {
+  return {
+    id: reservation.id,
+    productId: reservation.product_id,
+    productName: reservation.product_name,
+    variantId: reservation.variant_id,
+    size: reservation.size,
+    color: reservation.color,
+    quantity: reservation.quantity,
+    unitPriceCents: reservation.unit_price_cents,
+    imageUrl: reservation.image_url,
+    category: null, // Category not stored in reservations
+  };
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(() => getStoredCart());
+  const { data: reservations, isLoading } = useMyCartReservations();
+  const createReservation = useCreateReservation();
+  const updateReservation = useUpdateReservation();
+  const deleteReservation = useDeleteReservation();
+  const clearReservations = useClearSessionReservations();
+  const { toast } = useToast();
 
-  // Save cart to localStorage whenever it changes
-  useEffect(() => {
-    saveCart(items);
-  }, [items]);
+  // Convert reservations to cart items
+  const items: CartItem[] = useMemo(() => {
+    return (reservations || []).map(reservationToCartItem);
+  }, [reservations]);
 
-  const addItem = useCallback((item: Omit<CartItem, 'id'>, stockQty: number): AddItemResult => {
-    // Get current quantity in cart for this variant
-    const existingItem = items.find(i => i.variantId === item.variantId);
-    const currentQty = existingItem?.quantity || 0;
-    const newTotalQty = currentQty + item.quantity;
-
-    // Check stock limit
-    if (newTotalQty > stockQty) {
-      return {
-        success: false,
-        message: `Estoque insuficiente. Disponível: ${stockQty} unidade${stockQty !== 1 ? 's' : ''}`,
-      };
+  const addItem = useCallback(async (item: Omit<CartItem, 'id'>, stockQty: number): Promise<AddItemResult> => {
+    try {
+      await createReservation.mutateAsync({
+        variantId: item.variantId,
+        productId: item.productId,
+        productName: item.productName,
+        size: item.size,
+        color: item.color,
+        quantity: item.quantity,
+        unitPriceCents: item.unitPriceCents,
+        imageUrl: item.imageUrl,
+      });
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao adicionar ao carrinho';
+      return { success: false, message };
     }
-
-    setItems(prev => {
-      const existingIndex = prev.findIndex(
-        i => i.productId === item.productId && i.variantId === item.variantId
-      );
-
-      if (existingIndex >= 0) {
-        const updated = [...prev];
-        updated[existingIndex] = {
-          ...updated[existingIndex],
-          quantity: updated[existingIndex].quantity + item.quantity,
-        };
-        return updated;
-      }
-
-      return [...prev, { ...item, id: crypto.randomUUID() }];
-    });
-
-    return { success: true };
-  }, [items]);
+  }, [createReservation]);
 
   const removeItem = useCallback((id: string) => {
-    setItems(prev => prev.filter(item => item.id !== id));
-  }, []);
+    deleteReservation.mutate(id);
+  }, [deleteReservation]);
 
-  const updateQuantity = useCallback((id: string, quantity: number, stockQty?: number): AddItemResult => {
-    if (quantity <= 0) {
-      removeItem(id);
+  const updateQuantity = useCallback(async (id: string, quantity: number, stockQty?: number): Promise<AddItemResult> => {
+    try {
+      // Find the current item to check stock
+      const currentItem = items.find(i => i.id === id);
+      if (!currentItem) {
+        return { success: false, message: 'Item não encontrado' };
+      }
+
+      // Check stock limit if provided
+      if (stockQty !== undefined && quantity > stockQty + currentItem.quantity) {
+        return {
+          success: false,
+          message: `Estoque insuficiente. Disponível: ${stockQty + currentItem.quantity} unidade${stockQty + currentItem.quantity !== 1 ? 's' : ''}`,
+        };
+      }
+
+      await updateReservation.mutateAsync({ id, quantity });
       return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erro ao atualizar quantidade';
+      return { success: false, message };
     }
-
-    // Check stock limit if provided
-    if (stockQty !== undefined && quantity > stockQty) {
-      return {
-        success: false,
-        message: `Estoque insuficiente. Disponível: ${stockQty} unidade${stockQty !== 1 ? 's' : ''}`,
-      };
-    }
-
-    setItems(prev => 
-      prev.map(item => 
-        item.id === id ? { ...item, quantity } : item
-      )
-    );
-
-    return { success: true };
-  }, [removeItem]);
+  }, [updateReservation, items]);
 
   const clearCart = useCallback(() => {
-    setItems([]);
-    localStorage.removeItem(CART_STORAGE_KEY);
-  }, []);
+    clearReservations.mutate();
+  }, [clearReservations]);
 
   const getQuantityForVariant = useCallback((variantId: string) => {
     const item = items.find(i => i.variantId === variantId);
@@ -143,7 +139,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         clearCart, 
         getQuantityForVariant,
         totalItems, 
-        totalCents 
+        totalCents,
+        isLoading,
       }}
     >
       {children}

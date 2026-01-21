@@ -203,11 +203,11 @@ const ProductPage = () => {
   };
 
   // Add to cart directly
-  const handleAddToCart = (color: string | null, size: string) => {
+  const handleAddToCart = async (color: string | null, size: string) => {
     const variant = getVariant(color, size);
     if (!variant || !product) return;
     
-    const result = addItem({
+    const result = await addItem({
       productId: product.id,
       productName: product.name,
       variantId: variant.id,

@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      cart_reservations: {
+        Row: {
+          color: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          image_url: string | null
+          product_id: string
+          product_name: string
+          quantity: number
+          reserved_at: string
+          session_id: string
+          size: string
+          unit_price_cents: number
+          variant_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          image_url?: string | null
+          product_id: string
+          product_name: string
+          quantity?: number
+          reserved_at?: string
+          session_id: string
+          size: string
+          unit_price_cents?: number
+          variant_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          image_url?: string | null
+          product_id?: string
+          product_name?: string
+          quantity?: number
+          reserved_at?: string
+          session_id?: string
+          size?: string
+          unit_price_cents?: number
+          variant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_reservations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_reservations_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string
