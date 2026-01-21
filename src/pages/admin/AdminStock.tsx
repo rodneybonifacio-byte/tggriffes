@@ -921,7 +921,7 @@ export default function AdminStock() {
                         {movement.stock_before} → {movement.stock_after}
                       </TableCell>
                       <TableCell>
-                        {movement.reason?.toLowerCase().includes('shopify') ? (
+                        {movement.movement_type === 'shopify_sale' || movement.reason?.toLowerCase().includes('shopify') ? (
                           <Badge variant="outline" className="gap-1 bg-green-50 text-green-700 border-green-200">
                             <ShoppingBag className="h-3 w-3" />
                             Shopify
