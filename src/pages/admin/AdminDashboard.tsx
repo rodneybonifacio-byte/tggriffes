@@ -11,10 +11,10 @@ import { Link } from 'react-router-dom';
 const AdminDashboard = () => {
   const { data: products = [] } = useProducts();
   const { data: orders = [] } = useOrderIntents();
-  const { canViewPrices, isLoading: permissionsLoading, isAdmin } = usePermissions();
+  const { canViewPrices, isLoading: permissionsLoading } = usePermissions();
 
-  // Enquanto carrega permissões, mostra tudo para admin (default seguro)
-  const showPrices = permissionsLoading ? true : canViewPrices;
+  // Enquanto carrega permissões, NÃO exibimos valores sensíveis.
+  const showPrices = permissionsLoading ? false : canViewPrices;
 
   const activeProducts = products.filter(p => p.active);
   
