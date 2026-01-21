@@ -7,6 +7,7 @@ import { VariantEditor, VariantData } from '@/components/admin/VariantEditor';
 import { CurrencyInput } from '@/components/admin/CurrencyInput';
 import { useProduct, useCategories, useCreateProduct, useUpdateProduct, useCreateCategory, useCreateVariant, useDeleteVariant } from '@/hooks/useProducts';
 import { useSyncSingleProduct } from '@/hooks/useShopifySync';
+import { usePermissions } from '@/hooks/usePermissions';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +35,7 @@ const AdminProductForm = () => {
   const { mutateAsync: createVariant } = useCreateVariant();
   const { mutateAsync: deleteVariant } = useDeleteVariant();
   const syncToShopify = useSyncSingleProduct();
+  const { canViewPrices } = usePermissions();
 
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
@@ -104,25 +106,36 @@ const AdminProductForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || priceCents <= 0 || images.length === 0 || variants.length === 0) {
-      toast({ title: 'Preencha todos os campos obrigatórios', description: 'Nome, preço, pelo menos 1 foto e 1 tamanho são necessários.', variant: 'destructive' });
+    // Colaboradores podem salvar sem preço (mantém o preço existente)
+    const priceValid = canViewPrices ? priceCents > 0 : true;
+    if (!name.trim() || !priceValid || images.length === 0 || variants.length === 0) {
+      toast({ title: 'Preencha todos os campos obrigatórios', description: 'Nome, pelo menos 1 foto e 1 tamanho são necessários.', variant: 'destructive' });
       return;
     }
 
     try {
-      const productData = {
-        name, slug, description, price_cents: priceCents,
+      const productData: Record<string, any> = {
+        name, slug, description,
         category_id: categoryId || null, active,
         weight_grams: weightGrams || null,
         length_cm: lengthCm || null, width_cm: widthCm || null, height_cm: heightCm || null,
         main_image_url: mainImage || images[0] || null,
       };
+      
+      // Apenas admin pode alterar preço
+      if (canViewPrices) {
+        productData.price_cents = priceCents;
+      }
 
       let productId = id;
       if (isEditing && id) {
-        await updateProduct({ id, ...productData });
+        await updateProduct({ id, ...productData } as any);
       } else {
-        const newProduct = await createProduct(productData);
+        // Colaborador precisa definir preço ao criar novo produto
+        if (!canViewPrices) {
+          productData.price_cents = 0; // Preço padrão, admin pode ajustar depois
+        }
+        const newProduct = await createProduct(productData as any);
         productId = newProduct.id;
       }
 
@@ -239,7 +252,9 @@ const AdminProductForm = () => {
                     </Dialog>
                   </div>
                 </div>
-                <div><Label>Preço *</Label><CurrencyInput value={priceCents} onChange={setPriceCents} required /></div>
+                {canViewPrices && (
+                  <div><Label>Preço *</Label><CurrencyInput value={priceCents} onChange={setPriceCents} required /></div>
+                )}
               </div>
               <div><Label>Descrição</Label><Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} /></div>
               <div className="flex items-center gap-2"><Switch checked={active} onCheckedChange={setActive} /><Label>Produto ativo</Label></div>
