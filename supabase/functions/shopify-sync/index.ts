@@ -111,13 +111,21 @@ serve(async (req) => {
       }
     }
 
-    // Get location ID for inventory updates
+    // Cache location ID to avoid repeated API calls
+    let cachedLocationId: string | null = null;
+
+    // Get location ID for inventory updates (cached)
     async function getLocationId(): Promise<string> {
+      if (cachedLocationId !== null) {
+        return cachedLocationId;
+      }
       const { locations } = await shopifyRequest('/locations.json');
       if (!locations || locations.length === 0) {
         throw new Error('No Shopify locations found');
       }
-      return locations[0].id.toString();
+      const locationId = locations[0].id.toString();
+      cachedLocationId = locationId;
+      return locationId;
     }
 
     // Sync a single product to Shopify
