@@ -33,16 +33,25 @@ Deno.serve(async (req) => {
     
     console.log(`Webhook received: ${topic} from ${shopDomain}`);
 
-    // Only process order creation events
-    if (topic !== "orders/create" && topic !== "orders/paid") {
-      console.log(`Ignoring topic: ${topic}`);
-      return new Response(JSON.stringify({ message: "Ignored" }), {
+    // Only process order paid events
+    if (topic !== "orders/paid") {
+      console.log(`Ignoring topic: ${topic} - only orders/paid triggers stock decrement`);
+      return new Response(JSON.stringify({ message: "Ignored - only paid orders decrement stock" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const order: ShopifyOrder = await req.json();
-    console.log(`Processing Shopify order #${order.order_number} with ${order.line_items.length} items`);
+    
+    // Double-check financial status is paid
+    if (order.financial_status !== "paid") {
+      console.log(`Ignoring order #${order.order_number} - financial_status is "${order.financial_status}", not "paid"`);
+      return new Response(JSON.stringify({ message: "Ignored - order not paid" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log(`Processing PAID Shopify order #${order.order_number} with ${order.line_items.length} items`);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
