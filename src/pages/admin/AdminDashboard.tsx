@@ -3,6 +3,7 @@ import { AdminGuard } from '@/components/admin/AdminGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useProducts } from '@/hooks/useProducts';
 import { useOrderIntents } from '@/hooks/useOrders';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Package, ShoppingCart, AlertTriangle, TrendingUp, User } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { Link } from 'react-router-dom';
@@ -10,6 +11,7 @@ import { Link } from 'react-router-dom';
 const AdminDashboard = () => {
   const { data: products = [] } = useProducts();
   const { data: orders = [] } = useOrderIntents();
+  const { canViewPrices } = usePermissions();
 
   const activeProducts = products.filter(p => p.active);
   
@@ -62,7 +64,7 @@ const AdminDashboard = () => {
     <AdminGuard>
       <AdminLayout title="Dashboard">
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-8">
+        <div className={`grid gap-4 md:grid-cols-2 ${canViewPrices ? 'lg:grid-cols-3 xl:grid-cols-6' : 'lg:grid-cols-4'} mb-8`}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -93,65 +95,69 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-green-500/20 bg-green-500/5">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-green-600">
-                Vendas Hoje
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{formatPrice(todayRevenue)}</div>
-              <p className="text-xs text-muted-foreground">
-                {todayOrders.length} pedidos hoje
-              </p>
-            </CardContent>
-          </Card>
+          {canViewPrices && (
+            <>
+              <Card className="border-green-500/20 bg-green-500/5">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-green-600">
+                    Vendas Hoje
+                  </CardTitle>
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">{formatPrice(todayRevenue)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {todayOrders.length} pedidos hoje
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card className="border-blue-500/20 bg-blue-500/5">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-blue-600">
-                Vendas Acumuladas
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">{formatPrice(accumulatedRevenue)}</div>
-              <p className="text-xs text-muted-foreground">
-                {activeOrders.length} pedidos ativos
-              </p>
-            </CardContent>
-          </Card>
+              <Card className="border-blue-500/20 bg-blue-500/5">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-blue-600">
+                    Vendas Acumuladas
+                  </CardTitle>
+                  <TrendingUp className="h-4 w-4 text-blue-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600">{formatPrice(accumulatedRevenue)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {activeOrders.length} pedidos ativos
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card className="border-primary/20 bg-primary/5">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-primary">
-                Vendas Finalizadas
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">{formatPrice(closedRevenue)}</div>
-              <p className="text-xs text-muted-foreground">
-                {closedOrders.length} pedidos
-              </p>
-            </CardContent>
-          </Card>
+              <Card className="border-primary/20 bg-primary/5">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-primary">
+                    Vendas Finalizadas
+                  </CardTitle>
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-primary">{formatPrice(closedRevenue)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {closedOrders.length} pedidos
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card className="border-destructive/20 bg-destructive/5">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-destructive">
-                Cancelados
-              </CardTitle>
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">{formatPrice(cancelledTotal)}</div>
-              <p className="text-xs text-muted-foreground">
-                {cancelledOrders.length} pedidos
-              </p>
-            </CardContent>
-          </Card>
+              <Card className="border-destructive/20 bg-destructive/5">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-destructive">
+                    Cancelados
+                  </CardTitle>
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-destructive">{formatPrice(cancelledTotal)}</div>
+                  <p className="text-xs text-muted-foreground">
+                    {cancelledOrders.length} pedidos
+                  </p>
+                </CardContent>
+              </Card>
+            </>
+          )}
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -242,7 +248,8 @@ const AdminDashboard = () => {
                           </span>
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {formatPrice(order.total_cents)} • {new Date(order.created_at).toLocaleString('pt-BR', {
+                          {canViewPrices && `${formatPrice(order.total_cents)} • `}
+                          {new Date(order.created_at).toLocaleString('pt-BR', {
                             day: '2-digit',
                             month: '2-digit',
                             hour: '2-digit',

@@ -11,24 +11,34 @@ import {
   Tag,
   Users,
   ShoppingBasket,
-  Store
+  Store,
+  LucideIcon
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { cn } from '@/lib/utils';
 
-const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
-  { icon: Package, label: 'Produtos', href: '/admin/produtos' },
-  { icon: Warehouse, label: 'Estoque', href: '/admin/estoque' },
-  { icon: Tag, label: 'Promoções', href: '/admin/promocoes' },
-  { icon: ShoppingCart, label: 'Pedidos', href: '/admin/pedidos' },
-  { icon: ShoppingBasket, label: 'Abandonados', href: '/admin/carrinhos' },
-  { icon: Users, label: 'Clientes', href: '/admin/clientes' },
-  { icon: Store, label: 'Shopify', href: '/admin/shopify' },
-  { icon: Settings, label: 'Configurações', href: '/admin/configuracoes' },
+interface MenuItem {
+  icon: LucideIcon;
+  label: string;
+  href: string;
+  permission?: keyof ReturnType<typeof usePermissions>;
+}
+
+const menuItems: MenuItem[] = [
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/admin', permission: 'canViewDashboard' },
+  { icon: Package, label: 'Produtos', href: '/admin/produtos', permission: 'canViewProducts' },
+  { icon: Warehouse, label: 'Estoque', href: '/admin/estoque', permission: 'canViewStock' },
+  { icon: Tag, label: 'Promoções', href: '/admin/promocoes', permission: 'canViewPromotions' },
+  { icon: ShoppingCart, label: 'Pedidos', href: '/admin/pedidos', permission: 'canViewOrders' },
+  { icon: ShoppingBasket, label: 'Abandonados', href: '/admin/carrinhos', permission: 'canViewAbandonedCarts' },
+  { icon: Users, label: 'Clientes', href: '/admin/clientes', permission: 'canViewCustomers' },
+  { icon: Store, label: 'Shopify', href: '/admin/shopify', permission: 'canViewShopify' },
+  { icon: Settings, label: 'Configurações', href: '/admin/configuracoes', permission: 'canViewSettings' },
 ];
 
 interface AdminLayoutProps {
@@ -41,11 +51,18 @@ export function AdminLayout({ children, title, backHref }: AdminLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
+  const permissions = usePermissions();
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/admin/login');
   };
+
+  // Filtrar itens do menu baseado nas permissões
+  const visibleMenuItems = menuItems.filter(item => {
+    if (!item.permission) return true;
+    return permissions[item.permission] === true;
+  });
 
   const NavContent = () => (
     <nav className="flex flex-col h-full">
@@ -53,11 +70,16 @@ export function AdminLayout({ children, title, backHref }: AdminLayoutProps) {
         <Link to="/" className="block">
           <img src={logoImage} alt="Logo" className="h-10 w-auto" />
         </Link>
-        <p className="text-sm text-muted-foreground mt-1">Painel Admin</p>
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-sm text-muted-foreground">Painel Admin</p>
+          {permissions.isCollaborator && (
+            <Badge variant="secondary" className="text-xs">Colaborador</Badge>
+          )}
+        </div>
       </div>
       
       <div className="flex-1 p-4 space-y-1">
-        {menuItems.map((item) => {
+        {visibleMenuItems.map((item) => {
           const isActive = location.pathname === item.href || 
             (item.href !== '/admin' && location.pathname.startsWith(item.href));
           

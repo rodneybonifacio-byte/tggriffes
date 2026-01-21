@@ -5,6 +5,7 @@ import { OrderEditModal } from '@/components/admin/OrderEditModal';
 import { useOrderIntents, useUpdateOrderStatus, useAddOrderHistory, useOrderHistory } from '@/hooks/useOrders';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { useProducts } from '@/hooks/useProducts';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -44,6 +45,7 @@ const AdminOrders = () => {
   const { mutateAsync: addHistory } = useAddOrderHistory();
   const { data: orderHistory = [] } = useOrderHistory(selectedOrder?.id || null);
   const { toast } = useToast();
+  const { canViewPrices } = usePermissions();
 
   const generatePdf = async (order: OrderIntent) => {
     setIsGeneratingPdf(true);
@@ -210,7 +212,7 @@ const AdminOrders = () => {
                     <TableHead>Data</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Itens</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
+                    {canViewPrices && <TableHead className="text-right">Total</TableHead>}
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -241,9 +243,11 @@ const AdminOrders = () => {
                       <TableCell>
                         {order.order_intent_items?.length || 0} item(ns)
                       </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatPrice(order.total_cents)}
-                      </TableCell>
+                      {canViewPrices && (
+                        <TableCell className="text-right font-medium">
+                          {formatPrice(order.total_cents)}
+                        </TableCell>
+                      )}
                       <TableCell className="text-center">
                         <div className="flex flex-col items-center gap-1">
                           <Select 
@@ -323,9 +327,11 @@ const AdminOrders = () => {
                       <p className="text-sm text-muted-foreground">
                         {formatDate(order.created_at)}
                       </p>
-                      <p className="font-semibold text-lg">
-                        {formatPrice(order.total_cents)}
-                      </p>
+                      {canViewPrices && (
+                        <p className="font-semibold text-lg">
+                          {formatPrice(order.total_cents)}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
@@ -434,9 +440,11 @@ const AdminOrders = () => {
                           Tam: {item.size} | Qtd: {item.qty}
                         </p>
                       </div>
-                      <span className="font-medium">
-                        {formatPrice(item.line_total_cents)}
-                      </span>
+                      {canViewPrices && (
+                        <span className="font-medium">
+                          {formatPrice(item.line_total_cents)}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -472,23 +480,25 @@ const AdminOrders = () => {
                   </div>
                 )}
 
-                {/* Totals */}
-                <div className="border-t pt-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal</span>
-                    <span>{formatPrice(selectedOrder.subtotal_cents)}</span>
-                  </div>
-                  {selectedOrder.shipping_price_cents && (
+                {/* Totals - Only visible for admins */}
+                {canViewPrices && (
+                  <div className="border-t pt-4 space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Frete</span>
-                      <span>{formatPrice(selectedOrder.shipping_price_cents)}</span>
+                      <span>Subtotal</span>
+                      <span>{formatPrice(selectedOrder.subtotal_cents)}</span>
                     </div>
-                  )}
-                  <div className="flex justify-between font-semibold text-lg border-t pt-2">
-                    <span>Total</span>
-                    <span>{formatPrice(selectedOrder.total_cents)}</span>
+                    {selectedOrder.shipping_price_cents && (
+                      <div className="flex justify-between text-sm">
+                        <span>Frete</span>
+                        <span>{formatPrice(selectedOrder.shipping_price_cents)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold text-lg border-t pt-2">
+                      <span>Total</span>
+                      <span>{formatPrice(selectedOrder.total_cents)}</span>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Status Update */}
                 <div className="pt-2">

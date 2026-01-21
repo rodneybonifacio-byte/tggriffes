@@ -5,6 +5,7 @@ import { AdminGuard } from '@/components/admin/AdminGuard';
 import { StockModal } from '@/components/admin/StockModal';
 import { useProducts, useDeleteProduct, useToggleProductActive, Product } from '@/hooks/useProducts';
 import { useCategories } from '@/hooks/useProducts';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -53,6 +54,7 @@ const AdminProducts = () => {
   const { mutateAsync: deleteProduct, isPending: isDeleting } = useDeleteProduct();
   const { mutateAsync: toggleProductActive, isPending: isToggling } = useToggleProductActive();
   const { toast } = useToast();
+  const { canViewPrices, canEditProducts, canDeleteProducts, canEditStock } = usePermissions();
 
   const handleToggleActive = async (product: Product) => {
     try {
@@ -104,12 +106,14 @@ const AdminProducts = () => {
               className="pl-10"
             />
           </div>
-          <Link to="/admin/produtos/novo">
-            <Button className="w-full sm:w-auto">
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Produto
-            </Button>
-          </Link>
+          {canEditProducts && (
+            <Link to="/admin/produtos/novo">
+              <Button className="w-full sm:w-auto">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Produto
+              </Button>
+            </Link>
+          )}
         </div>
 
         {/* Filters */}
@@ -159,12 +163,14 @@ const AdminProducts = () => {
             <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-lg font-medium">Nenhum produto encontrado</p>
             <p className="text-muted-foreground mb-4">Comece cadastrando seu primeiro produto</p>
-            <Link to="/admin/produtos/novo">
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Produto
-              </Button>
-            </Link>
+            {canEditProducts && (
+              <Link to="/admin/produtos/novo">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Produto
+                </Button>
+              </Link>
+            )}
           </div>
         ) : (
           <>
@@ -176,7 +182,7 @@ const AdminProducts = () => {
                     <TableHead className="w-16">Foto</TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Categoria</TableHead>
-                    <TableHead className="text-right">Preço</TableHead>
+                    {canViewPrices && <TableHead className="text-right">Preço</TableHead>}
                     <TableHead className="text-center">Estoque</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -205,7 +211,9 @@ const AdminProducts = () => {
                         </TableCell>
                         <TableCell className="font-medium">{product.name}</TableCell>
                         <TableCell>{product.categories?.name || '-'}</TableCell>
-                        <TableCell className="text-right">{formatPrice(product.price_cents)}</TableCell>
+                        {canViewPrices && (
+                          <TableCell className="text-right">{formatPrice(product.price_cents)}</TableCell>
+                        )}
                         <TableCell className="text-center">
                           <span className={
                             isOutOfStock ? 'text-destructive' :
@@ -221,61 +229,69 @@ const AdminProducts = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Link to={`/admin/produtos/${product.id}`}>
-                              <Button variant="ghost" size="icon" title="Editar">
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              title="Estoque rápido"
-                              onClick={() => setStockModalProduct(product)}
-                            >
-                              <Boxes className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              title={product.active ? 'Desativar' : 'Ativar'}
-                              onClick={() => handleToggleActive(product)}
-                              disabled={isToggling}
-                            >
-                              {product.active ? (
-                                <ToggleRight className="h-4 w-4" />
-                              ) : (
-                                <ToggleLeft className="h-4 w-4" />
-                              )}
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  title="Excluir"
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4" />
+                            {canEditProducts && (
+                              <Link to={`/admin/produtos/${product.id}`}>
+                                <Button variant="ghost" size="icon" title="Editar">
+                                  <Pencil className="h-4 w-4" />
                                 </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Tem certeza que deseja excluir "{product.name}"? Esta ação não pode ser desfeita.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleDeleteProduct(product)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              </Link>
+                            )}
+                            {canEditStock && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                title="Estoque rápido"
+                                onClick={() => setStockModalProduct(product)}
+                              >
+                                <Boxes className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {canEditProducts && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                title={product.active ? 'Desativar' : 'Ativar'}
+                                onClick={() => handleToggleActive(product)}
+                                disabled={isToggling}
+                              >
+                                {product.active ? (
+                                  <ToggleRight className="h-4 w-4" />
+                                ) : (
+                                  <ToggleLeft className="h-4 w-4" />
+                                )}
+                              </Button>
+                            )}
+                            {canDeleteProducts && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    title="Excluir"
+                                    className="text-destructive hover:text-destructive"
                                   >
-                                    Excluir
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Tem certeza que deseja excluir "{product.name}"? Esta ação não pode ser desfeita.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDeleteProduct(product)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Excluir
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -318,7 +334,9 @@ const AdminProducts = () => {
                             {product.categories?.name || 'Sem categoria'}
                           </p>
                           <div className="flex items-center gap-4 mt-2">
-                            <span className="font-semibold">{formatPrice(product.price_cents)}</span>
+                            {canViewPrices && (
+                              <span className="font-semibold">{formatPrice(product.price_cents)}</span>
+                            )}
                             <span className={`text-sm ${
                               isOutOfStock ? 'text-destructive' :
                               isLowStock ? 'text-warning' : 'text-muted-foreground'
@@ -329,47 +347,53 @@ const AdminProducts = () => {
                         </div>
                       </div>
                       <div className="flex gap-2 mt-4">
-                        <Link to={`/admin/produtos/${product.id}`} className="flex-1">
-                          <Button variant="outline" className="w-full" size="sm">
-                            <Pencil className="h-4 w-4 mr-1" />
-                            Editar
-                          </Button>
-                        </Link>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => setStockModalProduct(product)}
-                        >
-                          <Boxes className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
+                        {canEditProducts && (
+                          <Link to={`/admin/produtos/${product.id}`} className="flex-1">
+                            <Button variant="outline" className="w-full" size="sm">
+                              <Pencil className="h-4 w-4 mr-1" />
+                              Editar
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Tem certeza que deseja excluir "{product.name}"? Esta ação não pode ser desfeita.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteProduct(product)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          </Link>
+                        )}
+                        {canEditStock && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setStockModalProduct(product)}
+                          >
+                            <Boxes className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDeleteProducts && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="text-destructive hover:text-destructive"
                               >
-                                Excluir
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir "{product.name}"? Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteProduct(product)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
