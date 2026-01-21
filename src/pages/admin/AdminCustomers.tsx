@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { useCustomers } from '@/hooks/useCustomers';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +12,7 @@ import { Search, Users, Phone, ShoppingBag, TrendingUp } from 'lucide-react';
 
 export default function AdminCustomers() {
   const { data: customers, isLoading } = useCustomers();
+  const { canViewPrices } = usePermissions();
   const [search, setSearch] = useState('');
 
   const filteredCustomers = customers?.filter(c => {
@@ -46,7 +48,7 @@ export default function AdminCustomers() {
     <AdminGuard>
       <AdminLayout title="Clientes">
         {/* Estatísticas */}
-        <div className="grid gap-4 md:grid-cols-4 mb-6">
+        <div className={`grid gap-4 mb-6 ${canViewPrices ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
@@ -75,19 +77,21 @@ export default function AdminCustomers() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-500/10 rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-green-500" />
+          {canViewPrices && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-500/10 rounded-lg">
+                    <TrendingUp className="h-5 w-5 text-green-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Receita Total</p>
+                    <p className="text-2xl font-bold">{formatPrice(totalRevenue)}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Receita Total</p>
-                  <p className="text-2xl font-bold">{formatPrice(totalRevenue)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardContent className="pt-6">
@@ -175,9 +179,11 @@ export default function AdminCustomers() {
                         </span>
                       </div>
                       
-                      <p className="text-sm font-semibold text-green-600">
-                        {formatPrice(customer.total_spent)}
-                      </p>
+                      {canViewPrices && (
+                        <p className="text-sm font-semibold text-green-600">
+                          {formatPrice(customer.total_spent)}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </CardContent>
