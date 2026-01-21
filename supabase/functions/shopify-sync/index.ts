@@ -47,7 +47,7 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     
-    const { action, productId, variantId, stockQty } = await req.json();
+    const { action, productId, variantId, stockQty, nameQuery } = await req.json();
 
     // Shopify API base URL - ensure no trailing slashes or extra chars
     const cleanDomain = SHOPIFY_STORE_DOMAIN.replace(/^https?:\/\//, '').replace(/\/$/, '');
@@ -124,22 +124,47 @@ serve(async (req) => {
     let cachedLocationId: string | null = null;
 
     // Get location ID for inventory updates (cached)
+    // Prefer a location that fulfills online orders when available.
     async function getLocationId(): Promise<string> {
       if (cachedLocationId !== null) {
         return cachedLocationId;
       }
+
       const { locations } = await shopifyRequest('/locations.json');
       if (!locations || locations.length === 0) {
         throw new Error('No Shopify locations found');
       }
-      const locationId = locations[0].id.toString();
+
+      const preferred =
+        locations.find((l: any) => l?.active === true && l?.fulfills_online_orders === true) ||
+        locations.find((l: any) => l?.active === true) ||
+        locations[0];
+
+      const locationId = preferred.id.toString();
       cachedLocationId = locationId;
+      console.log(
+        `Selected Shopify location for inventory: ${preferred?.name ?? 'unknown'} (${locationId})`
+      );
       return locationId;
     }
 
     async function getLocations(): Promise<any[]> {
       const { locations } = await shopifyRequest('/locations.json');
       return locations || [];
+    }
+
+    async function connectInventoryItem(locationId: string, inventoryItemId: string) {
+      // Connect inventory item to location (required in some multi-location setups)
+      try {
+        await shopifyRequest('/inventory_levels/connect.json', 'POST', {
+          location_id: parseInt(locationId),
+          inventory_item_id: parseInt(inventoryItemId),
+          relocate_if_necessary: true,
+        });
+      } catch (err: any) {
+        // Non-fatal: item might already be connected or Shopify may reject connect in some cases.
+        console.log(`Connect inventory ignored: ${inventoryItemId}@${locationId} -> ${err.message}`);
+      }
     }
 
     async function getInventoryLevels(inventoryItemIds: string[], locationIds?: string[]): Promise<any[]> {
@@ -337,6 +362,8 @@ serve(async (req) => {
       }
 
       const locationId = await getLocationId();
+
+      await connectInventoryItem(locationId, String(mapping.shopify_inventory_item_id));
 
       // Set inventory level
       await shopifyRequest('/inventory_levels/set.json', 'POST', {
@@ -632,6 +659,8 @@ serve(async (req) => {
                 console.log(`Using location ID: ${locationId}`);
               }
 
+               await connectInventoryItem(locationId, String(mapping.shopify_inventory_item_id));
+
               // Set inventory level
               await shopifyRequest('/inventory_levels/set.json', 'POST', {
                 location_id: parseInt(locationId),
@@ -664,6 +693,86 @@ serve(async (req) => {
             message: 'Inventory sync completed', 
             variantsSynced: results.length,
             errors 
+          };
+        }
+
+      } else if (action === 'sync_inventory_for_name') {
+        if (!nameQuery || typeof nameQuery !== 'string' || nameQuery.trim().length < 2) {
+          throw new Error('Missing nameQuery');
+        }
+
+        const query = nameQuery.trim();
+        console.log(`Starting inventory sync for products nameQuery="${query}"`);
+
+        const { data: products } = await supabase
+          .from('products')
+          .select('id, name, active')
+          .ilike('name', `${query}%`)
+          .eq('active', true);
+
+        const productIds = (products || []).map(p => p.id);
+        if (productIds.length === 0) {
+          result = { message: 'No matching products', products: 0, variantsSynced: 0, errors: [] };
+        } else {
+          const { data: variants } = await supabase
+            .from('product_variants')
+            .select('id, stock_qty, product_id')
+            .in('product_id', productIds);
+
+          const variantIds = (variants || []).map(v => v.id);
+          const { data: mappings } = await supabase
+            .from('shopify_variant_mappings')
+            .select('variant_id, shopify_inventory_item_id')
+            .in('variant_id', variantIds)
+            .not('shopify_inventory_item_id', 'is', null);
+
+          const mappingLookup = new Map((mappings || []).map(m => [m.variant_id, m]));
+
+          const errors: any[] = [];
+          const synced: any[] = [];
+          const BATCH_SIZE = 20;
+          let locationId: string | null = null;
+
+          for (let i = 0; i < (variants || []).length; i++) {
+            const v = (variants || [])[i];
+            const m = mappingLookup.get(v.id);
+            if (!m?.shopify_inventory_item_id) continue;
+
+            try {
+              if (!locationId) {
+                locationId = await getLocationId();
+              }
+
+              await connectInventoryItem(locationId, String(m.shopify_inventory_item_id));
+
+              await shopifyRequest('/inventory_levels/set.json', 'POST', {
+                location_id: parseInt(locationId),
+                inventory_item_id: parseInt(String(m.shopify_inventory_item_id)),
+                available: v.stock_qty,
+              });
+
+              synced.push({ variantId: v.id, stock: v.stock_qty, productId: v.product_id });
+              syncLog.variants_synced++;
+
+              if ((synced.length + errors.length) % BATCH_SIZE === 0) {
+                console.log(`Synced ${synced.length} variants for nameQuery="${query}"`);
+                await delay(300);
+              }
+            } catch (err: any) {
+              errors.push({ variantId: v.id, error: err.message });
+            }
+          }
+
+          if (errors.length > 0) {
+            syncLog.status = 'partial';
+            syncLog.errors = errors;
+          }
+
+          result = {
+            message: 'Inventory sync completed (filtered)',
+            products: productIds.length,
+            variantsSynced: synced.length,
+            errors,
           };
         }
 
