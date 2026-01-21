@@ -49,8 +49,17 @@ const Index = () => {
     return true;
   });
 
-  // Sort products
-  if (sortBy === 'price-asc') {
+  // Helper function to calculate total stock
+  const getTotalStock = (product: typeof filteredProducts[0]) => 
+    product.product_variants?.reduce((sum, v) => sum + v.stock_qty, 0) || 0;
+
+  // Sort products - default by stock (most items first)
+  if (sortBy === 'relevance') {
+    // Default: sort by stock quantity (most items first)
+    filteredProducts = [...filteredProducts].sort((a, b) => getTotalStock(b) - getTotalStock(a));
+  } else if (sortBy === 'stock-asc') {
+    filteredProducts = [...filteredProducts].sort((a, b) => getTotalStock(a) - getTotalStock(b));
+  } else if (sortBy === 'price-asc') {
     filteredProducts = [...filteredProducts].sort((a, b) => a.price_cents - b.price_cents);
   } else if (sortBy === 'price-desc') {
     filteredProducts = [...filteredProducts].sort((a, b) => b.price_cents - a.price_cents);
@@ -239,11 +248,12 @@ const Index = () => {
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Ordenar:</span>
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-44">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="relevance">Relevância</SelectItem>
+                    <SelectItem value="relevance">Mais em estoque</SelectItem>
+                    <SelectItem value="stock-asc">Menos em estoque</SelectItem>
                     <SelectItem value="newest">Mais recentes</SelectItem>
                     <SelectItem value="price-asc">Menor preço</SelectItem>
                     <SelectItem value="price-desc">Maior preço</SelectItem>
