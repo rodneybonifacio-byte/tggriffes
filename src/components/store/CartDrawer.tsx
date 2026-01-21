@@ -9,9 +9,11 @@ import { CheckoutDrawer } from './CheckoutDrawer';
 import { useProducts } from '@/hooks/useProducts';
 import { useToast } from '@/hooks/use-toast';
 import { VariationsSummary } from './VariationsSummary';
+import { PromotionCelebrationModal } from './PromotionCelebrationModal';
+import { usePromotionCelebration } from '@/hooks/usePromotionCelebration';
 
 export function CartDrawer() {
-  const { items, removeItem, updateQuantity, totalItems } = useCart();
+  const { items, removeItem, updateQuantity, totalItems, totalCents } = useCart();
   const [open, setOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const { toast } = useToast();
@@ -19,6 +21,13 @@ export function CartDrawer() {
   // Fetch products to get current stock info
   const { data: products } = useProducts();
   
+  // Promotion celebration
+  const {
+    shouldCelebrate,
+    promotionDescription,
+    discountAmount,
+    markCelebrated,
+  } = usePromotionCelebration(totalItems, totalCents);
 
   // Get stock for a variant
   const getVariantStock = (variantId: string): number => {
@@ -146,6 +155,16 @@ export function CartDrawer() {
       </Sheet>
 
       <CheckoutDrawer open={checkoutOpen} onOpenChange={setCheckoutOpen} />
+      
+      {/* Promotion celebration modal */}
+      <PromotionCelebrationModal
+        open={shouldCelebrate}
+        onOpenChange={(open) => {
+          if (!open) markCelebrated();
+        }}
+        promotionDescription={promotionDescription}
+        discountAmount={discountAmount}
+      />
     </>
   );
 }
