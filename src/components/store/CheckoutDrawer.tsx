@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useCart, CartItem } from '@/hooks/useCart';
+import { useSessionId } from '@/hooks/useCartReservations';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { ShippingCalculator, ShippingOption } from './ShippingCalculator';
 import { VariationsSummary } from './VariationsSummary';
@@ -60,6 +61,7 @@ interface CheckoutDrawerProps {
 
 export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const { items, totalCents, totalItems, clearCart } = useCart();
+  const sessionId = useSessionId();
   const { data: settings } = useStoreSettings();
   const { toast } = useToast();
   
@@ -181,50 +183,10 @@ ${pdfUrl}`;
     setIsSubmitting(true);
 
     try {
-      // 0. Validar estoque em tempo real antes de prosseguir
-      const variantIds = items.map(item => item.variantId);
-      const { data: currentStock, error: stockError } = await supabase
-        .from('product_variants')
-        .select('id, stock_qty, size, color')
-        .in('id', variantIds);
-
-      if (stockError) throw stockError;
-
-      // Verificar se todos os itens têm estoque suficiente
-      const stockMap = new Map(currentStock?.map(v => [v.id, v]) || []);
-      const outOfStockItems: string[] = [];
-
-      for (const item of items) {
-        const variant = stockMap.get(item.variantId);
-        if (!variant || variant.stock_qty < item.quantity) {
-          const available = variant?.stock_qty || 0;
-          const colorText = item.color ? ` (${getColorDisplayName(item.color)})` : '';
-          outOfStockItems.push(
-            `${item.productName} - Tam: ${item.size}${colorText}: pedido ${item.quantity}, disponível ${available}`
-          );
-        }
-      }
-
-      if (outOfStockItems.length > 0) {
-        toast({
-          title: 'Estoque insuficiente',
-          description: (
-            <div className="space-y-1">
-              <p>Alguns itens não têm estoque suficiente:</p>
-              <ul className="text-xs list-disc pl-4">
-                {outOfStockItems.map((msg, i) => (
-                  <li key={i}>{msg}</li>
-                ))}
-              </ul>
-              <p className="text-xs mt-2">Atualize as quantidades no carrinho.</p>
-            </div>
-          ),
-          variant: 'destructive',
-          duration: 10000,
-        });
-        setIsSubmitting(false);
-        return;
-      }
+      // Nota: O estoque já está reservado pelas reservas de carrinho
+      // Ao deletar reservas (clearCart), o estoque é restaurado
+      // Ao inserir order_intent_items, o estoque é decrementado novamente
+      // Resultado líquido: estoque permanece correto
 
       // 1. Get next order number using RPC
       const { data: orderNumberData, error: orderNumberError } = await supabase
@@ -268,7 +230,7 @@ ${pdfUrl}`;
 
       if (orderError) throw orderError;
 
-      // 3. Save order items
+      // 3. Preparar itens do pedido ANTES de deletar reservas
       const orderItems = items.map(item => ({
         order_intent_id: orderIntentId,
         product_id: item.productId,
@@ -281,6 +243,13 @@ ${pdfUrl}`;
         line_total_cents: item.unitPriceCents * item.quantity,
       }));
 
+      // 4. Deletar reservas de carrinho (restaura estoque via trigger)
+      await supabase
+        .from('cart_reservations')
+        .delete()
+        .eq('session_id', sessionId);
+
+      // 5. Inserir itens do pedido (decrementa estoque via trigger)
       const { error: itemsError } = await supabase
         .from('order_intent_items')
         .insert(orderItems);
@@ -333,9 +302,8 @@ ${pdfUrl}`;
       const encodedMessage = encodeURIComponent(message);
       const whatsappUrl = `https://api.whatsapp.com/send?phone=${whatsappNumber}&text=${encodedMessage}`;
       
-      // 5. Clear cart, storage and show success
+      // 8. Limpar estado local e mostrar sucesso
       setOrderComplete(true);
-      clearCart();
       clearStoredState();
 
       toast({
