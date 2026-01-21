@@ -27,8 +27,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { ShoppingCart, Trash2, Clock, Package, AlertTriangle, RefreshCw, Timer, ShoppingBag } from 'lucide-react';
+import { ShoppingCart, Trash2, Clock, Package, AlertTriangle, RefreshCw, Timer, ShoppingBag, Users, DollarSign, ChevronDown, ChevronRight } from 'lucide-react';
 import { format, formatDistanceToNow, differenceInHours, differenceInMinutes } from 'date-fns';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -54,14 +55,54 @@ export default function AdminAbandonedCarts() {
   const activeReservations = reservations?.filter(r => new Date(r.expires_at) > now) || [];
   const expiredReservations = reservations?.filter(r => new Date(r.expires_at) <= now) || [];
   
-  // Group active reservations by session_id
+  // Group active reservations by session_id with analytics
   const reservationsBySession = activeReservations.reduce((acc, res) => {
     if (!acc[res.session_id]) {
-      acc[res.session_id] = [];
+      acc[res.session_id] = {
+        items: [],
+        totalUnits: 0,
+        totalValueCents: 0,
+        firstReservation: res.reserved_at,
+        lastExpiration: res.expires_at,
+        products: new Set<string>(),
+        sizes: new Set<string>(),
+      };
     }
-    acc[res.session_id].push(res);
+    const session = acc[res.session_id];
+    session.items.push(res);
+    session.totalUnits += res.quantity;
+    session.totalValueCents += res.quantity * res.unit_price_cents;
+    session.products.add(res.product_name);
+    if (res.size) session.sizes.add(res.size);
+    
+    // Track earliest reservation and latest expiration
+    if (new Date(res.reserved_at) < new Date(session.firstReservation)) {
+      session.firstReservation = res.reserved_at;
+    }
+    if (new Date(res.expires_at) > new Date(session.lastExpiration)) {
+      session.lastExpiration = res.expires_at;
+    }
+    
     return acc;
-  }, {} as Record<string, CartReservation[]>);
+  }, {} as Record<string, {
+    items: CartReservation[];
+    totalUnits: number;
+    totalValueCents: number;
+    firstReservation: string;
+    lastExpiration: string;
+    products: Set<string>;
+    sizes: Set<string>;
+  }>);
+  
+  // Convert to sorted array for display
+  const sessionsList = Object.entries(reservationsBySession)
+    .map(([sessionId, data]) => ({
+      sessionId,
+      ...data,
+      productsArray: Array.from(data.products),
+      sizesArray: Array.from(data.sizes),
+    }))
+    .sort((a, b) => new Date(a.lastExpiration).getTime() - new Date(b.lastExpiration).getTime());
   
   // Categorize orders by age
   const veryOld = abandonedCarts.filter(o => differenceInHours(now, new Date(o.created_at)) > 72);
@@ -76,6 +117,10 @@ export default function AdminAbandonedCarts() {
   }, 0);
   
   const totalItemsHeldReservations = activeReservations.reduce((sum, r) => sum + r.quantity, 0);
+  
+  // Calculate total potential value
+  const totalValueReservations = activeReservations.reduce((sum, r) => sum + (r.quantity * r.unit_price_cents), 0);
+  const totalValueOrders = abandonedCarts.reduce((sum, order) => sum + (order.total_cents || 0), 0);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => 
@@ -209,8 +254,8 @@ export default function AdminAbandonedCarts() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{Object.keys(reservationsBySession).length}</div>
-                <p className="text-xs text-muted-foreground">{activeReservations.length} itens reservados</p>
+                <div className="text-2xl font-bold text-blue-600">{sessionsList.length}</div>
+                <p className="text-xs text-muted-foreground">{activeReservations.length} itens em {sessionsList.length} carrinhos</p>
               </CardContent>
             </Card>
 
@@ -240,6 +285,21 @@ export default function AdminAbandonedCarts() {
               </CardContent>
             </Card>
 
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Valor Potencial
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {((totalValueReservations + totalValueOrders) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </div>
+                <p className="text-xs text-muted-foreground">em carrinhos + pedidos</p>
+              </CardContent>
+            </Card>
+
             <Card className="border-red-200 bg-red-50/50">
               <CardHeader className="pb-2">
                 <CardDescription className="flex items-center gap-2 text-red-600">
@@ -249,39 +309,41 @@ export default function AdminAbandonedCarts() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">{veryOld.length}</div>
-                <p className="text-xs text-red-600/70">prioridade para cancelar</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-amber-200 bg-amber-50/50">
-              <CardHeader className="pb-2">
-                <CardDescription className="flex items-center gap-2 text-amber-600">
-                  <Clock className="h-4 w-4" />
-                  Expirados
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-amber-600">{expiredReservations.length}</div>
-                <p className="text-xs text-amber-600/70">
-                  <Button 
-                    variant="link" 
-                    size="sm" 
-                    className="p-0 h-auto text-amber-600"
-                    onClick={handleCleanupExpired}
-                    disabled={cleanupExpired.isPending}
-                  >
-                    {cleanupExpired.isPending ? 'Limpando...' : 'Limpar agora'}
-                  </Button>
-                </p>
+                <p className="text-xs text-red-600/70">pedidos para cancelar</p>
               </CardContent>
             </Card>
           </div>
+
+          {/* Expired reservations alert */}
+          {expiredReservations.length > 0 && (
+            <Card className="border-amber-200 bg-amber-50/50">
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-amber-600" />
+                    <span className="font-medium text-amber-800">
+                      {expiredReservations.length} reserva(s) expirada(s) aguardando limpeza
+                    </span>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                    onClick={handleCleanupExpired}
+                    disabled={cleanupExpired.isPending}
+                  >
+                    {cleanupExpired.isPending ? 'Limpando...' : 'Limpar Agora'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Tabs defaultValue="reservations" className="w-full">
             <TabsList>
               <TabsTrigger value="reservations" className="gap-2">
                 <Timer className="h-4 w-4" />
-                Reservas em Carrinho ({activeReservations.length})
+                Carrinhos Anônimos ({sessionsList.length})
               </TabsTrigger>
               <TabsTrigger value="orders" className="gap-2">
                 <ShoppingBag className="h-4 w-4" />
@@ -289,15 +351,15 @@ export default function AdminAbandonedCarts() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Reservations Tab */}
+            {/* Reservations Tab - Grouped by Session */}
             <TabsContent value="reservations">
               <Card>
                 <CardHeader className="pb-3">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                      <CardTitle className="text-lg">Reservas de Carrinho</CardTitle>
+                      <CardTitle className="text-lg">Carrinhos de Usuários Anônimos</CardTitle>
                       <CardDescription>
-                        Itens reservados por clientes navegando na loja (expiram em 30 min)
+                        Itens reservados por clientes navegando na loja, agrupados por sessão (expiram em 30 min)
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
@@ -349,91 +411,155 @@ export default function AdminAbandonedCarts() {
                 <CardContent>
                   {reservationsLoading ? (
                     <div className="text-center py-8 text-muted-foreground">Carregando...</div>
-                  ) : activeReservations.length === 0 ? (
+                  ) : sessionsList.length === 0 ? (
                     <div className="text-center py-8">
                       <Timer className="h-12 w-12 mx-auto text-green-500 mb-2" />
-                      <p className="text-muted-foreground">Nenhuma reserva ativa!</p>
-                      <p className="text-sm text-green-600">Nenhum cliente está com itens no carrinho no momento.</p>
+                      <p className="text-muted-foreground">Nenhum carrinho ativo!</p>
+                      <p className="text-sm text-green-600">Nenhum cliente está com itens reservados no momento.</p>
                     </div>
                   ) : (
-                    <div className="rounded-md border overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-12">
-                              <Checkbox 
-                                checked={selectedReservationIds.length === activeReservations.length && activeReservations.length > 0}
-                                onCheckedChange={() => {
-                                  if (selectedReservationIds.length === activeReservations.length) {
-                                    setSelectedReservationIds([]);
-                                  } else {
-                                    setSelectedReservationIds(activeReservations.map(r => r.id));
-                                  }
-                                }}
-                              />
-                            </TableHead>
-                            <TableHead>Produto</TableHead>
-                            <TableHead>Variante</TableHead>
-                            <TableHead>Qtd</TableHead>
-                            <TableHead>Sessão</TableHead>
-                            <TableHead>Expira em</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {activeReservations
-                            .sort((a, b) => new Date(a.expires_at).getTime() - new Date(b.expires_at).getTime())
-                            .map(reservation => (
-                              <TableRow
-                                key={reservation.id}
-                                className={selectedReservationIds.includes(reservation.id) ? 'bg-muted/50' : ''}
-                              >
-                                <TableCell>
-                                  <Checkbox 
-                                    checked={selectedReservationIds.includes(reservation.id)}
-                                    onCheckedChange={() => {
-                                      setSelectedReservationIds(prev => 
-                                        prev.includes(reservation.id) 
-                                          ? prev.filter(i => i !== reservation.id) 
-                                          : [...prev, reservation.id]
-                                      );
-                                    }}
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    {reservation.image_url && (
-                                      <img 
-                                        src={reservation.image_url} 
-                                        alt="" 
-                                        className="w-8 h-8 object-cover rounded"
+                    <div className="space-y-3">
+                      {sessionsList.map((session) => {
+                        const minutesLeft = differenceInMinutes(new Date(session.lastExpiration), now);
+                        const isUrgent = minutesLeft <= 10;
+                        const allSelected = session.items.every(item => selectedReservationIds.includes(item.id));
+                        const someSelected = session.items.some(item => selectedReservationIds.includes(item.id));
+                        
+                        return (
+                          <Collapsible key={session.sessionId} defaultOpen={sessionsList.length <= 3}>
+                            <Card className={`border ${isUrgent ? 'border-amber-300 bg-amber-50/30' : ''}`}>
+                              <CollapsibleTrigger asChild>
+                                <CardHeader className="pb-3 cursor-pointer hover:bg-muted/30 transition-colors">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <Checkbox 
+                                        checked={allSelected}
+                                        className={someSelected && !allSelected ? 'opacity-50' : ''}
+                                        onCheckedChange={(checked) => {
+                                          if (checked) {
+                                            setSelectedReservationIds(prev => [
+                                              ...prev,
+                                              ...session.items.map(i => i.id).filter(id => !prev.includes(id))
+                                            ]);
+                                          } else {
+                                            setSelectedReservationIds(prev => 
+                                              prev.filter(id => !session.items.map(i => i.id).includes(id))
+                                            );
+                                          }
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
                                       />
-                                    )}
-                                    <span className="font-medium max-w-[150px] truncate">
-                                      {reservation.product_name}
-                                    </span>
+                                      <div className="flex items-center gap-2">
+                                        <Users className="h-4 w-4 text-muted-foreground" />
+                                        <span className="font-mono text-sm text-muted-foreground">
+                                          {session.sessionId.slice(0, 8)}...
+                                        </span>
+                                      </div>
+                                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=closed]_&]:rotate-[-90deg]" />
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                      <div className="text-right">
+                                        <div className="font-semibold text-green-600">
+                                          {(session.totalValueCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {session.totalUnits} {session.totalUnits === 1 ? 'item' : 'itens'} • {session.items.length} {session.items.length === 1 ? 'produto' : 'produtos'}
+                                        </div>
+                                      </div>
+                                      {getExpirationBadge(session.lastExpiration)}
+                                    </div>
                                   </div>
-                                </TableCell>
-                                <TableCell>
-                                  <span className="text-sm">
-                                    {reservation.size}
-                                    {reservation.color && ` / ${getColorDisplayName(reservation.color)}`}
-                                  </span>
-                                </TableCell>
-                                <TableCell>
-                                  <span className="font-medium">{reservation.quantity}</span>
-                                </TableCell>
-                                <TableCell>
-                                  <span className="text-xs text-muted-foreground font-mono">
-                                    {reservation.session_id.slice(0, 8)}...
-                                  </span>
-                                </TableCell>
-                                <TableCell>
-                                  {getExpirationBadge(reservation.expires_at)}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                        </TableBody>
-                      </Table>
+                                  
+                                  {/* Quick product preview */}
+                                  <div className="mt-2 flex flex-wrap gap-1">
+                                    {session.productsArray.slice(0, 3).map((product, idx) => (
+                                      <Badge key={idx} variant="outline" className="text-xs font-normal">
+                                        {product}
+                                      </Badge>
+                                    ))}
+                                    {session.productsArray.length > 3 && (
+                                      <Badge variant="outline" className="text-xs font-normal">
+                                        +{session.productsArray.length - 3} mais
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </CardHeader>
+                              </CollapsibleTrigger>
+                              
+                              <CollapsibleContent>
+                                <CardContent className="pt-0 border-t">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead className="w-8"></TableHead>
+                                        <TableHead>Produto</TableHead>
+                                        <TableHead>Variante</TableHead>
+                                        <TableHead>Qtd</TableHead>
+                                        <TableHead>Valor</TableHead>
+                                        <TableHead>Expira</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {session.items
+                                        .sort((a, b) => new Date(a.expires_at).getTime() - new Date(b.expires_at).getTime())
+                                        .map(item => (
+                                          <TableRow 
+                                            key={item.id}
+                                            className={selectedReservationIds.includes(item.id) ? 'bg-muted/50' : ''}
+                                          >
+                                            <TableCell>
+                                              <Checkbox 
+                                                checked={selectedReservationIds.includes(item.id)}
+                                                onCheckedChange={() => {
+                                                  setSelectedReservationIds(prev => 
+                                                    prev.includes(item.id) 
+                                                      ? prev.filter(i => i !== item.id) 
+                                                      : [...prev, item.id]
+                                                  );
+                                                }}
+                                              />
+                                            </TableCell>
+                                            <TableCell>
+                                              <div className="flex items-center gap-2">
+                                                {item.image_url && (
+                                                  <img 
+                                                    src={item.image_url} 
+                                                    alt="" 
+                                                    className="w-8 h-8 object-cover rounded"
+                                                  />
+                                                )}
+                                                <span className="font-medium max-w-[150px] truncate">
+                                                  {item.product_name}
+                                                </span>
+                                              </div>
+                                            </TableCell>
+                                            <TableCell>
+                                              <span className="text-sm">
+                                                {item.size}
+                                                {item.color && ` / ${getColorDisplayName(item.color)}`}
+                                              </span>
+                                            </TableCell>
+                                            <TableCell>
+                                              <span className="font-medium">{item.quantity}</span>
+                                            </TableCell>
+                                            <TableCell>
+                                              <span className="text-sm text-green-600">
+                                                {((item.quantity * item.unit_price_cents) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                              </span>
+                                            </TableCell>
+                                            <TableCell>
+                                              {getExpirationBadge(item.expires_at)}
+                                            </TableCell>
+                                          </TableRow>
+                                        ))}
+                                    </TableBody>
+                                  </Table>
+                                </CardContent>
+                              </CollapsibleContent>
+                            </Card>
+                          </Collapsible>
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
