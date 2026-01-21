@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
-import { Search, Menu, X, Settings } from 'lucide-react';
+import { Search, Menu, X, Settings, User } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useCategories } from '@/hooks/useProducts';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
+import { useAuth } from '@/hooks/useAuth';
 import { getWhatsAppLink } from '@/lib/utils';
 import logoImage from '@/assets/logo.png';
 import { CartDrawer } from './CartDrawer';
@@ -20,6 +21,7 @@ export function StoreHeader({ onSearch, searchValue = '' }: StoreHeaderProps) {
   const [localSearch, setLocalSearch] = useState(searchValue);
   const { data: categories } = useCategories();
   const { data: settings } = useStoreSettings();
+  const { user } = useAuth();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +42,13 @@ export function StoreHeader({ onSearch, searchValue = '' }: StoreHeaderProps) {
             <nav className="flex flex-col gap-4 mt-8">
               <Link to="/" className="text-lg font-medium hover:text-primary/80">
                 Início
+              </Link>
+              <Link 
+                to={user ? "/minha-conta" : "/entrar"} 
+                className="text-lg font-medium hover:text-primary/80 flex items-center gap-2"
+              >
+                <User className="h-5 w-5" />
+                {user ? 'Minha Conta' : 'Entrar'}
               </Link>
               <Link to="/admin" className="text-lg font-medium hover:text-primary/80 flex items-center gap-2">
                 <Settings className="h-5 w-5" />
@@ -95,6 +104,13 @@ export function StoreHeader({ onSearch, searchValue = '' }: StoreHeaderProps) {
           >
             {isSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
           </Button>
+
+          {/* User Account */}
+          <Link to={user ? "/minha-conta" : "/entrar"}>
+            <Button variant="ghost" size="icon">
+              <User className="h-5 w-5" />
+            </Button>
+          </Link>
 
           {/* WhatsApp */}
           {settings?.seller_whatsapp && (
