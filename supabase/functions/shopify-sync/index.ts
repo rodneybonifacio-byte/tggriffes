@@ -58,6 +58,15 @@ serve(async (req) => {
     // Helper function to delay execution
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+    const isAbsoluteHttpUrl = (value: string) => {
+      try {
+        const url = new URL(value);
+        return url.protocol === 'http:' || url.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    };
+
     async function shopifyRequest(endpoint: string, method: string = 'GET', body?: any, retries = 3): Promise<any> {
       const url = `${shopifyApiUrl}${endpoint}`;
       console.log(`Shopify request: ${method} ${url}`);
@@ -147,8 +156,11 @@ serve(async (req) => {
       };
 
       // Add main image
-      if (product.main_image_url) {
+      // Shopify exige URL absoluta pública. Se vier como "/products/...", ignoramos para não quebrar a sync.
+      if (product.main_image_url && isAbsoluteHttpUrl(product.main_image_url)) {
         shopifyProduct.images = [{ src: product.main_image_url }];
+      } else if (product.main_image_url) {
+        console.log(`Skipping non-absolute image URL for product ${product.id}: ${product.main_image_url}`);
       }
 
       // Build variants with size and color options - fixed price R$69,90
@@ -235,35 +247,54 @@ serve(async (req) => {
           });
       }
 
-      // Map variants
-      for (let i = 0; i < variants.length; i++) {
-        const localVariant = variants[i];
-        const shopifyVariant = createdVariants[i];
-        
-        if (shopifyVariant) {
-          const { data: existingVarMapping } = await supabase
-            .from('shopify_variant_mappings')
-            .select('*')
-            .eq('variant_id', localVariant.id)
-            .single();
+      // Map variants (robusto): NÃO depende de posição/índice; usa SKU e fallback por opções.
+      const variantsBySku = new Map<string, any>();
+      const variantsByOptions = new Map<string, any>();
+      for (const v of createdVariants || []) {
+        if (v?.sku) variantsBySku.set(String(v.sku), v);
+        const key = `${String(v?.option1 ?? '')}|${String(v?.option2 ?? '')}`;
+        variantsByOptions.set(key, v);
+      }
 
-          if (!existingVarMapping) {
-            await supabase
-              .from('shopify_variant_mappings')
-              .insert({
-                variant_id: localVariant.id,
-                shopify_variant_id: shopifyVariant.id.toString(),
-                shopify_inventory_item_id: shopifyVariant.inventory_item_id?.toString() || null,
-              });
-          } else {
-            await supabase
-              .from('shopify_variant_mappings')
-              .update({ 
-                last_synced_at: new Date().toISOString(),
-                shopify_inventory_item_id: shopifyVariant.inventory_item_id?.toString() || null,
-              })
-              .eq('id', existingVarMapping.id);
-          }
+      for (const localVariant of variants) {
+        const expectedSku = localVariant.sku || `${product.slug}-${localVariant.size}-${localVariant.color || 'default'}`;
+        const expectedOption1 = localVariant.size;
+        const expectedOption2 = hasColors ? (localVariant.color || 'Única') : null;
+        const optionKey = `${String(expectedOption1 ?? '')}|${String(expectedOption2 ?? '')}`;
+
+        const shopifyVariant = variantsBySku.get(String(expectedSku)) || variantsByOptions.get(optionKey);
+
+        if (!shopifyVariant) {
+          console.log(
+            `Could not match Shopify variant for local variant ${localVariant.id} (sku=${expectedSku}, options=${optionKey})`
+          );
+          continue;
+        }
+
+        const { data: existingVarMapping } = await supabase
+          .from('shopify_variant_mappings')
+          .select('*')
+          .eq('variant_id', localVariant.id)
+          .single();
+
+        if (!existingVarMapping) {
+          await supabase
+            .from('shopify_variant_mappings')
+            .insert({
+              variant_id: localVariant.id,
+              shopify_variant_id: shopifyVariant.id?.toString() || null,
+              shopify_inventory_item_id: shopifyVariant.inventory_item_id?.toString() || null,
+              last_synced_at: new Date().toISOString(),
+            });
+        } else {
+          await supabase
+            .from('shopify_variant_mappings')
+            .update({
+              last_synced_at: new Date().toISOString(),
+              shopify_variant_id: shopifyVariant.id?.toString() || existingVarMapping.shopify_variant_id,
+              shopify_inventory_item_id: shopifyVariant.inventory_item_id?.toString() || null,
+            })
+            .eq('id', existingVarMapping.id);
         }
       }
 
@@ -519,36 +550,57 @@ serve(async (req) => {
         };
 
       } else if (action === 'sync_inventory') {
-        // Sync all inventory
-        const { data: variants } = await supabase
-          .from('product_variants')
-          .select('id, stock_qty');
+        // Sync inventory (somente itens com mapeamento e produtos ativos)
+        const { data: mapped } = await supabase
+          .from('shopify_variant_mappings')
+          .select('id, variant_id, shopify_inventory_item_id')
+          .not('shopify_inventory_item_id', 'is', null);
 
-        const results = [];
-        const errors = [];
+        const mappedVariantIds = (mapped || []).map(m => m.variant_id);
+        if (mappedVariantIds.length === 0) {
+          result = { message: 'No mapped variants to sync', variantsSynced: 0, errors: [] };
+        } else {
+          const { data: localVariants } = await supabase
+            .from('product_variants')
+            .select('id, stock_qty, product_id')
+            .in('id', mappedVariantIds);
 
-        for (const variant of variants || []) {
-          try {
-            const syncResult = await syncVariantInventory(variant.id, variant.stock_qty);
-            if (syncResult.synced) {
-              results.push(syncResult);
-              syncLog.variants_synced++;
+          const productIds = Array.from(new Set((localVariants || []).map(v => v.product_id)));
+          const { data: activeProducts } = await supabase
+            .from('products')
+            .select('id')
+            .in('id', productIds)
+            .eq('active', true);
+
+          const activeProductIdSet = new Set((activeProducts || []).map(p => p.id));
+          const variants = (localVariants || []).filter(v => activeProductIdSet.has(v.product_id));
+
+          const results = [];
+          const errors = [];
+
+          for (const variant of variants || []) {
+            try {
+              const syncResult = await syncVariantInventory(variant.id, variant.stock_qty);
+              if (syncResult.synced) {
+                results.push(syncResult);
+                syncLog.variants_synced++;
+              }
+            } catch (err: any) {
+              errors.push({ variantId: variant.id, error: err.message });
             }
-          } catch (err: any) {
-            errors.push({ variantId: variant.id, error: err.message });
           }
-        }
 
-        if (errors.length > 0) {
-          syncLog.status = 'partial';
-          syncLog.errors = errors;
-        }
+          if (errors.length > 0) {
+            syncLog.status = 'partial';
+            syncLog.errors = errors;
+          }
 
-        result = { 
-          message: 'Inventory sync completed', 
-          variantsSynced: results.length,
-          errors 
-        };
+          result = { 
+            message: 'Inventory sync completed', 
+            variantsSynced: results.length,
+            errors 
+          };
+        }
 
       } else if (action === 'sync_variant_inventory') {
         // Sync single variant inventory (called automatically on stock change)
