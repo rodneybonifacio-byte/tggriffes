@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import { 
   RefreshCw, 
   Package, 
@@ -16,7 +17,8 @@ import {
   ExternalLink,
   Loader2,
   Store,
-  Trash2
+  Trash2,
+  Wrench
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -29,6 +31,7 @@ import {
   useCleanupOrphans,
 } from '@/hooks/useShopifySync';
 import { useProducts } from '@/hooks/useProducts';
+import { useMissingMappingProducts, useFixMissingMappings } from '@/hooks/useShopifyMissingMappings';
 
 export default function AdminShopify() {
   const { data: syncLogs, isLoading: logsLoading } = useShopifySyncLogs();
@@ -39,6 +42,10 @@ export default function AdminShopify() {
   const syncPendingProducts = useSyncPendingProducts();
   const syncInventory = useSyncInventory();
   const cleanupOrphans = useCleanupOrphans();
+
+  // Missing mappings
+  const { data: missingMappingProducts } = useMissingMappingProducts();
+  const { fixMappings, progress: fixProgress, reset: resetFixProgress } = useFixMissingMappings();
 
   const syncedProductIds = new Set(mappings?.map(m => m.product_id) || []);
   const activeProductIds = new Set(products?.map(p => p.id) || []);
@@ -141,6 +148,23 @@ export default function AdminShopify() {
                   Limpar Órfãos ({orphanedMappings.length})
                 </Button>
               )}
+
+              {/* Fix Missing Mappings Button */}
+              {(missingMappingProducts?.length ?? 0) > 0 && (
+                <Button
+                  variant="outline"
+                  className="border-purple-500 text-purple-700 hover:bg-purple-50"
+                  onClick={() => fixMappings(missingMappingProducts || [])}
+                  disabled={fixProgress.isRunning}
+                >
+                  {fixProgress.isRunning ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Wrench className="w-4 h-4 mr-2" />
+                  )}
+                  Corrigir Mapeamentos ({missingMappingProducts?.length})
+                </Button>
+              )}
               
               <Button
                 onClick={() => syncAllProducts.mutate()}
@@ -156,8 +180,67 @@ export default function AdminShopify() {
             </div>
           </div>
 
+          {/* Fix Progress Card */}
+          {(fixProgress.isRunning || fixProgress.results.length > 0) && (
+            <Card className="border-purple-200 bg-purple-50/50">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Wrench className="w-4 h-4" />
+                    Correção de Mapeamentos
+                  </CardTitle>
+                  {!fixProgress.isRunning && fixProgress.results.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={resetFixProgress}>
+                      Fechar
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {fixProgress.isRunning && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span>Processando: {fixProgress.currentProduct}</span>
+                      <span>{fixProgress.current} / {fixProgress.total}</span>
+                    </div>
+                    <Progress value={(fixProgress.current / fixProgress.total) * 100} className="h-2" />
+                  </>
+                )}
+                
+                {fixProgress.results.length > 0 && (
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {fixProgress.results.map((r, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm">
+                        {r.success ? (
+                          <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-600 shrink-0" />
+                        )}
+                        <span className={r.success ? 'text-green-800' : 'text-red-800'}>
+                          {r.productName}
+                          {r.error && <span className="text-xs ml-2">({r.error})</span>}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!fixProgress.isRunning && fixProgress.results.length > 0 && (
+                  <div className="text-sm font-medium pt-2 border-t">
+                    ✅ {fixProgress.results.filter(r => r.success).length} sucesso 
+                    {fixProgress.results.filter(r => !r.success).length > 0 && (
+                      <span className="text-red-600 ml-2">
+                        ❌ {fixProgress.results.filter(r => !r.success).length} erro
+                      </span>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -167,6 +250,19 @@ export default function AdminShopify() {
               <CardContent>
                 <div className="text-2xl font-bold text-green-600">
                   {mappings?.length || 0}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Mapeamentos Faltantes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600">
+                  {missingMappingProducts?.length || 0}
                 </div>
               </CardContent>
             </Card>
