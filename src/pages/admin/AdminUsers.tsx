@@ -105,22 +105,18 @@ const AdminUsers = () => {
 
     setIsCreating(true);
     try {
-      // Criar usuário via Supabase Admin API (signUp cria o usuário)
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newUserEmail,
-        password: newUserPassword,
-        options: {
-          data: { name: newUserName },
-          emailRedirectTo: window.location.origin,
+      // Use edge function to create user (uses admin API, doesn't affect current session)
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: { 
+          email: newUserEmail, 
+          password: newUserPassword, 
+          name: newUserName, 
+          role: newUserRole 
         },
       });
 
-      if (authError) throw authError;
-
-      if (authData.user) {
-        // Atribuir role
-        await assignRole({ userId: authData.user.id, role: newUserRole });
-      }
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: 'Usuário criado!',
