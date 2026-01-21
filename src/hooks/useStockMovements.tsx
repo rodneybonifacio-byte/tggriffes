@@ -5,7 +5,7 @@ export interface StockMovement {
   id: string;
   variant_id: string;
   product_id: string;
-  movement_type: 'entrada' | 'saida' | 'ajuste' | 'venda' | 'cancelamento';
+  movement_type: 'entrada' | 'saida' | 'ajuste' | 'venda' | 'cancelamento' | 'shopify_sale';
   quantity: number;
   stock_before: number;
   stock_after: number;
