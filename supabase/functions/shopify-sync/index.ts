@@ -137,6 +137,28 @@ serve(async (req) => {
       return locationId;
     }
 
+    async function getLocations(): Promise<any[]> {
+      const { locations } = await shopifyRequest('/locations.json');
+      return locations || [];
+    }
+
+    async function getInventoryLevels(inventoryItemIds: string[], locationIds?: string[]): Promise<any[]> {
+      if (!inventoryItemIds.length) return [];
+      const params = new URLSearchParams({
+        inventory_item_ids: inventoryItemIds.join(','),
+      });
+      if (locationIds?.length) {
+        params.set('location_ids', locationIds.join(','));
+      }
+      const { inventory_levels } = await shopifyRequest(`/inventory_levels.json?${params.toString()}`);
+      return inventory_levels || [];
+    }
+
+    async function getShopifyProduct(shopifyProductId: string): Promise<any> {
+      const { product } = await shopifyRequest(`/products/${shopifyProductId}.json`);
+      return product;
+    }
+
     // Sync a single product to Shopify
     async function syncProduct(product: any) {
       const { data: existingMapping } = await supabase
@@ -644,6 +666,86 @@ serve(async (req) => {
             errors 
           };
         }
+
+      } else if (action === 'debug_product_inventory' && productId) {
+        // Debug inventory mismatch between local DB and Shopify
+        const { data: mapping } = await supabase
+          .from('shopify_product_mappings')
+          .select('*')
+          .eq('product_id', productId)
+          .single();
+
+        if (!mapping) {
+          throw new Error('No Shopify mapping for product');
+        }
+
+        const { data: localVariants } = await supabase
+          .from('product_variants')
+          .select('id, size, color, stock_qty')
+          .eq('product_id', productId);
+
+        const { data: localMappings } = await supabase
+          .from('shopify_variant_mappings')
+          .select('variant_id, shopify_variant_id, shopify_inventory_item_id')
+          .in('variant_id', (localVariants || []).map(v => v.id));
+
+        const shopifyProduct = await getShopifyProduct(mapping.shopify_product_id);
+        const shopifyVariants = (shopifyProduct?.variants || []).map((v: any) => ({
+          id: String(v.id),
+          sku: v.sku,
+          option1: v.option1,
+          option2: v.option2,
+          inventory_item_id: v.inventory_item_id ? String(v.inventory_item_id) : null,
+          inventory_management: v.inventory_management ?? null,
+          inventory_quantity: v.inventory_quantity ?? null,
+        }));
+
+        const inventoryItemIds = Array.from(
+          new Set(shopifyVariants.map((v: any) => v.inventory_item_id).filter(Boolean))
+        ) as string[];
+
+        const locations = await getLocations();
+        const locationIds = locations.map(l => String(l.id));
+        const inventoryLevelsMeaningful = inventoryItemIds.length
+          ? await getInventoryLevels(inventoryItemIds, locationIds.slice(0, 10))
+          : [];
+
+        // Build local view
+        const mappingByVariantId = new Map((localMappings || []).map(m => [m.variant_id, m]));
+        const local = (localVariants || []).map(v => {
+          const m = mappingByVariantId.get(v.id);
+          return {
+            variant_id: v.id,
+            size: v.size,
+            color: v.color,
+            stock_qty: v.stock_qty,
+            shopify_variant_id: m?.shopify_variant_id ? String(m.shopify_variant_id) : null,
+            shopify_inventory_item_id: m?.shopify_inventory_item_id ? String(m.shopify_inventory_item_id) : null,
+          };
+        });
+
+        result = {
+          message: 'Debug inventory snapshot',
+          product: {
+            product_id: productId,
+            shopify_product_id: String(mapping.shopify_product_id),
+            shopify_handle: mapping.shopify_product_handle,
+          },
+          locations: locations.map((l: any) => ({
+            id: String(l.id),
+            name: l.name,
+            active: l.active,
+            fulfills_online_orders: l.fulfills_online_orders,
+          })),
+          local,
+          shopifyVariants,
+          inventoryLevels: inventoryLevelsMeaningful.map((lvl: any) => ({
+            inventory_item_id: String(lvl.inventory_item_id),
+            location_id: String(lvl.location_id),
+            available: lvl.available,
+            updated_at: lvl.updated_at,
+          })),
+        };
 
       } else if (action === 'sync_variant_inventory') {
         // Sync single variant inventory (called automatically on stock change)
