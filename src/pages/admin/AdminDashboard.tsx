@@ -11,7 +11,10 @@ import { Link } from 'react-router-dom';
 const AdminDashboard = () => {
   const { data: products = [] } = useProducts();
   const { data: orders = [] } = useOrderIntents();
-  const { canViewPrices } = usePermissions();
+  const { canViewPrices, isLoading: permissionsLoading, isAdmin } = usePermissions();
+
+  // Enquanto carrega permissões, mostra tudo para admin (default seguro)
+  const showPrices = permissionsLoading ? true : canViewPrices;
 
   const activeProducts = products.filter(p => p.active);
   
@@ -64,7 +67,7 @@ const AdminDashboard = () => {
     <AdminGuard>
       <AdminLayout title="Dashboard">
         {/* Stats Cards */}
-        <div className={`grid gap-4 md:grid-cols-2 ${canViewPrices ? 'lg:grid-cols-3 xl:grid-cols-6' : 'lg:grid-cols-4'} mb-8`}>
+        <div className={`grid gap-4 md:grid-cols-2 ${showPrices ? 'lg:grid-cols-3 xl:grid-cols-6' : 'lg:grid-cols-4'} mb-8`}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -95,7 +98,7 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          {canViewPrices && (
+          {showPrices && (
             <>
               <Card className="border-green-500/20 bg-green-500/5">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -248,7 +251,7 @@ const AdminDashboard = () => {
                           </span>
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {canViewPrices && `${formatPrice(order.total_cents)} • `}
+                          {showPrices && `${formatPrice(order.total_cents)} • `}
                           {new Date(order.created_at).toLocaleString('pt-BR', {
                             day: '2-digit',
                             month: '2-digit',
