@@ -30,9 +30,9 @@ export function CartDrawer() {
     return 999;
   };
 
-  const handleIncrement = (itemId: string, variantId: string, currentQty: number) => {
+  const handleIncrement = async (itemId: string, variantId: string, currentQty: number) => {
     const stockQty = getVariantStock(variantId);
-    const result = updateQuantity(itemId, currentQty + 1, stockQty);
+    const result = await updateQuantity(itemId, currentQty + 1, stockQty);
     if (!result.success) {
       toast({
         title: 'Limite atingido',

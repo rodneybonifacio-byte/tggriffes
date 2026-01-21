@@ -154,14 +154,14 @@ export function ProductCard({ product }: ProductCardProps) {
 
 
   // Add to cart directly
-  const handleAddToCart = (e: React.MouseEvent, color: string | null, size: string) => {
+  const handleAddToCart = async (e: React.MouseEvent, color: string | null, size: string) => {
     e.preventDefault();
     e.stopPropagation();
     
     const variant = getVariant(color, size);
     if (!variant) return;
     
-    const result = addItem({
+    const result = await addItem({
       productId: product.id,
       productName: product.name,
       variantId: variant.id,
