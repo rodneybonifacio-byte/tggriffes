@@ -1,16 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useCallback, useEffect, useState } from 'react';
 
 const SESSION_ID_KEY = 'tg-cart-session-id';
 
-// Gerar ou recuperar ID de sessão
+// Gerar ou recuperar ID de sessão (cached)
+let cachedSessionId: string | null = null;
 const getSessionId = (): string => {
+  if (cachedSessionId) return cachedSessionId;
   let sessionId = localStorage.getItem(SESSION_ID_KEY);
   if (!sessionId) {
     sessionId = crypto.randomUUID();
     localStorage.setItem(SESSION_ID_KEY, sessionId);
   }
+  cachedSessionId = sessionId;
   return sessionId;
 };
 
@@ -57,28 +59,18 @@ export function useMyCartReservations() {
       if (error) throw error;
       return data as CartReservation[];
     },
+    staleTime: 30000, // 30s - reduz re-fetches
+    gcTime: 60000, // 1 min cache
   });
 }
 
-// Hook para criar reserva
+// Hook para criar reserva com optimistic update
 export function useCreateReservation() {
   const queryClient = useQueryClient();
   const sessionId = getSessionId();
   
   return useMutation({
     mutationFn: async (params: CreateReservationParams) => {
-      // Verificar estoque disponível
-      const { data: variant, error: variantError } = await supabase
-        .from('product_variants')
-        .select('stock_qty')
-        .eq('id', params.variantId)
-        .single();
-      
-      if (variantError) throw variantError;
-      if (variant.stock_qty < params.quantity) {
-        throw new Error(`Estoque insuficiente. Disponível: ${variant.stock_qty}`);
-      }
-      
       // Verificar se já existe reserva para esta variante nesta sessão
       const { data: existing } = await supabase
         .from('cart_reservations')
@@ -86,14 +78,11 @@ export function useCreateReservation() {
         .eq('session_id', sessionId)
         .eq('variant_id', params.variantId)
         .gt('expires_at', new Date().toISOString())
-        .single();
+        .maybeSingle();
       
       if (existing) {
         // Atualizar quantidade existente
         const newQty = existing.quantity + params.quantity;
-        if (variant.stock_qty < params.quantity) {
-          throw new Error(`Estoque insuficiente para adicionar mais ${params.quantity}`);
-        }
         
         const { error } = await supabase
           .from('cart_reservations')
@@ -104,7 +93,7 @@ export function useCreateReservation() {
           .eq('id', existing.id);
         
         if (error) throw error;
-        return { updated: true, id: existing.id };
+        return { updated: true, id: existing.id, newQty };
       }
       
       // Criar nova reserva
@@ -128,16 +117,53 @@ export function useCreateReservation() {
       if (error) throw error;
       return { created: true, data };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cart-reservations'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+    // Optimistic update para resposta instantânea
+    onMutate: async (params) => {
+      await queryClient.cancelQueries({ queryKey: ['cart-reservations', sessionId] });
+      const previous = queryClient.getQueryData<CartReservation[]>(['cart-reservations', sessionId]);
+      
+      queryClient.setQueryData<CartReservation[]>(['cart-reservations', sessionId], (old = []) => {
+        const existing = old.find(r => r.variant_id === params.variantId);
+        if (existing) {
+          return old.map(r => 
+            r.variant_id === params.variantId 
+              ? { ...r, quantity: r.quantity + params.quantity }
+              : r
+          );
+        }
+        return [...old, {
+          id: `temp-${Date.now()}`,
+          session_id: sessionId,
+          variant_id: params.variantId,
+          product_id: params.productId,
+          product_name: params.productName,
+          size: params.size,
+          color: params.color,
+          quantity: params.quantity,
+          unit_price_cents: params.unitPriceCents,
+          image_url: params.imageUrl,
+          reserved_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        }];
+      });
+      
+      return { previous };
+    },
+    onError: (err, params, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['cart-reservations', sessionId], context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart-reservations', sessionId] });
     },
   });
 }
 
-// Hook para atualizar quantidade de reserva
+// Hook para atualizar quantidade de reserva com optimistic update
 export function useUpdateReservation() {
   const queryClient = useQueryClient();
+  const sessionId = getSessionId();
   
   return useMutation({
     mutationFn: async ({ id, quantity }: { id: string; quantity: number }) => {
@@ -161,16 +187,34 @@ export function useUpdateReservation() {
       if (error) throw error;
       return { updated: true };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cart-reservations'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+    onMutate: async ({ id, quantity }) => {
+      await queryClient.cancelQueries({ queryKey: ['cart-reservations', sessionId] });
+      const previous = queryClient.getQueryData<CartReservation[]>(['cart-reservations', sessionId]);
+      
+      queryClient.setQueryData<CartReservation[]>(['cart-reservations', sessionId], (old = []) => {
+        if (quantity <= 0) {
+          return old.filter(r => r.id !== id);
+        }
+        return old.map(r => r.id === id ? { ...r, quantity } : r);
+      });
+      
+      return { previous };
+    },
+    onError: (err, vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['cart-reservations', sessionId], context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart-reservations', sessionId] });
     },
   });
 }
 
-// Hook para deletar reserva
+// Hook para deletar reserva com optimistic update
 export function useDeleteReservation() {
   const queryClient = useQueryClient();
+  const sessionId = getSessionId();
   
   return useMutation({
     mutationFn: async (id: string) => {
@@ -181,9 +225,23 @@ export function useDeleteReservation() {
       
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cart-reservations'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['cart-reservations', sessionId] });
+      const previous = queryClient.getQueryData<CartReservation[]>(['cart-reservations', sessionId]);
+      
+      queryClient.setQueryData<CartReservation[]>(['cart-reservations', sessionId], (old = []) => 
+        old.filter(r => r.id !== id)
+      );
+      
+      return { previous };
+    },
+    onError: (err, id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['cart-reservations', sessionId], context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart-reservations', sessionId] });
     },
   });
 }
@@ -202,9 +260,19 @@ export function useClearSessionReservations() {
       
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cart-reservations'] });
-      queryClient.invalidateQueries({ queryKey: ['products'] });
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['cart-reservations', sessionId] });
+      const previous = queryClient.getQueryData<CartReservation[]>(['cart-reservations', sessionId]);
+      queryClient.setQueryData(['cart-reservations', sessionId], []);
+      return { previous };
+    },
+    onError: (err, vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['cart-reservations', sessionId], context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['cart-reservations', sessionId] });
     },
   });
 }
