@@ -21,6 +21,7 @@ import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminAbandonedCarts from "./pages/admin/AdminAbandonedCarts";
 import AdminShopify from "./pages/admin/AdminShopify";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminUsers from "./pages/admin/AdminUsers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ const App = () => {
                 <Route path="/admin/carrinhos" element={<AdminAbandonedCarts />} />
                 <Route path="/admin/shopify" element={<AdminShopify />} />
                 <Route path="/admin/configuracoes" element={<AdminSettings />} />
+                <Route path="/admin/usuarios" element={<AdminUsers />} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>

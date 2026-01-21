@@ -12,6 +12,7 @@ import {
   Users,
   ShoppingBasket,
   Store,
+  UserCog,
   LucideIcon
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
@@ -38,6 +39,7 @@ const menuItems: MenuItem[] = [
   { icon: ShoppingBasket, label: 'Abandonados', href: '/admin/carrinhos', permission: 'canViewAbandonedCarts' },
   { icon: Users, label: 'Clientes', href: '/admin/clientes', permission: 'canViewCustomers' },
   { icon: Store, label: 'Shopify', href: '/admin/shopify', permission: 'canViewShopify' },
+  { icon: UserCog, label: 'Usuários', href: '/admin/usuarios', permission: 'canManageUsers' },
   { icon: Settings, label: 'Configurações', href: '/admin/configuracoes', permission: 'canViewSettings' },
 ];
 

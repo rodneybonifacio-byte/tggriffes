@@ -28,6 +28,9 @@ interface Permissions {
   canDeleteProducts: boolean;
   canDeleteOrders: boolean;
   
+  // Gestão de Usuários
+  canManageUsers: boolean;
+  
   // Role
   role: UserRole;
   isAdmin: boolean;
@@ -82,6 +85,9 @@ export function usePermissions(): Permissions & { isLoading: boolean } {
     // Deleção
     canDeleteProducts: isAdmin, // Apenas admin
     canDeleteOrders: isAdmin, // Apenas admin
+    
+    // Gestão de Usuários
+    canManageUsers: isAdmin, // Apenas admin
     
     // Role info
     role,
