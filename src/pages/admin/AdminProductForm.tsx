@@ -114,8 +114,22 @@ const AdminProductForm = () => {
     }
 
     try {
+      // Verificar se o slug já existe (apenas para novos produtos)
+      let finalSlug = slug;
+      if (!isEditing) {
+        const { data: existingProducts } = await supabase
+          .from('products')
+          .select('id')
+          .eq('slug', slug);
+        
+        if (existingProducts && existingProducts.length > 0) {
+          // Gerar slug único adicionando timestamp
+          finalSlug = `${slug}-${Date.now().toString(36)}`;
+        }
+      }
+
       const productData: Record<string, any> = {
-        name, slug, description,
+        name, slug: finalSlug, description,
         category_id: categoryId || null, active,
         weight_grams: weightGrams || null,
         length_cm: lengthCm || null, width_cm: widthCm || null, height_cm: heightCm || null,
