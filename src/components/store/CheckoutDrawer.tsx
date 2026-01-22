@@ -284,6 +284,12 @@ ${pdfUrl}`;
         orderDate: new Date().toLocaleDateString('pt-BR'),
         logoUrl,
         siteUrl: baseUrl,
+        // Shipping dimensions data - using defaults (300g per item, 30x30x2cm base)
+        // These are the values used in calculate-shipping function
+        shippingWeightGrams: !skipShipping && selectedShipping ? totalItems * 300 : undefined,
+        shippingLengthCm: !skipShipping && selectedShipping ? 30 : undefined,
+        shippingWidthCm: !skipShipping && selectedShipping ? 30 : undefined,
+        shippingHeightCm: !skipShipping && selectedShipping ? Math.max(2, totalItems * 2) : undefined,
       };
 
       const { data: pdfResponse, error: pdfError } = await supabase.functions.invoke('generate-order-pdf', {

@@ -33,6 +33,11 @@ interface OrderData {
   orderDate: string;
   logoUrl?: string;
   siteUrl?: string;
+  // Shipping calculation data
+  shippingWeightGrams?: number;
+  shippingLengthCm?: number;
+  shippingWidthCm?: number;
+  shippingHeightCm?: number;
 }
 
 function formatPrice(cents: number): string {
@@ -694,26 +699,59 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       
       y -= 18;
       
-      const totalsLabelX = PAGE_WIDTH - MARGIN - 180;
-      
-      // Shipping
-      const shippingLabel = order.skipShipping ? 'Frete' : `Frete (${order.shippingService})`;
-      page.drawText(shippingLabel, {
-        x: totalsLabelX,
+      // Shipping header
+      page.drawText("ENVIO", {
+        x: MARGIN,
         y,
-        size: 9,
-        font: fontRegular,
+        size: 8,
+        font: fontBold,
         color: gray,
       });
-      const shippingText = order.skipShipping ? 'A combinar' : order.shippingService;
-      const shippingWidth = fontRegular.widthOfTextAtSize(shippingText, 9);
-      page.drawText(shippingText, {
-        x: PAGE_WIDTH - MARGIN - shippingWidth,
+      
+      y -= 14;
+      
+      // Shipping method
+      const shippingMethodText = order.skipShipping ? 'A combinar' : order.shippingService;
+      page.drawText(`Método: ${shippingMethodText}`, {
+        x: MARGIN,
         y,
         size: 9,
         font: fontRegular,
         color: black,
       });
+      
+      // If shipping was calculated (not skipped), show the package dimensions used
+      if (!order.skipShipping && order.shippingWeightGrams) {
+        y -= 14;
+        
+        // Package dimensions info
+        const weightKg = (order.shippingWeightGrams / 1000).toFixed(2);
+        const dimensionsText = `Peso: ${weightKg}kg  •  Dimensões: ${order.shippingLengthCm || 0}x${order.shippingWidthCm || 0}x${order.shippingHeightCm || 0}cm`;
+        
+        page.drawText(dimensionsText, {
+          x: MARGIN,
+          y,
+          size: 8,
+          font: fontRegular,
+          color: gray,
+        });
+        
+        // Deadline
+        if (order.shippingDeadlineDays > 0) {
+          const deadlineText = order.shippingDeadlineDays === 1 
+            ? '1 dia útil' 
+            : `${order.shippingDeadlineDays} dias úteis`;
+          
+          const deadlineWidth = fontRegular.widthOfTextAtSize(`Prazo: ${deadlineText}`, 8);
+          page.drawText(`Prazo: ${deadlineText}`, {
+            x: PAGE_WIDTH - MARGIN - deadlineWidth,
+            y,
+            size: 8,
+            font: fontRegular,
+            color: gray,
+          });
+        }
+      }
       
       // ========== OBSERVATIONS SECTION ==========
       if (order.observations) {
