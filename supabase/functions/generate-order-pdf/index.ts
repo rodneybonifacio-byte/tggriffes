@@ -703,26 +703,26 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       page.drawText("ENVIO", {
         x: MARGIN,
         y,
-        size: 8,
+        size: 10,
         font: fontBold,
-        color: gray,
+        color: black,
       });
       
-      y -= 14;
+      y -= 16;
       
       // Shipping method
       const shippingMethodText = order.skipShipping ? 'A combinar' : order.shippingService;
       page.drawText(`Método: ${shippingMethodText}`, {
         x: MARGIN,
         y,
-        size: 9,
+        size: 10,
         font: fontRegular,
         color: black,
       });
       
       // If shipping was calculated (not skipped), show the package dimensions used
       if (!order.skipShipping && order.shippingWeightGrams) {
-        y -= 14;
+        y -= 16;
         
         // Package dimensions info
         const weightKg = (order.shippingWeightGrams / 1000).toFixed(2);
@@ -731,24 +731,25 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
         page.drawText(dimensionsText, {
           x: MARGIN,
           y,
-          size: 8,
+          size: 10,
           font: fontRegular,
-          color: gray,
+          color: black,
         });
         
         // Deadline
         if (order.shippingDeadlineDays > 0) {
+          y -= 16;
+          
           const deadlineText = order.shippingDeadlineDays === 1 
             ? '1 dia útil' 
             : `${order.shippingDeadlineDays} dias úteis`;
           
-          const deadlineWidth = fontRegular.widthOfTextAtSize(`Prazo: ${deadlineText}`, 8);
           page.drawText(`Prazo: ${deadlineText}`, {
-            x: PAGE_WIDTH - MARGIN - deadlineWidth,
+            x: MARGIN,
             y,
-            size: 8,
+            size: 10,
             font: fontRegular,
-            color: gray,
+            color: black,
           });
         }
       }
