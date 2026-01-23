@@ -7,7 +7,6 @@ import {
   useClearSessionReservations,
   CartReservation
 } from './useCartReservations';
-import { useToast } from '@/hooks/use-toast';
 
 export interface CartItem {
   id: string;
@@ -63,7 +62,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const updateReservation = useUpdateReservation();
   const deleteReservation = useDeleteReservation();
   const clearReservations = useClearSessionReservations();
-  const { toast } = useToast();
 
   // Convert reservations to cart items
   const items: CartItem[] = useMemo(() => {
@@ -72,22 +70,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = useCallback(async (item: Omit<CartItem, 'id'>, stockQty: number): Promise<AddItemResult> => {
     try {
-      // Check current quantity in cart for this variant
-      const currentInCart = items.find(i => i.variantId === item.variantId)?.quantity || 0;
-      const requestedTotal = currentInCart + item.quantity;
-      
-      // Validate stock limit BEFORE creating reservation
-      if (requestedTotal > stockQty) {
-        const available = stockQty - currentInCart;
-        if (available <= 0) {
-          return {
-            success: false,
-            message: 'Estoque esgotado para esta variante',
-          };
-        }
+      // stockQty aqui representa o ESTOQUE DISPONÍVEL (já descontando reservas, inclusive do próprio carrinho)
+      // Então para adicionar +1, basta validar se existe pelo menos 1 disponível.
+      if (item.quantity > stockQty) {
         return {
           success: false,
-          message: `Estoque insuficiente. Disponível: ${available} unidade${available !== 1 ? 's' : ''}`,
+          message: stockQty <= 0
+            ? 'Estoque esgotado para esta variante'
+            : `Estoque insuficiente. Disponível: ${stockQty} unidade${stockQty !== 1 ? 's' : ''}`,
         };
       }
       
@@ -102,11 +92,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
         imageUrl: item.imageUrl,
       });
       return { success: true };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erro ao adicionar ao carrinho';
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : (typeof error === 'object' && error && 'message' in error)
+            ? String((error as { message: unknown }).message)
+            : 'Erro ao adicionar ao carrinho';
       return { success: false, message };
     }
-  }, [createReservation, items]);
+  }, [createReservation]);
 
   const removeItem = useCallback((id: string) => {
     deleteReservation.mutate(id);

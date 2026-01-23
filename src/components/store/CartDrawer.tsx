@@ -14,7 +14,7 @@ import { PromotionProgress } from './PromotionProgress';
 import { usePromotionCelebration } from '@/hooks/usePromotionCelebration';
 
 export function CartDrawer() {
-  const { items, removeItem, updateQuantity, totalItems, totalCents } = useCart();
+  const { items, removeItem, updateQuantity, totalItems, totalCents, clearCart } = useCart();
   const [open, setOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const { toast } = useToast();
@@ -59,6 +59,15 @@ export function CartDrawer() {
   const handleCheckout = () => {
     setOpen(false);
     setCheckoutOpen(true);
+  };
+
+  const handleClearCart = () => {
+    clearCart();
+    toast({
+      title: 'Carrinho esvaziado',
+      description: 'Removemos os itens reservados desta sessão.',
+    });
+    setOpen(false);
   };
 
   return (
@@ -142,6 +151,14 @@ export function CartDrawer() {
               <div className="w-full space-y-3">
                 <PromotionProgress totalItems={totalItems} />
                 <VariationsSummary items={items} />
+
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleClearCart}
+                >
+                  Esvaziar carrinho
+                </Button>
                 
                 <Button
                   className="w-full gap-2" 
