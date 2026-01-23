@@ -28,7 +28,7 @@ export interface AddItemResult {
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (item: Omit<CartItem, 'id'>, stockQty: number) => Promise<AddItemResult>;
+  addItem: (item: Omit<CartItem, 'id'>) => Promise<AddItemResult>;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number, stockQty?: number) => Promise<AddItemResult>;
   clearCart: () => void;
@@ -68,19 +68,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return (reservations || []).map(reservationToCartItem);
   }, [reservations]);
 
-  const addItem = useCallback(async (item: Omit<CartItem, 'id'>, stockQty: number): Promise<AddItemResult> => {
+  const addItem = useCallback(async (item: Omit<CartItem, 'id'>): Promise<AddItemResult> => {
     try {
-      // stockQty aqui representa o ESTOQUE DISPONÍVEL (já descontando reservas, inclusive do próprio carrinho)
-      // Então para adicionar +1, basta validar se existe pelo menos 1 disponível.
-      if (item.quantity > stockQty) {
-        return {
-          success: false,
-          message: stockQty <= 0
-            ? 'Estoque esgotado para esta variante'
-            : `Estoque insuficiente. Disponível: ${stockQty} unidade${stockQty !== 1 ? 's' : ''}`,
-        };
-      }
-      
+      // Validação de estoque é feita atomicamente na RPC add_cart_reservation
+      // com lock de linha para evitar race conditions
       await createReservation.mutateAsync({
         variantId: item.variantId,
         productId: item.productId,

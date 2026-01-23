@@ -226,7 +226,7 @@ const ProductPage = () => {
         unitPriceCents: product.price_cents,
         imageUrl: product.main_image_url,
         category: product.categories?.name || null,
-      }, variant.stock_qty);
+      });
       
       if (result.success) {
         toast({
