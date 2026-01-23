@@ -14,7 +14,8 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "prompt",
+      // Evita usuários ficarem presos em versões antigas (especialmente no app instalado/PWA)
+      registerType: "autoUpdate",
       includeAssets: ["favicon.png", "logo.png", "robots.txt"],
       manifest: {
         name: "TG Griffes - Atacado Streetwear",
@@ -47,17 +48,23 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webp,woff,woff2}"],
         cleanupOutdatedCaches: true,
-        skipWaiting: false,
+        // Troca imediatamente para o novo service worker (reduz reclamações de cache antigo)
+        skipWaiting: true,
         clientsClaim: true,
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/dvqeitcliexenhnfradm\.supabase\.co\/.*/i,
-            handler: "NetworkFirst",
+            // Cache SOMENTE assets públicos (imagens/pdfs) do storage.
+            // Não cacheamos REST/RPC/auth para evitar catálogo/variantes/estoque desatualizados.
+            urlPattern: /^https:\/\/dvqeitcliexenhnfradm\.supabase\.co\/storage\/v1\/object\/public\/.*/i,
+            handler: "CacheFirst",
             options: {
-              cacheName: "supabase-cache",
+              cacheName: "storage-public-assets",
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
               expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24, // 24 hours
+                maxEntries: 250,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 dias
               },
             },
           },
