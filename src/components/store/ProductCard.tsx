@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Product } from '@/hooks/useProducts';
 import { formatPrice, getColorDisplayName } from '@/lib/utils';
@@ -225,10 +225,6 @@ export function ProductCard({ product }: ProductCardProps) {
     });
   };
 
-  const getColorHex = (colorName: string) => {
-    return findColorHex(colorName);
-  };
-
   return (
     <div className="group block animate-fade-in bg-card rounded-xl border border-border/50 p-1.5 pb-2 shadow-sm">
       {/* Image - clickable to product page (iOS-safe) */}
@@ -342,7 +338,8 @@ export function ProductCard({ product }: ProductCardProps) {
                   const { color, size, variant } = item;
 
                   const quantityInCart = getQuantityForVariant(variant.id);
-                  const remaining = Math.max(0, variant.stock_qty - quantityInCart);
+                  // stock_qty já é o disponível (reservas descontam do estoque), então não subtrair o carrinho aqui
+                  const remaining = Math.max(0, variant.stock_qty);
 
                   const colorHex = color ? findColorHex(color) : null;
                   const needsBorder = colorHex ? isLightColor(colorHex) : false;

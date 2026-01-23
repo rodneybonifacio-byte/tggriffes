@@ -5,7 +5,7 @@ import { ProductGallery } from '@/components/store/ProductGallery';
 
 import { WhatsAppButton } from '@/components/store/WhatsAppButton';
 import { useProductBySlug, useProducts } from '@/hooks/useProducts';
-import { formatPrice, getColorDisplayName } from '@/lib/utils';
+import { getColorDisplayName } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronLeft, Plus, Minus, Loader2, ArrowLeft, ChevronRight } from 'lucide-react';
@@ -491,7 +491,8 @@ const ProductPage = () => {
                             )}
                             {/* Stock indicator - shows remaining after cart */}
                             {variant && (() => {
-                              const remaining = variant.stock_qty - quantityInCart;
+                              // stock_qty já é o disponível (reservas descontam do estoque), então não subtrair o carrinho aqui
+                              const remaining = Math.max(0, variant.stock_qty);
                               if (remaining === 0) {
                                 return (
                                   <span className="text-[10px] mt-1.5 px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 font-semibold">
