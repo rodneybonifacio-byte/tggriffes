@@ -6,10 +6,12 @@ import { ProductFilters } from '@/components/store/ProductFilters';
 import { WhatsAppButton } from '@/components/store/WhatsAppButton';
 import { PromoBanner } from '@/components/store/PromoBanner';
 import { useProducts, useCategories } from '@/hooks/useProducts';
-import { Loader2, LayoutGrid, Square, X } from 'lucide-react';
+import { Loader2, LayoutGrid, Square, X, RefreshCw } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -19,17 +21,46 @@ const Index = () => {
   const [inStockOnly, setInStockOnly] = useState(false);
   const [sortBy, setSortBy] = useState('relevance');
   const [gridCols, setGridCols] = useState<1 | 2>(2);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Sync category from URL
   const selectedCategory = searchParams.get('category') || undefined;
 
   const { data: categories = [] } = useCategories();
-  const { data: products = [], isLoading } = useProducts({
+  const { data: products = [], isLoading, refetch } = useProducts({
     search,
     categoryId: categories.find(c => c.slug === selectedCategory)?.id,
     stock: inStockOnly ? 'in-stock' : 'all',
     status: 'active',
   });
+
+  // Force refresh products from server (clears cache and resets stock map)
+  const handleRefreshStock = async () => {
+    setIsRefreshing(true);
+    try {
+      // Invalidate cache to force fresh data
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
+      await queryClient.invalidateQueries({ queryKey: ['cart-reservations'] });
+      // Reset initial stock map so it recaptures fresh values
+      setInitialStockMap({});
+      await refetch();
+      toast({
+        title: 'Estoque atualizado',
+        description: 'Os dados de disponibilidade foram atualizados.',
+      });
+    } catch {
+      toast({
+        title: 'Erro ao atualizar',
+        description: 'Tente novamente em alguns segundos.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Capture initial stock values when products first load (prevents reordering during shopping)
   // This creates a stable snapshot of stock for sorting purposes
@@ -217,6 +248,17 @@ const Index = () => {
           />
           
           <div className="flex items-center gap-2">
+            {/* Mobile refresh button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleRefreshStock}
+              disabled={isRefreshing}
+              className="h-9 w-9"
+              aria-label="Atualizar estoque"
+            >
+              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+            </Button>
             <span className="text-xs text-muted-foreground">{filteredProducts.length}</span>
             <div className="flex border rounded-md overflow-hidden">
               <button
@@ -266,9 +308,21 @@ const Index = () => {
           <div className="flex-1">
             {/* Desktop Sort & Results Count */}
             <div className="hidden lg:flex items-center justify-between mb-6">
-              <p className="text-sm text-muted-foreground">
-                {filteredProducts.length} produto{filteredProducts.length !== 1 ? 's' : ''}
-              </p>
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-muted-foreground">
+                  {filteredProducts.length} produto{filteredProducts.length !== 1 ? 's' : ''}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRefreshStock}
+                  disabled={isRefreshing}
+                  className="text-muted-foreground hover:text-foreground gap-1.5"
+                >
+                  <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                  {isRefreshing ? 'Atualizando...' : 'Atualizar estoque'}
+                </Button>
+              </div>
               
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Ordenar:</span>
