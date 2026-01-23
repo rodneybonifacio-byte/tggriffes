@@ -114,6 +114,8 @@ export function ProductCard({ product }: ProductCardProps) {
   }, [product.main_image_url, images]);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  // Track pending mutations to prevent double clicks
+  const [pendingVariants, setPendingVariants] = useState<Set<string>>(new Set());
 
 
   // Get unique colors sorted alphabetically
@@ -153,7 +155,7 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
 
-  // Add to cart directly
+  // Add to cart directly (with pending lock to prevent rapid clicks)
   const handleAddToCart = async (e: React.MouseEvent, color: string | null, size: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -161,28 +163,41 @@ export function ProductCard({ product }: ProductCardProps) {
     const variant = getVariant(color, size);
     if (!variant) return;
     
-    const result = await addItem({
-      productId: product.id,
-      productName: product.name,
-      variantId: variant.id,
-      size: size,
-      color: color,
-      quantity: 1,
-      unitPriceCents: product.price_cents,
-      imageUrl: product.main_image_url,
-      category: product.categories?.name || null,
-    }, variant.stock_qty);
+    // Block if already pending for this variant
+    if (pendingVariants.has(variant.id)) return;
     
-    if (result.success) {
-      toast({
-        title: 'Adicionado!',
-        description: `${product.name} - ${size}${color ? ` (${getColorDisplayName(color)})` : ''}`,
-      });
-    } else {
-      toast({
-        title: 'Limite atingido',
-        description: result.message,
-        variant: 'destructive',
+    setPendingVariants(prev => new Set(prev).add(variant.id));
+    
+    try {
+      const result = await addItem({
+        productId: product.id,
+        productName: product.name,
+        variantId: variant.id,
+        size: size,
+        color: color,
+        quantity: 1,
+        unitPriceCents: product.price_cents,
+        imageUrl: product.main_image_url,
+        category: product.categories?.name || null,
+      }, variant.stock_qty);
+      
+      if (result.success) {
+        toast({
+          title: 'Adicionado!',
+          description: `${product.name} - ${size}${color ? ` (${getColorDisplayName(color)})` : ''}`,
+        });
+      } else {
+        toast({
+          title: 'Limite atingido',
+          description: result.message,
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setPendingVariants(prev => {
+        const next = new Set(prev);
+        next.delete(variant.id);
+        return next;
       });
     }
   };
@@ -418,10 +433,10 @@ export function ProductCard({ product }: ProductCardProps) {
                         )}
                         <button
                           onClick={handleAdd}
-                          disabled={remaining === 0}
+                          disabled={remaining === 0 || (variant && pendingVariants.has(variant.id))}
                           className={cn(
                             "w-6 h-6 rounded-full bg-success text-success-foreground flex items-center justify-center active:scale-95 transition-transform",
-                            "disabled:bg-muted disabled:text-muted-foreground"
+                            "disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
                           )}
                           aria-label="Adicionar"
                         >

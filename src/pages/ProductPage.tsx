@@ -161,10 +161,13 @@ const ProductPage = () => {
 
   // Track expanded cell for +/- controls
   const [expandedCell, setExpandedCell] = useState<string | null>(null);
+  // Track pending mutations to prevent rapid clicks
+  const [pendingVariants, setPendingVariants] = useState<Set<string>>(new Set());
 
   // Reset expanded cell when product changes
   useEffect(() => {
     setExpandedCell(null);
+    setPendingVariants(new Set());
   }, [slug]);
 
   // Get unique colors and sizes
@@ -202,33 +205,46 @@ const ProductPage = () => {
     return variant && variant.stock_qty > 0;
   };
 
-  // Add to cart directly
+  // Add to cart directly (with pending lock)
   const handleAddToCart = async (color: string | null, size: string) => {
     const variant = getVariant(color, size);
     if (!variant || !product) return;
     
-    const result = await addItem({
-      productId: product.id,
-      productName: product.name,
-      variantId: variant.id,
-      size: size,
-      color: color,
-      quantity: 1,
-      unitPriceCents: product.price_cents,
-      imageUrl: product.main_image_url,
-      category: product.categories?.name || null,
-    }, variant.stock_qty);
+    // Block if already pending for this variant
+    if (pendingVariants.has(variant.id)) return;
     
-    if (result.success) {
-      toast({
-        title: 'Adicionado!',
-        description: `${product.name} - ${size}${color ? ` (${getColorDisplayName(color)})` : ''}`,
-      });
-    } else {
-      toast({
-        title: 'Limite atingido',
-        description: result.message,
-        variant: 'destructive',
+    setPendingVariants(prev => new Set(prev).add(variant.id));
+    
+    try {
+      const result = await addItem({
+        productId: product.id,
+        productName: product.name,
+        variantId: variant.id,
+        size: size,
+        color: color,
+        quantity: 1,
+        unitPriceCents: product.price_cents,
+        imageUrl: product.main_image_url,
+        category: product.categories?.name || null,
+      }, variant.stock_qty);
+      
+      if (result.success) {
+        toast({
+          title: 'Adicionado!',
+          description: `${product.name} - ${size}${color ? ` (${getColorDisplayName(color)})` : ''}`,
+        });
+      } else {
+        toast({
+          title: 'Limite atingido',
+          description: result.message,
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setPendingVariants(prev => {
+        const next = new Set(prev);
+        next.delete(variant.id);
+        return next;
       });
     }
   };
@@ -449,7 +465,8 @@ const ProductPage = () => {
                                   </span>
                                   <button
                                     onClick={() => handleAddToCart(color, size)}
-                                    className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200"
+                                    disabled={pendingVariants.has(variant?.id || '')}
+                                    className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center transition-all active:scale-90 active:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
                                     <Plus className="h-4 w-4" />
                                   </button>
@@ -466,7 +483,8 @@ const ProductPage = () => {
                             ) : (
                               <button
                                 onClick={() => handleAddToCart(color, size)}
-                                className="w-10 h-10 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-95"
+                                disabled={pendingVariants.has(variant?.id || '')}
+                                className="w-10 h-10 rounded-full border-2 border-dashed border-muted-foreground/40 flex items-center justify-center hover:border-green-500 hover:bg-green-50 hover:text-green-600 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <Plus className="h-5 w-5" />
                               </button>
