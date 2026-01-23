@@ -186,6 +186,8 @@ export function useUpdateReservation() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['cart-reservations', sessionId] });
+      // Atualiza estoque nos cards de produto imediatamente
+      queryClient.invalidateQueries({ queryKey: ['products'] });
     },
   });
 }
@@ -221,6 +223,8 @@ export function useDeleteReservation() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['cart-reservations', sessionId] });
+      // Atualiza estoque nos cards de produto imediatamente
+      queryClient.invalidateQueries({ queryKey: ['products'] });
     },
   });
 }
@@ -252,6 +256,8 @@ export function useClearSessionReservations() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['cart-reservations', sessionId] });
+      // Atualiza estoque nos cards de produto imediatamente
+      queryClient.invalidateQueries({ queryKey: ['products'] });
     },
   });
 }
