@@ -1,4 +1,5 @@
 import { createContext, useContext, ReactNode, useCallback, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   useMyCartReservations, 
   useCreateReservation, 
@@ -39,6 +40,33 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | null>(null);
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'object' && error && 'message' in error) {
+    return String((error as { message: unknown }).message);
+  }
+  return fallback;
+}
+
+async function findVariantIdByAttributes(params: {
+  productId: string;
+  size: string;
+  color: string | null;
+}): Promise<string | null> {
+  let query = supabase
+    .from('product_variants')
+    .select('id')
+    .eq('product_id', params.productId)
+    .eq('size', params.size)
+    .limit(1);
+
+  query = params.color === null ? query.is('color', null) : query.eq('color', params.color);
+
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
+  return data?.id ?? null;
+}
 
 // Convert reservation to CartItem format
 function reservationToCartItem(reservation: CartReservation): CartItem {
@@ -84,12 +112,46 @@ export function CartProvider({ children }: { children: ReactNode }) {
       });
       return { success: true };
     } catch (error: unknown) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : (typeof error === 'object' && error && 'message' in error)
-            ? String((error as { message: unknown }).message)
-            : 'Erro ao adicionar ao carrinho';
+      // Causa raiz observada: usuário com catálogo desatualizado (ou variante removida)
+      // tenta reservar com um variantId que já não existe. Nesse caso, tentamos
+      // resolver o variantId atual por (productId + size + color) e refazer 1 vez.
+      const message = getErrorMessage(error, 'Erro ao adicionar ao carrinho');
+      const isVariantNotFound = message.toLowerCase().includes('variante não encontrada');
+
+      if (isVariantNotFound) {
+        try {
+          const repairedVariantId = await findVariantIdByAttributes({
+            productId: item.productId,
+            size: item.size,
+            color: item.color,
+          });
+
+          if (repairedVariantId && repairedVariantId !== item.variantId) {
+            await createReservation.mutateAsync({
+              variantId: repairedVariantId,
+              productId: item.productId,
+              productName: item.productName,
+              size: item.size,
+              color: item.color,
+              quantity: item.quantity,
+              unitPriceCents: item.unitPriceCents,
+              imageUrl: item.imageUrl,
+            });
+            return { success: true };
+          }
+
+          return {
+            success: false,
+            message: 'Esta variante não está mais disponível. Atualize a página e tente novamente.',
+          };
+        } catch (repairError) {
+          return {
+            success: false,
+            message: getErrorMessage(repairError, message),
+          };
+        }
+      }
+
       return { success: false, message };
     }
   }, [createReservation]);

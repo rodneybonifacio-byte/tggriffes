@@ -187,8 +187,11 @@ export function ProductCard({ product }: ProductCardProps) {
           description: `${product.name} - ${size}${color ? ` (${getColorDisplayName(color)})` : ''}`,
         });
       } else {
+         const title = (result.message || '').toLowerCase().includes('variante')
+           ? 'Produto atualizado'
+           : 'Limite atingido';
         toast({
-          title: 'Limite atingido',
+           title,
           description: result.message,
           variant: 'destructive',
         });
