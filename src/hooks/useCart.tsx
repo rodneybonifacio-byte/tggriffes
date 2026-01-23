@@ -72,6 +72,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = useCallback(async (item: Omit<CartItem, 'id'>, stockQty: number): Promise<AddItemResult> => {
     try {
+      // Check current quantity in cart for this variant
+      const currentInCart = items.find(i => i.variantId === item.variantId)?.quantity || 0;
+      const requestedTotal = currentInCart + item.quantity;
+      
+      // Validate stock limit BEFORE creating reservation
+      if (requestedTotal > stockQty) {
+        const available = stockQty - currentInCart;
+        if (available <= 0) {
+          return {
+            success: false,
+            message: 'Estoque esgotado para esta variante',
+          };
+        }
+        return {
+          success: false,
+          message: `Estoque insuficiente. Disponível: ${available} unidade${available !== 1 ? 's' : ''}`,
+        };
+      }
+      
       await createReservation.mutateAsync({
         variantId: item.variantId,
         productId: item.productId,
@@ -87,7 +106,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const message = error instanceof Error ? error.message : 'Erro ao adicionar ao carrinho';
       return { success: false, message };
     }
-  }, [createReservation]);
+  }, [createReservation, items]);
 
   const removeItem = useCallback((id: string) => {
     deleteReservation.mutate(id);
