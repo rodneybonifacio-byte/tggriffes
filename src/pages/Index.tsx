@@ -31,50 +31,73 @@ const Index = () => {
     status: 'active',
   });
 
+  // Capture initial stock values when products first load (prevents reordering during shopping)
+  // This creates a stable snapshot of stock for sorting purposes
+  const [initialStockMap, setInitialStockMap] = useState<Record<string, number>>({});
+  
+  useEffect(() => {
+    if (products.length > 0 && Object.keys(initialStockMap).length === 0) {
+      const stockMap: Record<string, number> = {};
+      products.forEach(product => {
+        const totalStock = product.product_variants?.reduce((sum, v) => sum + v.stock_qty, 0) || 0;
+        stockMap[product.id] = totalStock;
+      });
+      setInitialStockMap(stockMap);
+    }
+  }, [products, initialStockMap]);
+
+  // Helper function to get stable stock (uses initial snapshot if available)
+  const getStableStock = (product: typeof products[0]) => {
+    // Use initial snapshot if available, otherwise calculate current
+    if (initialStockMap[product.id] !== undefined) {
+      return initialStockMap[product.id];
+    }
+    return product.product_variants?.reduce((sum, v) => sum + v.stock_qty, 0) || 0;
+  };
+
   // Filter and sort products
-  let filteredProducts = products.filter(product => {
-    // Price filter
-    if (product.price_cents < priceRange[0] || product.price_cents > priceRange[1]) {
-      return false;
-    }
+  const filteredProducts = useMemo(() => {
+    let result = products.filter(product => {
+      // Price filter
+      if (product.price_cents < priceRange[0] || product.price_cents > priceRange[1]) {
+        return false;
+      }
 
-    // Size filter
-    if (selectedSizes.length > 0) {
-      const productSizes = product.product_variants?.map(v => v.size.toUpperCase()) || [];
-      const hasMatchingSize = selectedSizes.some(size => 
-        productSizes.includes(size.toUpperCase())
-      );
-      if (!hasMatchingSize) return false;
-    }
+      // Size filter
+      if (selectedSizes.length > 0) {
+        const productSizes = product.product_variants?.map(v => v.size.toUpperCase()) || [];
+        const hasMatchingSize = selectedSizes.some(size => 
+          productSizes.includes(size.toUpperCase())
+        );
+        if (!hasMatchingSize) return false;
+      }
 
-    return true;
-  });
-
-  // Helper function to calculate total stock
-  const getTotalStock = (product: typeof filteredProducts[0]) => 
-    product.product_variants?.reduce((sum, v) => sum + v.stock_qty, 0) || 0;
-
-  // Sort products - default by stock (most items first)
-  if (sortBy === 'relevance') {
-    // Default: sort by stock quantity (most items first)
-    filteredProducts = [...filteredProducts].sort((a, b) => getTotalStock(b) - getTotalStock(a));
-  } else if (sortBy === 'stock-asc') {
-    filteredProducts = [...filteredProducts].sort((a, b) => getTotalStock(a) - getTotalStock(b));
-  } else if (sortBy === 'price-asc') {
-    filteredProducts = [...filteredProducts].sort((a, b) => a.price_cents - b.price_cents);
-  } else if (sortBy === 'price-desc') {
-    filteredProducts = [...filteredProducts].sort((a, b) => b.price_cents - a.price_cents);
-  } else if (sortBy === 'newest') {
-    filteredProducts = [...filteredProducts].sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-  } else if (sortBy === 'color') {
-    filteredProducts = [...filteredProducts].sort((a, b) => {
-      const colorA = a.product_variants?.[0]?.color?.toLowerCase() || 'zzz';
-      const colorB = b.product_variants?.[0]?.color?.toLowerCase() || 'zzz';
-      return colorA.localeCompare(colorB, 'pt-BR');
+      return true;
     });
-  }
+
+    // Sort products using STABLE stock values (initial snapshot)
+    if (sortBy === 'relevance') {
+      result = [...result].sort((a, b) => getStableStock(b) - getStableStock(a));
+    } else if (sortBy === 'stock-asc') {
+      result = [...result].sort((a, b) => getStableStock(a) - getStableStock(b));
+    } else if (sortBy === 'price-asc') {
+      result = [...result].sort((a, b) => a.price_cents - b.price_cents);
+    } else if (sortBy === 'price-desc') {
+      result = [...result].sort((a, b) => b.price_cents - a.price_cents);
+    } else if (sortBy === 'newest') {
+      result = [...result].sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    } else if (sortBy === 'color') {
+      result = [...result].sort((a, b) => {
+        const colorA = a.product_variants?.[0]?.color?.toLowerCase() || 'zzz';
+        const colorB = b.product_variants?.[0]?.color?.toLowerCase() || 'zzz';
+        return colorA.localeCompare(colorB, 'pt-BR');
+      });
+    }
+
+    return result;
+  }, [products, priceRange, selectedSizes, sortBy, initialStockMap]);
 
   const handleSearch = (query: string) => {
     setSearch(query);
