@@ -64,57 +64,34 @@ export function useMyCartReservations() {
   });
 }
 
-// Hook para criar reserva com optimistic update
+// Hook para criar reserva usando RPC atômica (valida estoque com lock)
 export function useCreateReservation() {
   const queryClient = useQueryClient();
   const sessionId = getSessionId();
   
   return useMutation({
     mutationFn: async (params: CreateReservationParams) => {
-      // Verificar se já existe reserva para esta variante nesta sessão
-      const { data: existing } = await supabase
-        .from('cart_reservations')
-        .select('id, quantity')
-        .eq('session_id', sessionId)
-        .eq('variant_id', params.variantId)
-        .gt('expires_at', new Date().toISOString())
-        .maybeSingle();
+      // Usa RPC atômica que valida estoque em tempo real com lock
+      const { data, error } = await supabase.rpc('add_cart_reservation', {
+        p_session_id: sessionId,
+        p_variant_id: params.variantId,
+        p_product_id: params.productId,
+        p_product_name: params.productName,
+        p_size: params.size,
+        p_color: params.color,
+        p_quantity: params.quantity,
+        p_unit_price_cents: params.unitPriceCents,
+        p_image_url: params.imageUrl,
+      });
       
-      if (existing) {
-        // Atualizar quantidade existente
-        const newQty = existing.quantity + params.quantity;
-        
-        const { error } = await supabase
-          .from('cart_reservations')
-          .update({ 
-            quantity: newQty,
-            expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
-          })
-          .eq('id', existing.id);
-        
-        if (error) throw error;
-        return { updated: true, id: existing.id, newQty };
+      if (error) {
+        // Traduz mensagens de erro do banco
+        if (error.message.includes('Estoque insuficiente')) {
+          throw new Error('Estoque insuficiente');
+        }
+        throw error;
       }
       
-      // Criar nova reserva
-      const { data, error } = await supabase
-        .from('cart_reservations')
-        .insert({
-          session_id: sessionId,
-          variant_id: params.variantId,
-          product_id: params.productId,
-          product_name: params.productName,
-          size: params.size,
-          color: params.color,
-          quantity: params.quantity,
-          unit_price_cents: params.unitPriceCents,
-          image_url: params.imageUrl,
-          expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
-        })
-        .select()
-        .single();
-      
-      if (error) throw error;
       return { created: true, data };
     },
     // Optimistic update para resposta instantânea
@@ -156,6 +133,8 @@ export function useCreateReservation() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['cart-reservations', sessionId] });
+      // Também invalida produtos para atualizar contadores de estoque
+      queryClient.invalidateQueries({ queryKey: ['products'] });
     },
   });
 }
