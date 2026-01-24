@@ -3,8 +3,6 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { OrderEditModal } from '@/components/admin/OrderEditModal';
 import { useOrderIntents, useUpdateOrderStatus, useAddOrderHistory, useOrderHistory } from '@/hooks/useOrders';
-import { useStoreSettings } from '@/hooks/useStoreSettings';
-import { useProducts } from '@/hooks/useProducts';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,7 +15,6 @@ import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText, Phone, User, Messa
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { OrderIntent } from '@/hooks/useOrders';
-import { supabase } from '@/integrations/supabase/client';
 
 const STATUS_OPTIONS = [
   { value: 'NOVO', label: 'Novo', color: 'bg-blue-100 text-blue-700' },
@@ -35,73 +32,24 @@ const AdminOrders = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedOrder, setSelectedOrder] = useState<OrderIntent | null>(null);
   const [editingOrder, setEditingOrder] = useState<OrderIntent | null>(null);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [cancelConfirmOrder, setCancelConfirmOrder] = useState<{ id: string; currentStatus: string } | null>(null);
   
   const { data: orders = [], isLoading } = useOrderIntents();
-  const { data: storeSettings } = useStoreSettings();
-  const { data: products = [] } = useProducts();
   const { mutateAsync: updateStatus, isPending: isUpdating } = useUpdateOrderStatus();
   const { mutateAsync: addHistory } = useAddOrderHistory();
   const { data: orderHistory = [] } = useOrderHistory(selectedOrder?.id || null);
   const { toast } = useToast();
   const { canViewPrices } = usePermissions();
 
-  const generatePdf = async (order: OrderIntent) => {
-    setIsGeneratingPdf(true);
-    try {
-      // Use production URL for images (preview URLs don't serve static files correctly)
-      const productionUrl = 'https://atacado.tggriffes.com.br';
-      const logoUrl = storeSettings?.store_logo_url || `${productionUrl}/logo.png`;
-      
-      const items = order.order_intent_items?.map(item => {
-        const product = products.find(p => p.id === item.product_id);
-        return {
-          productName: item.product_name,
-          size: item.size,
-          color: item.color || null,
-          quantity: item.qty,
-          unitPriceCents: item.unit_price_cents,
-          imageUrl: product?.main_image_url || undefined,
-          category: product?.categories?.name || 'Outros',
-        };
-      }) || [];
-
-      const { data, error } = await supabase.functions.invoke('generate-order-pdf', {
-        body: {
-          orderNumber: order.order_number,
-          customerName: order.customer_name || 'Cliente',
-          customerWhatsapp: order.customer_whatsapp || '',
-          items,
-          subtotalCents: order.subtotal_cents,
-          shippingService: order.shipping_service || '',
-          shippingPriceCents: order.shipping_price_cents || 0,
-          shippingDeadlineDays: order.shipping_deadline_days || 0,
-          totalCents: order.total_cents,
-          destCep: order.dest_cep || '',
-          skipShipping: !order.shipping_service,
-          observations: order.observations || null,
-          orderDate: new Date(order.created_at).toLocaleDateString('pt-BR'),
-          logoUrl,
-          siteUrl: productionUrl,
-        },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      if (data?.pdfBase64) {
-        // Open the PDF viewer page in a new tab
-        window.open(`/pedido-pdf/${order.order_number}`, '_blank');
-      }
-      
-      toast({ title: 'PDF gerado com sucesso!' });
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast({ title: 'Erro ao gerar PDF', variant: 'destructive' });
-    } finally {
-      setIsGeneratingPdf(false);
+  const openPdfViewer = (order: OrderIntent) => {
+    if (!order.order_number) {
+      toast({ title: 'Pedido sem número', variant: 'destructive' });
+      return;
     }
+
+    // Importante: abre o visualizador diretamente (gera sob demanda, sem salvar arquivo)
+    // e evita bloqueio de popup por chamadas assíncronas.
+    window.open(`/pedidos/pdf/${order.order_number}`, '_blank', 'noopener,noreferrer');
   };
 
   const filteredOrders = statusFilter === 'all' 
@@ -417,17 +365,10 @@ const AdminOrders = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => generatePdf(selectedOrder)}
-                      disabled={isGeneratingPdf}
+                      onClick={() => openPdfViewer(selectedOrder)}
                     >
-                      {isGeneratingPdf ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          <FileText className="h-4 w-4 mr-2" />
-                          PDF
-                        </>
-                      )}
+                      <FileText className="h-4 w-4 mr-2" />
+                      PDF
                     </Button>
                   </div>
                 </div>
