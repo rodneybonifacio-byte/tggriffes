@@ -23,7 +23,7 @@ export default function PedidoPDF() {
     setError(null);
 
     try {
-      // Fetch order data
+      // Fetch order data with items
       const { data: order, error: orderError } = await supabase
         .from('order_intents')
         .select(`
@@ -38,6 +38,31 @@ export default function PedidoPDF() {
         setError('Pedido não encontrado');
         setLoading(false);
         return;
+      }
+
+      // Get unique product IDs to fetch images and categories
+      const productIds = [...new Set(
+        order.order_intent_items
+          ?.map((item: any) => item.product_id)
+          .filter(Boolean) || []
+      )];
+
+      // Fetch products with images and categories
+      let productsMap: Record<string, { main_image_url: string | null; category_name: string }> = {};
+      if (productIds.length > 0) {
+        const { data: products } = await supabase
+          .from('products')
+          .select('id, main_image_url, categories:category_id(name)')
+          .in('id', productIds);
+
+        if (products) {
+          for (const p of products) {
+            productsMap[p.id] = {
+              main_image_url: p.main_image_url,
+              category_name: (p.categories as any)?.name || 'Outros',
+            };
+          }
+        }
       }
 
       // Build order data for PDF generation
@@ -56,16 +81,18 @@ export default function PedidoPDF() {
         skipShipping: !order.dest_cep,
         siteUrl: window.location.origin,
         logoUrl: settings?.store_logo_url || '',
-        items: order.order_intent_items?.map((item: any) => ({
-          productName: item.product_name,
-          size: item.size,
-          color: item.color || '',
-          qty: item.qty,
-          unitPriceCents: item.unit_price_cents,
-          lineTotalCents: item.line_total_cents,
-          imageUrl: '', // Images not stored in order items
-          category: '',
-        })) || [],
+        items: order.order_intent_items?.map((item: any) => {
+          const product = item.product_id ? productsMap[item.product_id] : null;
+          return {
+            productName: item.product_name || 'Item',
+            size: item.size || '',
+            color: item.color || null,
+            quantity: item.qty || 1, // Edge function expects "quantity", not "qty"
+            unitPriceCents: item.unit_price_cents || 0,
+            imageUrl: product?.main_image_url || '',
+            category: product?.category_name || 'Outros',
+          };
+        }) || [],
       };
 
       // Generate PDF on demand
