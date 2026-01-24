@@ -43,6 +43,7 @@ export default function PedidoPDF() {
       // Build order data for PDF generation
       const orderData = {
         orderNumber: order.order_number,
+        orderDate: new Date(order.created_at).toLocaleDateString('pt-BR'),
         customerName: order.customer_name || '',
         customerWhatsapp: order.customer_whatsapp || '',
         destCep: order.dest_cep || '',
