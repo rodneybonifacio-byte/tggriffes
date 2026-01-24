@@ -297,8 +297,9 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
           color: black,
         });
         
-        const dateWidth = fontRegular.widthOfTextAtSize(order.orderDate, 9);
-        page.drawText(order.orderDate, {
+        const orderDateText = typeof order.orderDate === 'string' ? order.orderDate : '';
+        const dateWidth = fontRegular.widthOfTextAtSize(orderDateText, 9);
+        page.drawText(orderDateText, {
           x: PAGE_WIDTH - MARGIN - dateWidth,
           y: y - 32,
           size: 9,
@@ -824,7 +825,43 @@ serve(async (req) => {
   }
 
   try {
-    const orderData: OrderData = await req.json();
+    const raw = (await req.json()) as Partial<OrderData>;
+
+    // Normalize payload to avoid runtime errors (e.g. undefined text in pdf-lib)
+    const orderData: OrderData = {
+      orderNumber: typeof raw.orderNumber === 'number' ? raw.orderNumber : raw.orderNumber ? Number(raw.orderNumber) : undefined,
+      customerName: typeof raw.customerName === 'string' ? raw.customerName : '',
+      customerWhatsapp: typeof raw.customerWhatsapp === 'string' ? raw.customerWhatsapp : '',
+      destCep: typeof raw.destCep === 'string' ? raw.destCep : '',
+      items: Array.isArray(raw.items)
+        ? raw.items.map((it: any) => ({
+            productName: typeof it?.productName === 'string' && it.productName.trim() ? it.productName : 'Item',
+            size: typeof it?.size === 'string' ? it.size : '',
+            color: typeof it?.color === 'string' ? it.color : null,
+            quantity: typeof it?.quantity === 'number' ? it.quantity : 0,
+            unitPriceCents: typeof it?.unitPriceCents === 'number' ? it.unitPriceCents : 0,
+            imageUrl: typeof it?.imageUrl === 'string' && it.imageUrl.trim() ? it.imageUrl : undefined,
+            category: typeof it?.category === 'string' && it.category.trim() ? it.category : undefined,
+          }))
+        : [],
+      subtotalCents: typeof raw.subtotalCents === 'number' ? raw.subtotalCents : 0,
+      shippingService: typeof raw.shippingService === 'string' ? raw.shippingService : '',
+      shippingPriceCents: typeof raw.shippingPriceCents === 'number' ? raw.shippingPriceCents : 0,
+      shippingDeadlineDays: typeof raw.shippingDeadlineDays === 'number' ? raw.shippingDeadlineDays : 0,
+      totalCents: typeof raw.totalCents === 'number' ? raw.totalCents : 0,
+      skipShipping: raw.skipShipping === true,
+      observations: typeof raw.observations === 'string' ? raw.observations : raw.observations ?? null,
+      orderDate:
+        typeof raw.orderDate === 'string' && raw.orderDate.trim().length > 0
+          ? raw.orderDate
+          : new Date().toLocaleDateString('pt-BR'),
+      logoUrl: typeof raw.logoUrl === 'string' && raw.logoUrl.trim() ? raw.logoUrl : undefined,
+      siteUrl: typeof raw.siteUrl === 'string' && raw.siteUrl.trim() ? raw.siteUrl : undefined,
+      shippingWeightGrams: typeof raw.shippingWeightGrams === 'number' ? raw.shippingWeightGrams : undefined,
+      shippingLengthCm: typeof raw.shippingLengthCm === 'number' ? raw.shippingLengthCm : undefined,
+      shippingWidthCm: typeof raw.shippingWidthCm === 'number' ? raw.shippingWidthCm : undefined,
+      shippingHeightCm: typeof raw.shippingHeightCm === 'number' ? raw.shippingHeightCm : undefined,
+    };
 
     console.log("[generate-order-pdf] start", {
       orderNumber: orderData.orderNumber,
