@@ -54,18 +54,37 @@ async function findVariantIdByAttributes(params: {
   size: string;
   color: string | null;
 }): Promise<string | null> {
+  // First try exact match with color
   let query = supabase
     .from('product_variants')
-    .select('id')
+    .select('id, stock_qty')
     .eq('product_id', params.productId)
     .eq('size', params.size)
+    .gt('stock_qty', 0)
     .limit(1);
 
-  query = params.color === null ? query.is('color', null) : query.eq('color', params.color);
+  if (params.color !== null) {
+    query = query.eq('color', params.color);
+  } else {
+    query = query.is('color', null);
+  }
 
   const { data, error } = await query.maybeSingle();
   if (error) throw error;
-  return data?.id ?? null;
+  if (data?.id) return data.id;
+
+  // Fallback: try to find any variant with this size (ignore color)
+  const { data: fallbackData, error: fallbackError } = await supabase
+    .from('product_variants')
+    .select('id, stock_qty')
+    .eq('product_id', params.productId)
+    .eq('size', params.size)
+    .gt('stock_qty', 0)
+    .limit(1)
+    .maybeSingle();
+
+  if (fallbackError) throw fallbackError;
+  return fallbackData?.id ?? null;
 }
 
 // Convert reservation to CartItem format
@@ -118,15 +137,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const message = getErrorMessage(error, 'Erro ao adicionar ao carrinho');
       const isVariantNotFound = message.toLowerCase().includes('variante não encontrada');
 
+      console.log('[useCart] addItem error:', { 
+        message, 
+        isVariantNotFound, 
+        item: { 
+          productId: item.productId, 
+          variantId: item.variantId, 
+          size: item.size, 
+          color: item.color 
+        } 
+      });
+
       if (isVariantNotFound) {
         try {
+          console.log('[useCart] Attempting variant recovery...');
           const repairedVariantId = await findVariantIdByAttributes({
             productId: item.productId,
             size: item.size,
             color: item.color,
           });
 
-          if (repairedVariantId && repairedVariantId !== item.variantId) {
+          console.log('[useCart] Recovery result:', { repairedVariantId, originalVariantId: item.variantId });
+
+          if (repairedVariantId) {
             await createReservation.mutateAsync({
               variantId: repairedVariantId,
               productId: item.productId,
@@ -137,6 +170,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
               unitPriceCents: item.unitPriceCents,
               imageUrl: item.imageUrl,
             });
+            console.log('[useCart] Recovery successful!');
             return { success: true };
           }
 
@@ -145,6 +179,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             message: 'Esta variante não está mais disponível. Atualize a página e tente novamente.',
           };
         } catch (repairError) {
+          console.error('[useCart] Recovery failed:', repairError);
           return {
             success: false,
             message: getErrorMessage(repairError, message),

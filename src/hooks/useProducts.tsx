@@ -73,6 +73,8 @@ export function useProducts(filters?: ProductFilters) {
 
       return products;
     },
+    staleTime: 10000, // 10 seconds - products data can change frequently
+    gcTime: 60000, // 1 minute cache
   });
 }
 
@@ -122,6 +124,8 @@ export function useProductBySlug(slug: string | undefined) {
       return data as Product | null;
     },
     enabled: !!slug,
+    staleTime: 5000, // 5 seconds - product page needs fresh data
+    gcTime: 60000,
   });
 }
 
