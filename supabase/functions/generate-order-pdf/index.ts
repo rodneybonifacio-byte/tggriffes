@@ -845,39 +845,13 @@ serve(async (req) => {
     const pdfBytes = await generatePDF(orderData);
     console.log("[generate-order-pdf] PDF generated with", pdfBytes.length, "bytes");
 
-    // Upload to Supabase Storage
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    const fileName = `pedido-${orderData.orderNumber || Date.now()}.pdf`;
+    // Return PDF directly as base64 (no storage)
+    const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
     
-    console.log("[generate-order-pdf] uploading PDF", {
-      bucket: "order-pdfs",
-      filePath: fileName,
-      size: pdfBytes.length,
-    });
-
-    const { error: uploadError } = await supabase.storage
-      .from("order-pdfs")
-      .upload(fileName, pdfBytes, {
-        contentType: "application/pdf",
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error("[generate-order-pdf] upload error:", uploadError);
-      throw uploadError;
-    }
-
-    const { data: publicUrlData } = supabase.storage
-      .from("order-pdfs")
-      .getPublicUrl(fileName);
-
-    console.log("[generate-order-pdf] done", { pdfUrl: publicUrlData.publicUrl });
+    console.log("[generate-order-pdf] returning PDF as base64, size:", base64Pdf.length);
 
     return new Response(
-      JSON.stringify({ pdfUrl: publicUrlData.publicUrl }),
+      JSON.stringify({ pdfBase64: base64Pdf }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }

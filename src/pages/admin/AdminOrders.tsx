@@ -67,7 +67,7 @@ const AdminOrders = () => {
         };
       }) || [];
 
-      const { error } = await supabase.functions.invoke('generate-order-pdf', {
+      const { data, error } = await supabase.functions.invoke('generate-order-pdf', {
         body: {
           orderNumber: order.order_number,
           customerName: order.customer_name || 'Cliente',
@@ -88,10 +88,22 @@ const AdminOrders = () => {
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      // Open PDF directly from storage (production URL)
-      const pdfUrl = `https://dvqeitcliexenhnfradm.supabase.co/storage/v1/object/public/order-pdfs/pedido-${order.order_number}.pdf`;
-      window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+      if (data?.pdfBase64) {
+        // Convert base64 to blob and open in new tab
+        const binaryString = atob(data.pdfBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank', 'noopener,noreferrer');
+        
+        // Clean up blob URL after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      }
       
       toast({ title: 'PDF gerado com sucesso!' });
     } catch (error) {

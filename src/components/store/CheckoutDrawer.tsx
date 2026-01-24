@@ -292,13 +292,8 @@ ${pdfUrl}`;
         shippingHeightCm: !skipShipping && selectedShipping ? Math.max(2, totalItems * 2) : undefined,
       };
 
-      const { data: pdfResponse, error: pdfError } = await supabase.functions.invoke('generate-order-pdf', {
-        body: orderData,
-      });
-
-      if (pdfError) {
-        console.error('PDF generation error:', pdfError);
-      }
+      // PDF is now generated on-demand when customer opens the link
+      // No need to pre-generate here - saves storage and speeds up checkout
 
       // 5. Generate message with clean PDF URL and open WhatsApp
       const cleanPdfUrl = `${window.location.origin}/pedidos/pdf/${orderNumber}`;
