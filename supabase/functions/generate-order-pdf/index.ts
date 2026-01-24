@@ -846,7 +846,14 @@ serve(async (req) => {
     console.log("[generate-order-pdf] PDF generated with", pdfBytes.length, "bytes");
 
     // Return PDF directly as base64 (no storage)
-    const base64Pdf = btoa(String.fromCharCode(...pdfBytes));
+    // Using chunked approach to avoid stack overflow with large arrays
+    const chunkSize = 8192;
+    let base64Pdf = '';
+    for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+      const chunk = pdfBytes.slice(i, i + chunkSize);
+      base64Pdf += String.fromCharCode.apply(null, Array.from(chunk));
+    }
+    base64Pdf = btoa(base64Pdf);
     
     console.log("[generate-order-pdf] returning PDF as base64, size:", base64Pdf.length);
 
