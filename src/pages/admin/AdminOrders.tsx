@@ -91,25 +91,8 @@ const AdminOrders = () => {
       if (data?.error) throw new Error(data.error);
 
       if (data?.pdfBase64) {
-        // Convert base64 to blob and trigger download (more reliable than window.open)
-        const binaryString = atob(data.pdfBase64);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const blob = new Blob([bytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        
-        // Create download link and click it
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `pedido-${order.order_number}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Clean up blob URL after a delay
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        // Open the PDF viewer page in a new tab
+        window.open(`/pedido-pdf/${order.order_number}`, '_blank');
       }
       
       toast({ title: 'PDF gerado com sucesso!' });
