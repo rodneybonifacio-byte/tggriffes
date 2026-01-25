@@ -340,8 +340,14 @@ export default function AdminStock() {
       else if (item.currentStock <= 3) lowStock++;
     });
     
-    return { totalVariants, outOfStock, lowStock, totalUnits };
-  }, [stockItems]);
+    // Count Shopify movements
+    const shopifyMovements = movements?.filter(m => 
+      m.movement_type === 'shopify_sale' || 
+      m.reason?.toLowerCase().includes('shopify')
+    ).length || 0;
+    
+    return { totalVariants, outOfStock, lowStock, totalUnits, shopifyMovements };
+  }, [stockItems, movements]);
 
   // Filtered and paginated history
   const { filteredMovements, paginatedMovements, totalHistoryPages } = useMemo(() => {
@@ -581,7 +587,7 @@ export default function AdminStock() {
     <AdminGuard>
       <AdminLayout title="Gestão de Estoque">
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           <div className="bg-card rounded-lg border p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg">
@@ -644,6 +650,32 @@ export default function AdminStock() {
               <div>
                 <p className="text-sm text-muted-foreground">Sem Estoque</p>
                 <p className="text-2xl font-bold">{stats.outOfStock}</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Shopify Movements Card */}
+          <div 
+            className={cn(
+              "bg-card rounded-lg border p-4 cursor-pointer transition-all hover:shadow-md hover:border-green-300",
+              historyFilters.origin === 'shopify' && activeTab === 'history' && "ring-2 ring-green-400 border-green-400"
+            )}
+            onClick={() => {
+              setHistoryFilters(prev => ({
+                ...prev,
+                origin: prev.origin === 'shopify' ? 'all' : 'shopify'
+              }));
+              setActiveTab('history');
+              setHistoryPage(1);
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <ShoppingBag className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Vendas Shopify</p>
+                <p className="text-2xl font-bold">{stats.shopifyMovements}</p>
               </div>
             </div>
           </div>
