@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { useProducts, useCategories, useUpdateVariantStock, Product, ProductVariant } from '@/hooks/useProducts';
-import { useStockMovements, useCreateBatchStockMovements } from '@/hooks/useStockMovements';
+import { useStockMovements, useCreateBatchStockMovements, StockMovement } from '@/hooks/useStockMovements';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,8 +44,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { StockHistoryFilters, HistoryFilters } from '@/components/admin/StockHistoryFilters';
+import { StockHistoryPagination } from '@/components/admin/StockHistoryPagination';
 
 // Size order for sorting
 const SIZE_ORDER = ['PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG', 'XXXG', 'U'];
@@ -175,6 +177,16 @@ export default function AdminStock() {
   const [stockFilter, setStockFilter] = useState<string>('all');
   const [sizeFilter, setSizeFilter] = useState<string>('all');
   const [colorFilter, setColorFilter] = useState<string>('all');
+  
+  // History filters and pagination
+  const [historyFilters, setHistoryFilters] = useState<HistoryFilters>({
+    search: '',
+    movementType: 'all',
+    origin: 'all',
+    dateRange: undefined,
+  });
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyPageSize, setHistoryPageSize] = useState(25);
   
   // Stock editing
   const [stockChanges, setStockChanges] = useState<Record<string, number>>({});
@@ -330,6 +342,88 @@ export default function AdminStock() {
     
     return { totalVariants, outOfStock, lowStock, totalUnits };
   }, [stockItems]);
+
+  // Filtered and paginated history
+  const { filteredMovements, paginatedMovements, totalHistoryPages } = useMemo(() => {
+    if (!movements) return { filteredMovements: [], paginatedMovements: [], totalHistoryPages: 0 };
+    
+    let filtered = [...movements];
+    
+    // Filter by search
+    if (historyFilters.search) {
+      const searchLower = historyFilters.search.toLowerCase();
+      filtered = filtered.filter(m => 
+        m.product_name?.toLowerCase().includes(searchLower) ||
+        m.variant_size?.toLowerCase().includes(searchLower) ||
+        m.variant_color?.toLowerCase().includes(searchLower) ||
+        m.reason?.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Filter by movement type
+    if (historyFilters.movementType !== 'all') {
+      filtered = filtered.filter(m => m.movement_type === historyFilters.movementType);
+    }
+    
+    // Filter by origin
+    if (historyFilters.origin !== 'all') {
+      if (historyFilters.origin === 'shopify') {
+        filtered = filtered.filter(m => 
+          m.movement_type === 'shopify_sale' || 
+          m.reason?.toLowerCase().includes('shopify')
+        );
+      } else {
+        filtered = filtered.filter(m => 
+          m.movement_type !== 'shopify_sale' && 
+          !m.reason?.toLowerCase().includes('shopify')
+        );
+      }
+    }
+    
+    // Filter by date range
+    if (historyFilters.dateRange?.from) {
+      const fromDate = startOfDay(historyFilters.dateRange.from);
+      const toDate = historyFilters.dateRange.to 
+        ? endOfDay(historyFilters.dateRange.to) 
+        : endOfDay(historyFilters.dateRange.from);
+      
+      filtered = filtered.filter(m => {
+        const movementDate = new Date(m.created_at);
+        return isWithinInterval(movementDate, { start: fromDate, end: toDate });
+      });
+    }
+    
+    // Calculate pagination
+    const totalPages = Math.ceil(filtered.length / historyPageSize);
+    const startIndex = (historyPage - 1) * historyPageSize;
+    const paginated = filtered.slice(startIndex, startIndex + historyPageSize);
+    
+    return { 
+      filteredMovements: filtered, 
+      paginatedMovements: paginated, 
+      totalHistoryPages: totalPages 
+    };
+  }, [movements, historyFilters, historyPage, historyPageSize]);
+
+  const handleHistoryFiltersChange = useCallback((newFilters: HistoryFilters) => {
+    setHistoryFilters(newFilters);
+    setHistoryPage(1); // Reset to first page when filters change
+  }, []);
+
+  const handleClearHistoryFilters = useCallback(() => {
+    setHistoryFilters({
+      search: '',
+      movementType: 'all',
+      origin: 'all',
+      dateRange: undefined,
+    });
+    setHistoryPage(1);
+  }, []);
+
+  const handleHistoryPageSizeChange = useCallback((size: number) => {
+    setHistoryPageSize(size);
+    setHistoryPage(1);
+  }, []);
 
   const handleStockChange = useCallback((variantId: string, value: number) => {
     const newValue = Math.max(0, value);
@@ -857,98 +951,118 @@ export default function AdminStock() {
         )}
 
         {activeTab === 'history' && (
-          <div className="bg-card rounded-lg border overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-40">Data</TableHead>
-                  <TableHead>Produto</TableHead>
-                  <TableHead className="w-24 text-center">Variação</TableHead>
-                  <TableHead className="w-24 text-center">Tipo</TableHead>
-                  <TableHead className="w-20 text-center">Qtd</TableHead>
-                  <TableHead className="w-32 text-center">Estoque</TableHead>
-                  <TableHead>Origem</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoadingMovements ? (
+          <>
+            <StockHistoryFilters
+              filters={historyFilters}
+              onFiltersChange={handleHistoryFiltersChange}
+              onClear={handleClearHistoryFilters}
+            />
+            
+            <div className="bg-card rounded-lg border overflow-hidden">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                    </TableCell>
+                    <TableHead className="w-40">Data</TableHead>
+                    <TableHead>Produto</TableHead>
+                    <TableHead className="w-24 text-center">Variação</TableHead>
+                    <TableHead className="w-24 text-center">Tipo</TableHead>
+                    <TableHead className="w-20 text-center">Qtd</TableHead>
+                    <TableHead className="w-32 text-center">Estoque</TableHead>
+                    <TableHead>Origem</TableHead>
                   </TableRow>
-                ) : movements && movements.length > 0 ? (
-                  movements.map((movement) => (
-                    <TableRow key={movement.id}>
-                      <TableCell className="text-sm">
-                        {format(new Date(movement.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-medium">{movement.product_name}</span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <Badge variant="outline">{movement.variant_size}</Badge>
-                          {movement.variant_color && (
-                            <Badge variant="secondary" className="text-xs">{movement.variant_color}</Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {movement.movement_type === 'entrada' || movement.movement_type === 'cancelamento' ? (
-                          <Badge className="bg-green-100 text-green-700 hover:bg-green-100 gap-1">
-                            <ArrowUpCircle className="h-3 w-3" />
-                            {movement.movement_type === 'entrada' ? 'Entrada' : 'Cancelam.'}
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-red-100 text-red-700 hover:bg-red-100 gap-1">
-                            <ArrowDownCircle className="h-3 w-3" />
-                            {movement.movement_type === 'saida' ? 'Saída' : movement.movement_type === 'venda' ? 'Venda' : 'Ajuste'}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center font-bold">
-                        <span className={cn(
-                          movement.movement_type === 'entrada' || movement.movement_type === 'cancelamento'
-                            ? "text-green-600"
-                            : "text-red-600"
-                        )}>
-                          {movement.movement_type === 'entrada' || movement.movement_type === 'cancelamento' ? '+' : '-'}
-                          {movement.quantity}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center text-sm text-muted-foreground">
-                        {movement.stock_before} → {movement.stock_after}
-                      </TableCell>
-                      <TableCell>
-                        {movement.movement_type === 'shopify_sale' || movement.reason?.toLowerCase().includes('shopify') ? (
-                          <Badge variant="outline" className="gap-1 bg-green-50 text-green-700 border-green-200">
-                            <ShoppingBag className="h-3 w-3" />
-                            Shopify
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="gap-1 bg-blue-50 text-blue-700 border-blue-200">
-                            <Store className="h-3 w-3" />
-                            Local
-                          </Badge>
-                        )}
-                        <span className="text-xs text-muted-foreground ml-2">
-                          {movement.reason?.replace(/shopify/gi, '').replace(/local/gi, '').trim() || ''}
-                        </span>
+                </TableHeader>
+                <TableBody>
+                  {isLoadingMovements ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>Nenhuma movimentação registrada</p>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ) : paginatedMovements.length > 0 ? (
+                    paginatedMovements.map((movement) => (
+                      <TableRow key={movement.id}>
+                        <TableCell className="text-sm">
+                          {format(new Date(movement.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-medium">{movement.product_name}</span>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Badge variant="outline">{movement.variant_size}</Badge>
+                            {movement.variant_color && (
+                              <Badge variant="secondary" className="text-xs">{movement.variant_color}</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {movement.movement_type === 'entrada' || movement.movement_type === 'cancelamento' ? (
+                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100 gap-1">
+                              <ArrowUpCircle className="h-3 w-3" />
+                              {movement.movement_type === 'entrada' ? 'Entrada' : 'Cancelam.'}
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-red-100 text-red-700 hover:bg-red-100 gap-1">
+                              <ArrowDownCircle className="h-3 w-3" />
+                              {movement.movement_type === 'saida' ? 'Saída' : movement.movement_type === 'venda' ? 'Venda' : movement.movement_type === 'shopify_sale' ? 'Shopify' : 'Ajuste'}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center font-bold">
+                          <span className={cn(
+                            movement.movement_type === 'entrada' || movement.movement_type === 'cancelamento'
+                              ? "text-green-600"
+                              : "text-red-600"
+                          )}>
+                            {movement.movement_type === 'entrada' || movement.movement_type === 'cancelamento' ? '+' : '-'}
+                            {movement.quantity}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center text-sm text-muted-foreground">
+                          {movement.stock_before} → {movement.stock_after}
+                        </TableCell>
+                        <TableCell>
+                          {movement.movement_type === 'shopify_sale' || movement.reason?.toLowerCase().includes('shopify') ? (
+                            <Badge variant="outline" className="gap-1 bg-green-50 text-green-700 border-green-200">
+                              <ShoppingBag className="h-3 w-3" />
+                              Shopify
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="gap-1 bg-blue-50 text-blue-700 border-blue-200">
+                              <Store className="h-3 w-3" />
+                              Local
+                            </Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {movement.reason?.replace(/shopify/gi, '').replace(/local/gi, '').trim() || ''}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>Nenhuma movimentação encontrada</p>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              
+              {/* Pagination */}
+              {filteredMovements.length > 0 && (
+                <StockHistoryPagination
+                  currentPage={historyPage}
+                  totalPages={totalHistoryPages}
+                  pageSize={historyPageSize}
+                  totalItems={filteredMovements.length}
+                  onPageChange={setHistoryPage}
+                  onPageSizeChange={handleHistoryPageSizeChange}
+                />
+              )}
+            </div>
+          </>
         )}
       </AdminLayout>
     </AdminGuard>
