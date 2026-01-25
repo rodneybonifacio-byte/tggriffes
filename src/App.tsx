@@ -22,6 +22,7 @@ import AdminAbandonedCarts from "./pages/admin/AdminAbandonedCarts";
 import AdminShopify from "./pages/admin/AdminShopify";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminImageOptimizer from "./pages/admin/AdminImageOptimizer";
 import CustomerLogin from "./pages/customer/CustomerLogin";
 import CustomerRegister from "./pages/customer/CustomerRegister";
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
@@ -66,6 +67,7 @@ const App = () => {
                 <Route path="/admin/shopify" element={<AdminShopify />} />
                 <Route path="/admin/configuracoes" element={<AdminSettings />} />
                 <Route path="/admin/usuarios" element={<AdminUsers />} />
+                <Route path="/admin/otimizar-imagens" element={<AdminImageOptimizer />} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
