@@ -2,10 +2,10 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { X, Upload, GripVertical, Star } from 'lucide-react';
+import { X, Upload, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-
+import { compressImage } from '@/lib/imageCompression';
 interface ImageUploadProps {
   images: string[];
   mainImage?: string;
@@ -29,13 +29,15 @@ export function ImageUpload({
     
     try {
       const uploadPromises = acceptedFiles.map(async (file) => {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        // Compress image before upload (80% quality, max 1080px)
+        const compressedFile = await compressImage(file);
+        
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpeg`;
         const filePath = `products/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('product-images')
-          .upload(filePath, file);
+          .upload(filePath, compressedFile);
 
         if (uploadError) throw uploadError;
 
