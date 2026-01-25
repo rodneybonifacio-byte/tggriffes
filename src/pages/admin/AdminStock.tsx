@@ -659,6 +659,11 @@ export default function AdminStock() {
             <TabsTrigger value="history" className="gap-2">
               <History className="h-4 w-4" />
               Histórico
+              {movements && movements.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                  {movements.length > 99 ? '99+' : movements.length}
+                </Badge>
+              )}
             </TabsTrigger>
           </TabsList>
         </Tabs>
