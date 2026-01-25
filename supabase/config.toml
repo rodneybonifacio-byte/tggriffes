@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.calculate-shipping]
 verify_jwt = false
+
+[functions.recompress-images]
+verify_jwt = false
