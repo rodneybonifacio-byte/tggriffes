@@ -1010,12 +1010,11 @@ export default function AdminStock() {
                         </TableCell>
                         <TableCell className="text-center font-bold">
                           <span className={cn(
-                            movement.movement_type === 'entrada' || movement.movement_type === 'cancelamento'
+                            movement.quantity > 0
                               ? "text-green-600"
                               : "text-red-600"
                           )}>
-                            {movement.movement_type === 'entrada' || movement.movement_type === 'cancelamento' ? '+' : '-'}
-                            {movement.quantity}
+                            {movement.quantity > 0 ? '+' : ''}{movement.quantity}
                           </span>
                         </TableCell>
                         <TableCell className="text-center text-sm text-muted-foreground">
