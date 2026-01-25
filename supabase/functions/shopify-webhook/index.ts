@@ -6,21 +6,32 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-interface ShopifyLineItem {
-  variant_id: number;
-  quantity: number;
+interface ShopifyItem {
+  product_id: string; // GID format: gid://shopify/Product/123
+  variant_id: string; // GID format: gid://shopify/ProductVariant/456
   sku: string;
-  title: string;
-  variant_title: string;
+  name: string;
+  quantity: number;
+  price: string;
 }
 
-interface ShopifyOrder {
-  id: number;
-  order_number: number;
-  name: string; // e.g., "#3094"
-  line_items: ShopifyLineItem[];
-  financial_status: string;
-  fulfillment_status: string | null;
+interface ShopifyWebhookPayload {
+  order_id: string;
+  order_number: string; // e.g., "#3094"
+  customer_email: string;
+  total: string;
+  currency: string;
+  items: ShopifyItem[];
+  // Standard Shopify fields (may not be present in custom webhooks)
+  financial_status?: string;
+  line_items?: ShopifyItem[];
+}
+
+// Extract numeric ID from GID format
+function extractIdFromGid(gid: string): string {
+  // gid://shopify/ProductVariant/48748410994928 -> 48748410994928
+  const match = gid.match(/\/(\d+)$/);
+  return match ? match[1] : gid;
 }
 
 Deno.serve(async (req) => {
@@ -36,11 +47,11 @@ Deno.serve(async (req) => {
 
     // Parse body
     const rawBody = await req.text();
-    console.log(`Raw body (first 500 chars): ${rawBody.substring(0, 500)}`);
+    console.log(`Raw body (first 800 chars): ${rawBody.substring(0, 800)}`);
     
-    let order: ShopifyOrder;
+    let payload: ShopifyWebhookPayload;
     try {
-      order = JSON.parse(rawBody);
+      payload = JSON.parse(rawBody);
     } catch (parseError) {
       console.error("Failed to parse JSON body:", parseError);
       return new Response(JSON.stringify({ error: "Invalid JSON" }), {
@@ -49,43 +60,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Log all relevant fields
-    const orderNum = order.order_number || order.name?.replace('#', '') || 'unknown';
-    const financialStatus = order.financial_status;
+    // Get order number (remove # if present)
+    const orderNum = (payload.order_number || "unknown").replace('#', '');
     
-    console.log(`Order #${orderNum} - financial_status: "${financialStatus}", has line_items: ${!!order.line_items}, items count: ${order.line_items?.length || 0}`);
-
-    // Accept webhook if:
-    // 1. Topic is orders/paid OR
-    // 2. Topic is null/missing but financial_status is "paid" (flexible mode)
-    // 3. Also accept if financial_status is missing but topic is orders/paid
-    const isPaidTopic = topic === "orders/paid";
-    const isPaidStatus = financialStatus === "paid";
+    // Get items - try both "items" (custom webhook) and "line_items" (standard Shopify)
+    const items = payload.items || payload.line_items || [];
     
-    // If topic is explicitly something else (not null, not orders/paid), ignore
-    if (topic !== null && !isPaidTopic) {
-      console.log(`Ignoring topic: ${topic} - only orders/paid triggers stock decrement`);
-      return new Response(JSON.stringify({ message: "Ignored - topic not orders/paid" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    console.log(`Order #${orderNum} - items count: ${items.length}, email: ${payload.customer_email}`);
 
-    // If financial_status is present and not "paid", ignore
-    // But if financial_status is missing/undefined, we'll process it (assume it's from orders/paid event)
-    if (financialStatus !== undefined && financialStatus !== null && !isPaidStatus) {
-      console.log(`Ignoring order #${orderNum} - financial_status is "${financialStatus}", not "paid"`);
-      return new Response(JSON.stringify({ message: "Ignored - order not paid" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // If we have no topic and no financial_status, we can't determine if it's paid
-    // Let's be permissive and process it anyway (user explicitly sent it)
-    console.log(`Processing Shopify order #${orderNum} with ${order.line_items?.length || 0} items (financial_status: ${financialStatus || 'not provided'})`);
-
-    if (!order.line_items || order.line_items.length === 0) {
-      console.log(`Order #${orderNum} has no line items`);
-      return new Response(JSON.stringify({ message: "No line items to process" }), {
+    if (!items || items.length === 0) {
+      console.log(`Order #${orderNum} has no items`);
+      return new Response(JSON.stringify({ message: "No items to process" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -113,8 +98,12 @@ Deno.serve(async (req) => {
 
     const results: { variant: string; decremented: number; success: boolean; error?: string }[] = [];
 
-    for (const item of order.line_items) {
-      const shopifyVariantId = String(item.variant_id);
+    for (const item of items) {
+      // Extract numeric variant ID from GID if needed
+      const rawVariantId = item.variant_id;
+      const shopifyVariantId = extractIdFromGid(rawVariantId);
+      
+      console.log(`Processing item: ${item.name}, variant_id: ${rawVariantId} -> ${shopifyVariantId}, qty: ${item.quantity}`);
       
       // Find local variant by Shopify mapping
       const { data: mapping, error: mappingError } = await supabase
@@ -126,7 +115,7 @@ Deno.serve(async (req) => {
       if (mappingError) {
         console.error(`Error finding mapping for Shopify variant ${shopifyVariantId}:`, mappingError);
         results.push({
-          variant: `${item.title} - ${item.variant_title}`,
+          variant: item.name,
           decremented: 0,
           success: false,
           error: mappingError.message,
@@ -135,9 +124,9 @@ Deno.serve(async (req) => {
       }
 
       if (!mapping) {
-        console.warn(`No local mapping found for Shopify variant ${shopifyVariantId} (${item.title} - ${item.variant_title})`);
+        console.warn(`No local mapping found for Shopify variant ${shopifyVariantId} (${item.name})`);
         results.push({
-          variant: `${item.title} - ${item.variant_title}`,
+          variant: item.name,
           decremented: 0,
           success: false,
           error: "No local mapping found",
@@ -155,7 +144,7 @@ Deno.serve(async (req) => {
       if (variantError || !variant) {
         console.error(`Error fetching variant ${mapping.variant_id}:`, variantError);
         results.push({
-          variant: `${item.title} - ${item.variant_title}`,
+          variant: item.name,
           decremented: 0,
           success: false,
           error: variantError?.message || "Variant not found",
@@ -174,7 +163,7 @@ Deno.serve(async (req) => {
       if (updateError) {
         console.error(`Error updating stock for variant ${mapping.variant_id}:`, updateError);
         results.push({
-          variant: `${item.title} - ${item.variant_title}`,
+          variant: item.name,
           decremented: 0,
           success: false,
           error: updateError.message,
@@ -193,10 +182,10 @@ Deno.serve(async (req) => {
         reason: `Venda Shopify #${orderNum}`,
       });
 
-      console.log(`Decremented ${item.quantity} from variant ${mapping.variant_id}. Stock: ${variant.stock_qty} -> ${newStock}`);
+      console.log(`✓ Decremented ${item.quantity} from variant ${mapping.variant_id}. Stock: ${variant.stock_qty} -> ${newStock}`);
       
       results.push({
-        variant: `${item.title} - ${item.variant_title}`,
+        variant: item.name,
         decremented: item.quantity,
         success: true,
       });
@@ -210,7 +199,7 @@ Deno.serve(async (req) => {
       errors: results.filter(r => !r.success).map(r => ({ ...r, order_number: orderNum })),
     });
 
-    console.log(`Order #${orderNum} processed: ${results.filter(r => r.success).length} success, ${results.filter(r => !r.success).length} failed`);
+    console.log(`Order #${orderNum} completed: ${results.filter(r => r.success).length} success, ${results.filter(r => !r.success).length} failed`);
 
     return new Response(
       JSON.stringify({
