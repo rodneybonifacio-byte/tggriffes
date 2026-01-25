@@ -33,18 +33,26 @@ Deno.serve(async (req) => {
     
     console.log(`Webhook received: ${topic} from ${shopDomain}`);
 
-    // Only process order paid events
-    if (topic !== "orders/paid") {
+    // Parse body first to check financial_status
+    const order: ShopifyOrder = await req.json();
+    
+    console.log(`Order #${order.order_number} - financial_status: ${order.financial_status}, topic: ${topic}`);
+
+    // Accept webhook if:
+    // 1. Topic is orders/paid OR
+    // 2. Topic is null/missing but financial_status is "paid" (flexible mode)
+    const isPaidTopic = topic === "orders/paid";
+    const isPaidStatus = order.financial_status === "paid";
+    
+    if (!isPaidTopic && topic !== null) {
       console.log(`Ignoring topic: ${topic} - only orders/paid triggers stock decrement`);
-      return new Response(JSON.stringify({ message: "Ignored - only paid orders decrement stock" }), {
+      return new Response(JSON.stringify({ message: "Ignored - topic not orders/paid" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const order: ShopifyOrder = await req.json();
-    
-    // Double-check financial status is paid
-    if (order.financial_status !== "paid") {
+    // Check if order is actually paid
+    if (!isPaidStatus) {
       console.log(`Ignoring order #${order.order_number} - financial_status is "${order.financial_status}", not "paid"`);
       return new Response(JSON.stringify({ message: "Ignored - order not paid" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -56,6 +64,31 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Check if this order was already processed (idempotency)
+    const { data: existingLog } = await supabase
+      .from("shopify_sync_logs")
+      .select("id")
+      .eq("sync_type", "webhook_order")
+      .contains("errors", [{ order_number: order.order_number }])
+      .maybeSingle();
+
+    // Also check if movements already exist for this order
+    const { data: existingMovements } = await supabase
+      .from("stock_movements")
+      .select("id")
+      .eq("reason", `Venda Shopify #${order.order_number}`)
+      .limit(1);
+
+    if (existingMovements && existingMovements.length > 0) {
+      console.log(`Order #${order.order_number} already processed - skipping`);
+      return new Response(JSON.stringify({ 
+        message: "Order already processed",
+        order_number: order.order_number 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const results: { variant: string; decremented: number; success: boolean; error?: string }[] = [];
 
@@ -153,7 +186,7 @@ Deno.serve(async (req) => {
       sync_type: "webhook_order",
       status: results.every(r => r.success) ? "success" : "partial",
       variants_synced: results.filter(r => r.success).length,
-      errors: results.filter(r => !r.success),
+      errors: results.filter(r => !r.success).map(r => ({ ...r, order_number: order.order_number })),
     });
 
     return new Response(
