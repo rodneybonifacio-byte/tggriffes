@@ -60,13 +60,18 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Determine if this is a cancellation
+    const isCancellation = topic === "orders/cancelled" || 
+                           payload.financial_status === "refunded" ||
+                           payload.financial_status === "voided";
+
     // Get order number (remove # if present)
     const orderNum = (payload.order_number || "unknown").replace('#', '');
     
     // Get items - try both "items" (custom webhook) and "line_items" (standard Shopify)
     const items = payload.items || payload.line_items || [];
     
-    console.log(`Order #${orderNum} - items count: ${items.length}, email: ${payload.customer_email}`);
+    console.log(`Order #${orderNum} - ${isCancellation ? 'CANCELLATION' : 'SALE'} - items count: ${items.length}`);
 
     if (!items || items.length === 0) {
       console.log(`Order #${orderNum} has no items`);
@@ -79,24 +84,61 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Check if movements already exist for this order (idempotency)
-    const { data: existingMovements } = await supabase
-      .from("stock_movements")
-      .select("id")
-      .eq("reason", `Venda Shopify #${orderNum}`)
-      .limit(1);
+    // For cancellations, check if original sale movements exist
+    if (isCancellation) {
+      const { data: existingMovements } = await supabase
+        .from("stock_movements")
+        .select("id")
+        .eq("reason", `Venda Shopify #${orderNum}`)
+        .eq("movement_type", "shopify_sale")
+        .limit(1);
 
-    if (existingMovements && existingMovements.length > 0) {
-      console.log(`Order #${orderNum} already processed - skipping`);
-      return new Response(JSON.stringify({ 
-        message: "Order already processed",
-        order_number: orderNum 
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (!existingMovements || existingMovements.length === 0) {
+        console.log(`Order #${orderNum} - No original sale found to cancel`);
+        return new Response(JSON.stringify({ 
+          message: "No original sale found to cancel",
+          order_number: orderNum 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Check if already cancelled
+      const { data: cancelMovements } = await supabase
+        .from("stock_movements")
+        .select("id")
+        .eq("reason", `Cancelamento Shopify #${orderNum}`)
+        .limit(1);
+
+      if (cancelMovements && cancelMovements.length > 0) {
+        console.log(`Order #${orderNum} already cancelled - skipping`);
+        return new Response(JSON.stringify({ 
+          message: "Order already cancelled",
+          order_number: orderNum 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      // For sales, check if movements already exist (idempotency)
+      const { data: existingMovements } = await supabase
+        .from("stock_movements")
+        .select("id")
+        .eq("reason", `Venda Shopify #${orderNum}`)
+        .limit(1);
+
+      if (existingMovements && existingMovements.length > 0) {
+        console.log(`Order #${orderNum} already processed - skipping`);
+        return new Response(JSON.stringify({ 
+          message: "Order already processed",
+          order_number: orderNum 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
-    const results: { variant: string; decremented: number; success: boolean; error?: string }[] = [];
+    const results: { variant: string; quantity: number; success: boolean; error?: string }[] = [];
 
     for (const item of items) {
       // Extract numeric variant ID from GID if needed
@@ -116,7 +158,7 @@ Deno.serve(async (req) => {
         console.error(`Error finding mapping for Shopify variant ${shopifyVariantId}:`, mappingError);
         results.push({
           variant: item.name,
-          decremented: 0,
+          quantity: 0,
           success: false,
           error: mappingError.message,
         });
@@ -127,7 +169,7 @@ Deno.serve(async (req) => {
         console.warn(`No local mapping found for Shopify variant ${shopifyVariantId} (${item.name})`);
         results.push({
           variant: item.name,
-          decremented: 0,
+          quantity: 0,
           success: false,
           error: "No local mapping found",
         });
@@ -145,14 +187,31 @@ Deno.serve(async (req) => {
         console.error(`Error fetching variant ${mapping.variant_id}:`, variantError);
         results.push({
           variant: item.name,
-          decremented: 0,
+          quantity: 0,
           success: false,
           error: variantError?.message || "Variant not found",
         });
         continue;
       }
 
-      const newStock = Math.max(0, variant.stock_qty - item.quantity);
+      let newStock: number;
+      let movementType: string;
+      let reason: string;
+      let quantity: number;
+
+      if (isCancellation) {
+        // RESTORE stock (add back)
+        newStock = variant.stock_qty + item.quantity;
+        movementType = "cancelamento";
+        reason = `Cancelamento Shopify #${orderNum}`;
+        quantity = item.quantity; // positive for restoration
+      } else {
+        // DECREMENT stock (subtract)
+        newStock = Math.max(0, variant.stock_qty - item.quantity);
+        movementType = "shopify_sale";
+        reason = `Venda Shopify #${orderNum}`;
+        quantity = -item.quantity; // negative for sale
+      }
 
       // Update stock
       const { error: updateError } = await supabase
@@ -164,7 +223,7 @@ Deno.serve(async (req) => {
         console.error(`Error updating stock for variant ${mapping.variant_id}:`, updateError);
         results.push({
           variant: item.name,
-          decremented: 0,
+          quantity: 0,
           success: false,
           error: updateError.message,
         });
@@ -175,36 +234,39 @@ Deno.serve(async (req) => {
       await supabase.from("stock_movements").insert({
         variant_id: mapping.variant_id,
         product_id: variant.product_id,
-        quantity: -item.quantity,
+        quantity: quantity,
         stock_before: variant.stock_qty,
         stock_after: newStock,
-        movement_type: "shopify_sale",
-        reason: `Venda Shopify #${orderNum}`,
+        movement_type: movementType,
+        reason: reason,
       });
 
-      console.log(`✓ Decremented ${item.quantity} from variant ${mapping.variant_id}. Stock: ${variant.stock_qty} -> ${newStock}`);
+      const action = isCancellation ? "Restored" : "Decremented";
+      console.log(`✓ ${action} ${item.quantity} for variant ${mapping.variant_id}. Stock: ${variant.stock_qty} -> ${newStock}`);
       
       results.push({
         variant: item.name,
-        decremented: item.quantity,
+        quantity: item.quantity,
         success: true,
       });
     }
 
     // Log sync
     await supabase.from("shopify_sync_logs").insert({
-      sync_type: "webhook_order",
+      sync_type: isCancellation ? "webhook_cancellation" : "webhook_order",
       status: results.every(r => r.success) ? "success" : (results.some(r => r.success) ? "partial" : "failed"),
       variants_synced: results.filter(r => r.success).length,
       errors: results.filter(r => !r.success).map(r => ({ ...r, order_number: orderNum })),
     });
 
-    console.log(`Order #${orderNum} completed: ${results.filter(r => r.success).length} success, ${results.filter(r => !r.success).length} failed`);
+    const action = isCancellation ? "cancelled" : "processed";
+    console.log(`Order #${orderNum} ${action}: ${results.filter(r => r.success).length} success, ${results.filter(r => !r.success).length} failed`);
 
     return new Response(
       JSON.stringify({
         success: true,
         order_number: orderNum,
+        action: isCancellation ? "cancellation" : "sale",
         items_processed: results.length,
         results,
       }),
