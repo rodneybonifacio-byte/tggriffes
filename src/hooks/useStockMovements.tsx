@@ -41,7 +41,7 @@ export function useStockMovements(productId?: string) {
           variant:product_variants(size, color)
         `)
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(1000);  // Increased limit to support client-side pagination
 
       if (productId) {
         query = query.eq('product_id', productId);
