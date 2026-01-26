@@ -32,7 +32,6 @@ export interface CartReservation {
 }
 
 export interface CreateReservationParams {
-  variantId: string;
   productId: string;
   productName: string;
   size: string;
@@ -64,22 +63,22 @@ export function useMyCartReservations() {
   });
 }
 
-// Hook para criar reserva usando RPC atômica (valida estoque com lock)
+// Hook para criar reserva usando RPC atômica por ATRIBUTOS (não depende de variant_id em cache)
 export function useCreateReservation() {
   const queryClient = useQueryClient();
   const sessionId = getSessionId();
   
   return useMutation({
     mutationFn: async (params: CreateReservationParams) => {
-      // Usa RPC atômica que valida estoque em tempo real com lock
-      const { data, error } = await supabase.rpc('add_cart_reservation', {
+      // Usa nova RPC que resolve a variante por atributos no momento da reserva
+      // Isso elimina erros de "Variante não encontrada" por cache desatualizado
+      const { data, error } = await supabase.rpc('add_cart_reservation_by_attrs', {
         p_session_id: sessionId,
-        p_variant_id: params.variantId,
         p_product_id: params.productId,
-        p_product_name: params.productName,
         p_size: params.size,
-        p_color: params.color,
+        p_color: params.color || '',
         p_quantity: params.quantity,
+        p_product_name: params.productName,
         p_unit_price_cents: params.unitPriceCents,
         p_image_url: params.imageUrl,
       });
@@ -87,7 +86,10 @@ export function useCreateReservation() {
       if (error) {
         // Traduz mensagens de erro do banco
         if (error.message.includes('Estoque insuficiente')) {
-          throw new Error('Estoque insuficiente');
+          throw new Error(error.message);
+        }
+        if (error.message.includes('Variante não encontrada')) {
+          throw new Error('Este tamanho/cor não está mais disponível');
         }
         throw error;
       }
@@ -99,11 +101,17 @@ export function useCreateReservation() {
       await queryClient.cancelQueries({ queryKey: ['cart-reservations', sessionId] });
       const previous = queryClient.getQueryData<CartReservation[]>(['cart-reservations', sessionId]);
       
+      // Optimistic: adiciona item temporário (será substituído pelo real)
       queryClient.setQueryData<CartReservation[]>(['cart-reservations', sessionId], (old = []) => {
-        const existing = old.find(r => r.variant_id === params.variantId);
+        const key = `${params.productId}-${params.size}-${params.color || ''}`;
+        const existing = old.find(r => 
+          r.product_id === params.productId && 
+          r.size === params.size && 
+          (r.color || '') === (params.color || '')
+        );
         if (existing) {
           return old.map(r => 
-            r.variant_id === params.variantId 
+            r.id === existing.id 
               ? { ...r, quantity: r.quantity + params.quantity }
               : r
           );
@@ -111,7 +119,7 @@ export function useCreateReservation() {
         return [...old, {
           id: `temp-${Date.now()}`,
           session_id: sessionId,
-          variant_id: params.variantId,
+          variant_id: `temp-variant-${Date.now()}`,
           product_id: params.productId,
           product_name: params.productName,
           size: params.size,
