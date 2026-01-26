@@ -15,6 +15,10 @@ export interface ShippingOption {
 interface ShippingCalculatorProps {
   weightGrams?: number | null;
   valorCents?: number | null;
+  originCep?: string | null;
+  lengthCm?: number | null;
+  widthCm?: number | null;
+  heightCm?: number | null;
   onSelectOption?: (option: ShippingOption) => void;
   selectedOption?: ShippingOption | null;
   onCepChange?: (cep: string) => void;
@@ -23,6 +27,10 @@ interface ShippingCalculatorProps {
 export function ShippingCalculator({ 
   weightGrams, 
   valorCents,
+  originCep,
+  lengthCm,
+  widthCm,
+  heightCm,
   onSelectOption, 
   selectedOption,
   onCepChange 
@@ -52,15 +60,22 @@ export function ShippingCalculator({
     setIsLoading(true);
     
     try {
+      const cleanOriginCep = (originCep || '01001000').replace(/\D/g, '');
+      const peso = Math.max(1, weightGrams || 300);
+      const comprimento = Math.max(1, Math.round(lengthCm || 30));
+      const largura = Math.max(1, Math.round(widthCm || 30));
+      const altura = Math.max(1, Math.round(heightCm || 2));
+      const valorDeclarado = valorCents != null ? Math.max(0, valorCents) / 100 : 50;
+
       const { data, error: fnError } = await supabase.functions.invoke('calculate-shipping', {
         body: {
-          cepOrigem: '01001000', // CEP padrão, será substituído pelo da loja
+          cepOrigem: cleanOriginCep,
           cepDestino: cleanCep,
-          peso: weightGrams || 300, // 300g padrão
-          comprimento: 30, // 30cm padrão
-          largura: 30, // 30cm padrão
-          altura: 2, // 2cm padrão
-          valorDeclarado: valorCents ? valorCents / 100 : 50,
+          peso,
+          comprimento,
+          largura,
+          altura,
+          valorDeclarado,
         },
       });
 
