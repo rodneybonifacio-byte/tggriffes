@@ -546,6 +546,12 @@ ${pdfUrl}`;
               {showShippingCalculator && !skipShipping && (
                 <>
                   <ShippingCalculator
+                    originCep={settings?.origin_cep}
+                    weightGrams={totalItems * 300}
+                    valorCents={subtotalAfterDiscount}
+                    lengthCm={30}
+                    widthCm={30}
+                    heightCm={Math.max(2, totalItems * 2)}
                     onSelectOption={setSelectedShipping}
                     selectedOption={selectedShipping}
                     onCepChange={handleCepChange}
