@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Product } from '@/hooks/useProducts';
 import { formatPrice, getColorDisplayName } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -92,6 +93,7 @@ const findColorHex = (colorName: string): string => {
 export const ProductCard = React.forwardRef<HTMLDivElement, ProductCardProps>(
   ({ product }, ref) => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const { addItem, getQuantityForVariant, items, updateQuantity, removeItem } = useCart();
     const { toast } = useToast();
 
@@ -188,14 +190,21 @@ export const ProductCard = React.forwardRef<HTMLDivElement, ProductCardProps>(
             description: `${product.name} - ${size}${color ? ` (${getColorDisplayName(color)})` : ''}`,
           });
         } else {
-           const title = (result.message || '').toLowerCase().includes('variante')
-             ? 'Produto atualizado'
-             : 'Limite atingido';
+          const isVariantError = (result.message || '').toLowerCase().includes('variante');
+          const title = isVariantError ? 'Produto atualizado' : 'Limite atingido';
+          
           toast({
-             title,
-            description: result.message,
+            title,
+            description: isVariantError 
+              ? 'Esta variante foi alterada. Atualizando catálogo...'
+              : result.message,
             variant: 'destructive',
           });
+          
+          // Force catalog refresh when variant not found
+          if (isVariantError) {
+            queryClient.invalidateQueries({ queryKey: ['products'] });
+          }
         }
       } finally {
         setPendingVariants(prev => {
