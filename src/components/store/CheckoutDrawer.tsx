@@ -64,6 +64,10 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const sessionId = useSessionId();
   const { data: settings } = useStoreSettings();
   const { toast } = useToast();
+
+  // Para roupas, alturas muito grandes (ex: 40-50cm) podem gerar um salto enorme no preço.
+  // Mantemos um teto conservador para evitar distorções no cálculo.
+  const shippingHeightCm = Math.min(20, Math.max(2, totalItems * 2));
   
   const storedState = getStoredState();
   
@@ -289,7 +293,7 @@ ${pdfUrl}`;
         shippingWeightGrams: !skipShipping && selectedShipping ? totalItems * 300 : undefined,
         shippingLengthCm: !skipShipping && selectedShipping ? 30 : undefined,
         shippingWidthCm: !skipShipping && selectedShipping ? 30 : undefined,
-        shippingHeightCm: !skipShipping && selectedShipping ? Math.max(2, totalItems * 2) : undefined,
+        shippingHeightCm: !skipShipping && selectedShipping ? shippingHeightCm : undefined,
       };
 
       // PDF is now generated on-demand when customer opens the link
@@ -551,7 +555,7 @@ ${pdfUrl}`;
                     valorCents={subtotalAfterDiscount}
                     lengthCm={30}
                     widthCm={30}
-                    heightCm={Math.max(2, totalItems * 2)}
+                    heightCm={shippingHeightCm}
                     onSelectOption={setSelectedShipping}
                     selectedOption={selectedShipping}
                     onCepChange={handleCepChange}
