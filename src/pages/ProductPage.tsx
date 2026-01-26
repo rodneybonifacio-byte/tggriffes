@@ -219,7 +219,6 @@ const ProductPage = () => {
       const result = await addItem({
         productId: product.id,
         productName: product.name,
-        variantId: variant.id,
         size: size,
         color: color,
         quantity: 1,
