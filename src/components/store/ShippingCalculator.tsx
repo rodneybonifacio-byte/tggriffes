@@ -19,6 +19,7 @@ interface ShippingCalculatorProps {
   lengthCm?: number | null;
   widthCm?: number | null;
   heightCm?: number | null;
+  disabled?: boolean;
   onSelectOption?: (option: ShippingOption) => void;
   selectedOption?: ShippingOption | null;
   onCepChange?: (cep: string) => void;
@@ -31,6 +32,7 @@ export function ShippingCalculator({
   lengthCm,
   widthCm,
   heightCm,
+  disabled,
   onSelectOption, 
   selectedOption,
   onCepChange 
@@ -40,6 +42,8 @@ export function ShippingCalculator({
   const [options, setOptions] = useState<ShippingOption[]>([]);
   const [error, setError] = useState('');
   const [warning, setWarning] = useState('');
+
+  const calculateDisabled = Boolean(disabled) || isLoading;
 
   const handleCepChange = (value: string) => {
     const formatted = formatCEP(value);
@@ -120,10 +124,16 @@ export function ShippingCalculator({
           maxLength={9}
           className="flex-1"
         />
-        <Button onClick={handleCalculate} disabled={isLoading}>
+        <Button onClick={handleCalculate} disabled={calculateDisabled}>
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Calcular'}
         </Button>
       </div>
+
+      {disabled && !isLoading && (
+        <p className="text-xs text-muted-foreground">
+          Carregando medidas do pacote…
+        </p>
+      )}
       
       {error && (
         <p className="text-sm text-destructive">{error}</p>
