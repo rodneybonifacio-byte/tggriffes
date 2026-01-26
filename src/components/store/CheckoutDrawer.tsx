@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { Loader2, Package, Truck, User, FileText, CheckCircle, RefreshCw, Tag } 
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useApplicablePromotions, calculatePromotionDiscount } from '@/hooks/usePromotions';
+import { useShippingPackageMetrics } from '@/hooks/useShippingPackageMetrics';
 
 const CHECKOUT_STORAGE_KEY = 'tg-checkout-state';
 
@@ -65,9 +66,11 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const { data: settings } = useStoreSettings();
   const { toast } = useToast();
 
-  // Para roupas, alturas muito grandes (ex: 40-50cm) podem gerar um salto enorme no preço.
-  // Mantemos um teto conservador para evitar distorções no cálculo.
-  const shippingHeightCm = Math.min(20, Math.max(2, totalItems * 2));
+  const shippingLines = useMemo(
+    () => items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+    [items]
+  );
+  const { metrics: shippingMetrics, isLoading: shippingMetricsLoading } = useShippingPackageMetrics(shippingLines);
   
   const storedState = getStoredState();
   
@@ -288,12 +291,11 @@ ${pdfUrl}`;
         orderDate: new Date().toLocaleDateString('pt-BR'),
         logoUrl,
         siteUrl: baseUrl,
-        // Shipping dimensions data - using defaults (300g per item, 30x30x2cm base)
-        // These are the values used in calculate-shipping function
-        shippingWeightGrams: !skipShipping && selectedShipping ? totalItems * 300 : undefined,
-        shippingLengthCm: !skipShipping && selectedShipping ? 30 : undefined,
-        shippingWidthCm: !skipShipping && selectedShipping ? 30 : undefined,
-        shippingHeightCm: !skipShipping && selectedShipping ? shippingHeightCm : undefined,
+          // Shipping dimensions data - MUST match the values used to calculate the quote
+          shippingWeightGrams: !skipShipping && selectedShipping ? shippingMetrics.weightGrams : undefined,
+          shippingLengthCm: !skipShipping && selectedShipping ? shippingMetrics.lengthCm : undefined,
+          shippingWidthCm: !skipShipping && selectedShipping ? shippingMetrics.widthCm : undefined,
+          shippingHeightCm: !skipShipping && selectedShipping ? shippingMetrics.heightCm : undefined,
       };
 
       // PDF is now generated on-demand when customer opens the link
@@ -550,12 +552,13 @@ ${pdfUrl}`;
               {showShippingCalculator && !skipShipping && (
                 <>
                   <ShippingCalculator
+                    disabled={shippingMetricsLoading}
                     originCep={settings?.origin_cep}
-                    weightGrams={totalItems * 300}
+                    weightGrams={shippingMetrics.weightGrams}
                     valorCents={subtotalAfterDiscount}
-                    lengthCm={30}
-                    widthCm={30}
-                    heightCm={shippingHeightCm}
+                    lengthCm={shippingMetrics.lengthCm}
+                    widthCm={shippingMetrics.widthCm}
+                    heightCm={shippingMetrics.heightCm}
                     onSelectOption={setSelectedShipping}
                     selectedOption={selectedShipping}
                     onCepChange={handleCepChange}
