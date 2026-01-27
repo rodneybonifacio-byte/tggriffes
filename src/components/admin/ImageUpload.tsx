@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { X, Upload, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { compressImage } from '@/lib/imageCompression';
+import { compressImage, generateThumbnail } from '@/lib/imageCompression';
+
 interface ImageUploadProps {
   images: string[];
   mainImage?: string;
@@ -29,21 +30,39 @@ export function ImageUpload({
     
     try {
       const uploadPromises = acceptedFiles.map(async (file) => {
-        // Compress image before upload (80% quality, max 1080px)
-        const compressedFile = await compressImage(file);
+        const baseFileName = `${Date.now()}-${Math.random().toString(36).substring(7)}`;
         
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.jpeg`;
-        const filePath = `products/${fileName}`;
+        // Compress original image (1080px) and generate thumbnail (400px) in parallel
+        const [compressedFile, thumbnailFile] = await Promise.all([
+          compressImage(file),
+          generateThumbnail(file),
+        ]);
+        
+        const originalPath = `products/${baseFileName}.jpeg`;
+        const thumbnailPath = `products/${baseFileName}_thumb.jpeg`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('product-images')
-          .upload(filePath, compressedFile);
+        // Upload both versions in parallel
+        const [originalUpload, thumbnailUpload] = await Promise.all([
+          supabase.storage
+            .from('product-images')
+            .upload(originalPath, compressedFile, { contentType: 'image/jpeg' }),
+          supabase.storage
+            .from('product-images')
+            .upload(thumbnailPath, thumbnailFile, { contentType: 'image/jpeg' }),
+        ]);
 
-        if (uploadError) throw uploadError;
+        if (originalUpload.error) throw originalUpload.error;
+        
+        // Log thumbnail upload status (non-blocking)
+        if (thumbnailUpload.error) {
+          console.warn('Thumbnail upload failed:', thumbnailUpload.error);
+        } else {
+          console.log(`Thumbnail created: ${(thumbnailFile.size / 1024).toFixed(1)}KB`);
+        }
 
         const { data: { publicUrl } } = supabase.storage
           .from('product-images')
-          .getPublicUrl(filePath);
+          .getPublicUrl(originalPath);
 
         return publicUrl;
       });
@@ -58,7 +77,7 @@ export function ImageUpload({
 
       toast({
         title: 'Upload concluído',
-        description: `${newUrls.length} imagem(ns) enviada(s) com sucesso.`,
+        description: `${newUrls.length} imagem(ns) enviada(s) com thumbnails.`,
       });
     } catch (error) {
       console.error('Upload error:', error);
@@ -80,7 +99,7 @@ export function ImageUpload({
     multiple: true,
   });
 
-  const removeImage = (urlToRemove: string) => {
+  const removeImage = async (urlToRemove: string) => {
     const updatedImages = images.filter(url => url !== urlToRemove);
     onImagesChange(updatedImages);
     
@@ -88,6 +107,20 @@ export function ImageUpload({
       onMainImageChange?.(updatedImages[0]);
     } else if (mainImage === urlToRemove) {
       onMainImageChange?.('');
+    }
+
+    // Also try to delete thumbnail (best effort, non-blocking)
+    try {
+      const pathMatch = urlToRemove.match(/\/products\/([^?]+)/);
+      if (pathMatch) {
+        const originalFileName = pathMatch[1];
+        const thumbFileName = originalFileName.replace(/\.jpeg$/, '_thumb.jpeg');
+        await supabase.storage
+          .from('product-images')
+          .remove([`products/${thumbFileName}`]);
+      }
+    } catch (e) {
+      // Ignore thumbnail deletion errors
     }
   };
 
@@ -113,7 +146,7 @@ export function ImageUpload({
         ) : (
           <div>
             <p className="font-medium">Arraste imagens ou clique para selecionar</p>
-            <p className="text-sm text-muted-foreground mt-1">PNG, JPG ou WEBP</p>
+            <p className="text-sm text-muted-foreground mt-1">PNG, JPG ou WEBP • Gera thumbnail 400px automaticamente</p>
           </div>
         )}
       </div>

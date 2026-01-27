@@ -1,12 +1,14 @@
 /**
  * Compresses an image file to reduce storage usage
- * Converts to JPEG at 80% quality, max 1080px dimensions
+ * Converts to JPEG at specified quality and max dimensions
  */
-export async function compressImage(file: File): Promise<File> {
+export async function compressImage(
+  file: File, 
+  options: { maxDimension?: number; quality?: number } = {}
+): Promise<File> {
+  const { maxDimension = 1080, quality = 0.8 } = options;
+  
   return new Promise((resolve, reject) => {
-    const maxDimension = 1080;
-    const quality = 0.8;
-
     const img = new Image();
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -50,7 +52,7 @@ export async function compressImage(file: File): Promise<File> {
             );
 
             console.log(
-              `Image compressed: ${(file.size / 1024).toFixed(1)}KB → ${(compressedFile.size / 1024).toFixed(1)}KB (${((1 - compressedFile.size / file.size) * 100).toFixed(0)}% reduction)`
+              `Image compressed (${maxDimension}px): ${(file.size / 1024).toFixed(1)}KB → ${(compressedFile.size / 1024).toFixed(1)}KB (${((1 - compressedFile.size / file.size) * 100).toFixed(0)}% reduction)`
             );
 
             resolve(compressedFile);
@@ -77,4 +79,31 @@ export async function compressImage(file: File): Promise<File> {
     };
     reader.readAsDataURL(file);
   });
+}
+
+/**
+ * Generate a thumbnail version (400px) of an image
+ */
+export async function generateThumbnail(file: File): Promise<File> {
+  return compressImage(file, { maxDimension: 400, quality: 0.75 });
+}
+
+/**
+ * Convert a full-size image URL to its thumbnail URL
+ * Thumbnail files are stored with _thumb suffix before extension
+ */
+export function getThumbnailUrl(originalUrl: string): string {
+  if (!originalUrl) return originalUrl;
+  
+  // Convert: .../products/filename.jpeg → .../products/filename_thumb.jpeg
+  return originalUrl.replace(/(\.[^/.]+)$/, '_thumb$1');
+}
+
+/**
+ * Check if a thumbnail URL exists, with fallback to original
+ * Returns thumbnail URL if it exists, otherwise original
+ */
+export function getOptimizedImageUrl(originalUrl: string, preferThumbnail = true): string {
+  if (!originalUrl || !preferThumbnail) return originalUrl;
+  return getThumbnailUrl(originalUrl);
 }

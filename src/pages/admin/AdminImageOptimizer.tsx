@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Play, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { compressImage } from '@/lib/imageCompression';
+import { compressImage, generateThumbnail } from '@/lib/imageCompression';
 
 interface FileInfo {
   name: string;
@@ -125,24 +125,36 @@ export default function AdminImageOptimizer() {
         // Convert Blob to File for compression
         const imageFile = new File([imageBlob], file.name, { type: imageBlob.type });
 
-        // Compress using our existing function
-        const compressedFile = await compressImage(imageFile);
+        // Compress original and generate thumbnail in parallel
+        const [compressedFile, thumbnailFile] = await Promise.all([
+          compressImage(imageFile),
+          generateThumbnail(imageFile),
+        ]);
         const newSizeKB = Math.round(compressedFile.size / 1024);
 
         // Only upload if we saved at least 10%
         if (compressedFile.size < imageBlob.size * 0.9) {
-          const newFileName = file.name.replace(/\.[^/.]+$/, '.jpeg');
-          const newPath = `products/${newFileName}`;
+          const baseFileName = file.name.replace(/\.[^/.]+$/, '');
+          const newPath = `products/${baseFileName}.jpeg`;
+          const thumbPath = `products/${baseFileName}_thumb.jpeg`;
 
-          // Upload compressed version
-          const { error: uploadError } = await supabase.storage
-            .from('product-images')
-            .upload(newPath, compressedFile, {
-              contentType: 'image/jpeg',
-              upsert: true,
-            });
+          // Upload compressed version and thumbnail in parallel
+          const [uploadResult, thumbResult] = await Promise.all([
+            supabase.storage
+              .from('product-images')
+              .upload(newPath, compressedFile, {
+                contentType: 'image/jpeg',
+                upsert: true,
+              }),
+            supabase.storage
+              .from('product-images')
+              .upload(thumbPath, thumbnailFile, {
+                contentType: 'image/jpeg',
+                upsert: true,
+              }),
+          ]);
 
-          if (uploadError) {
+          if (uploadResult.error) {
             newResults.push({
               file: file.name,
               originalKB: file.sizeKB,
@@ -151,6 +163,11 @@ export default function AdminImageOptimizer() {
               status: 'error',
             });
             continue;
+          }
+
+          // Log thumbnail status
+          if (thumbResult.error) {
+            console.warn(`Thumbnail failed for ${file.name}:`, thumbResult.error);
           }
 
           // Delete old file if different name
