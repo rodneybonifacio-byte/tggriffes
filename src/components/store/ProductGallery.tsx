@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ProductImage } from '@/hooks/useProducts';
+import { getThumbnailUrl } from '@/lib/imageCompression';
 
 interface ProductGalleryProps {
   images: ProductImage[];
@@ -25,6 +26,15 @@ export function ProductGallery({ images, mainImage, productName }: ProductGaller
     setCurrentIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
   };
 
+  // Fallback handler for missing thumbnails
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const originalUrl = img.src.replace('_thumb.jpeg', '.jpeg');
+    if (img.src !== originalUrl) {
+      img.src = originalUrl;
+    }
+  };
+
   if (allImages.length === 0) {
     return (
       <div className="aspect-square bg-secondary rounded-lg flex items-center justify-center">
@@ -37,7 +47,7 @@ export function ProductGallery({ images, mainImage, productName }: ProductGaller
 
   return (
     <div className="space-y-4">
-      {/* Main Image */}
+      {/* Main Image - uses full resolution for detailed view */}
       <div className="relative aspect-square overflow-hidden rounded-lg bg-secondary">
         <img
           src={allImages[currentIndex]?.image_url}
@@ -68,7 +78,7 @@ export function ProductGallery({ images, mainImage, productName }: ProductGaller
         )}
       </div>
 
-      {/* Thumbnails */}
+      {/* Thumbnails - uses 400px thumbnails for smaller previews */}
       {allImages.length > 1 && (
         <div className="flex gap-2 overflow-x-auto scrollbar-hide">
           {allImages.map((image, index) => (
@@ -81,10 +91,11 @@ export function ProductGallery({ images, mainImage, productName }: ProductGaller
               )}
             >
               <img
-                src={image.image_url}
+                src={getThumbnailUrl(image.image_url)}
                 alt={`${productName} - Miniatura ${index + 1}`}
                 className="h-full w-full object-cover"
                 loading="lazy"
+                onError={handleImageError}
               />
             </button>
           ))}
