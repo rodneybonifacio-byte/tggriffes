@@ -5,12 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Truck, Loader2 } from 'lucide-react';
 import { formatCEP, validateCEP, formatPrice } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { getCachedShipping, setCachedShipping, type ShippingOption } from '@/lib/shippingCache';
 
-export interface ShippingOption {
-  service: string;
-  price: number;
-  deadline: number;
-}
+export type { ShippingOption };
 
 interface ShippingCalculatorProps {
   weightGrams?: number | null;
@@ -71,6 +68,28 @@ export function ShippingCalculator({
       const altura = Math.max(1, Math.round(heightCm || 2));
       const valorDeclarado = valorCents != null ? Math.max(0, valorCents) / 100 : 50;
 
+      const cacheParams = {
+        cepOrigem: cleanOriginCep,
+        cepDestino: cleanCep,
+        peso,
+        comprimento,
+        largura,
+        altura,
+      };
+
+      // Verifica cache local primeiro
+      const cached = getCachedShipping(cacheParams);
+      if (cached) {
+        console.log('[ShippingCalculator] Using cached result');
+        setOptions(cached.options);
+        if (cached.warning) {
+          setWarning(cached.warning);
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // Não tem cache, chama a Edge Function
       const { data, error: fnError } = await supabase.functions.invoke('calculate-shipping', {
         body: {
           cepOrigem: cleanOriginCep,
@@ -88,6 +107,9 @@ export function ShippingCalculator({
       }
 
       if (data?.options) {
+        // Salva no cache para próximas consultas
+        setCachedShipping(cacheParams, data.options, data.warning);
+        
         setOptions(data.options);
         if (data.warning) {
           setWarning(data.warning);
