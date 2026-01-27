@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useApplicablePromotions, calculatePromotionDiscount } from '@/hooks/usePromotions';
 import { useShippingPackageMetrics } from '@/hooks/useShippingPackageMetrics';
+import { getThumbnailUrl } from '@/lib/imageCompression';
 
 const CHECKOUT_STORAGE_KEY = 'tg-checkout-state';
 
@@ -482,7 +483,17 @@ ${pdfUrl}`;
                 {items.map((item) => (
                   <div key={item.id} className="flex gap-3 p-3 bg-secondary/50 rounded-lg">
                     {item.imageUrl && (
-                      <img src={item.imageUrl} alt={item.productName} className="w-14 h-14 object-cover rounded" loading="lazy" />
+                      <img 
+                        src={getThumbnailUrl(item.imageUrl)} 
+                        alt={item.productName} 
+                        className="w-14 h-14 object-cover rounded" 
+                        loading="lazy"
+                        onError={(e) => {
+                          const img = e.currentTarget;
+                          const originalUrl = img.src.replace('_thumb.jpeg', '.jpeg');
+                          if (img.src !== originalUrl) img.src = originalUrl;
+                        }}
+                      />
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm line-clamp-1">{item.productName}</p>

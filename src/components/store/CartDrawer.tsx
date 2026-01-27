@@ -12,6 +12,7 @@ import { VariationsSummary } from './VariationsSummary';
 import { PromotionCelebrationModal } from './PromotionCelebrationModal';
 import { PromotionProgress } from './PromotionProgress';
 import { usePromotionCelebration } from '@/hooks/usePromotionCelebration';
+import { getThumbnailUrl } from '@/lib/imageCompression';
 
 export function CartDrawer() {
   const { items, removeItem, updateQuantity, totalItems, totalCents, clearCart } = useCart();
@@ -100,10 +101,15 @@ export function CartDrawer() {
                   <div key={item.id} className="flex gap-3 p-3 bg-secondary/50 rounded-lg">
                     {item.imageUrl && (
                       <img 
-                        src={item.imageUrl} 
+                        src={getThumbnailUrl(item.imageUrl)} 
                         alt={item.productName}
                         className="w-16 h-16 object-cover rounded"
                         loading="lazy"
+                        onError={(e) => {
+                          const img = e.currentTarget;
+                          const originalUrl = img.src.replace('_thumb.jpeg', '.jpeg');
+                          if (img.src !== originalUrl) img.src = originalUrl;
+                        }}
                       />
                     )}
                     <div className="flex-1 min-w-0">

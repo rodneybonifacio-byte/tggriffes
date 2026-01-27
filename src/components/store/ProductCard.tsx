@@ -8,6 +8,7 @@ import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Minus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getThumbnailUrl } from '@/lib/imageCompression';
 
 interface ProductCardProps {
   product: Product;
@@ -104,17 +105,27 @@ export const ProductCard = React.forwardRef<HTMLDivElement, ProductCardProps>(
     const totalStock = variants.reduce((sum, v) => sum + v.stock_qty, 0);
     const isOutOfStock = totalStock === 0;
 
-    // Build images array (main + gallery)
+    // Build images array with thumbnails for listing (main + gallery)
     const allImages = useMemo(() => {
       const imgs: string[] = [];
-      if (product.main_image_url) imgs.push(product.main_image_url);
+      if (product.main_image_url) imgs.push(getThumbnailUrl(product.main_image_url));
       images
         .sort((a, b) => a.sort_order - b.sort_order)
         .forEach(img => {
-          if (!imgs.includes(img.image_url)) imgs.push(img.image_url);
+          const thumbUrl = getThumbnailUrl(img.image_url);
+          if (!imgs.includes(thumbUrl)) imgs.push(thumbUrl);
         });
       return imgs;
     }, [product.main_image_url, images]);
+
+    // Fallback handler for missing thumbnails
+    const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+      const img = e.currentTarget;
+      const originalUrl = img.src.replace('_thumb.jpeg', '.jpeg');
+      if (img.src !== originalUrl) {
+        img.src = originalUrl;
+      }
+    };
 
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     // Track pending mutations to prevent double clicks
@@ -259,6 +270,7 @@ export const ProductCard = React.forwardRef<HTMLDivElement, ProductCardProps>(
               src={allImages[currentImageIndex]}
               alt={product.name}
               loading="lazy"
+              onError={handleImageError}
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               draggable={false}
             />
