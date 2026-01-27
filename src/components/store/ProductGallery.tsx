@@ -43,6 +43,7 @@ export function ProductGallery({ images, mainImage, productName }: ProductGaller
           src={allImages[currentIndex]?.image_url}
           alt={`${productName} - Imagem ${currentIndex + 1}`}
           className="h-full w-full object-cover"
+          loading="lazy"
         />
         
         {allImages.length > 1 && (
@@ -83,6 +84,7 @@ export function ProductGallery({ images, mainImage, productName }: ProductGaller
                 src={image.image_url}
                 alt={`${productName} - Miniatura ${index + 1}`}
                 className="h-full w-full object-cover"
+                loading="lazy"
               />
             </button>
           ))}

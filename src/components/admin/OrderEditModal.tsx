@@ -534,6 +534,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
                                   src={product.main_image_url} 
                                   alt={product.name}
                                   className="w-full h-full object-cover"
+                                  loading="lazy"
                                 />
                               ) : (
                                 <div className="w-full h-full bg-muted" />

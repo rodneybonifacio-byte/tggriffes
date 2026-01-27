@@ -62,7 +62,7 @@ export default function CustomerLogin() {
           </Link>
           
           {settings?.store_logo_url ? (
-            <img src={settings.store_logo_url} alt={settings.store_name} className="h-8 object-contain" />
+            <img src={settings.store_logo_url} alt={settings.store_name} className="h-8 object-contain" loading="lazy" />
           ) : (
             <span className="font-bold">{settings?.store_name || 'Loja'}</span>
           )}

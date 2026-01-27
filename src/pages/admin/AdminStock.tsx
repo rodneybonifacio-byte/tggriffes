@@ -915,6 +915,7 @@ export default function AdminStock() {
                               src={group.mainImage} 
                               alt="" 
                               className="w-20 h-20 rounded object-cover"
+                              loading="lazy"
                             />
                           )}
                           <div>

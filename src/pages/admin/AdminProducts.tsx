@@ -202,6 +202,7 @@ const AdminProducts = () => {
                               src={product.main_image_url} 
                               alt={product.name}
                               className="h-12 w-12 rounded object-cover"
+                              loading="lazy"
                             />
                           ) : (
                             <div className="h-12 w-12 rounded bg-secondary flex items-center justify-center">
@@ -317,6 +318,7 @@ const AdminProducts = () => {
                             src={product.main_image_url} 
                             alt={product.name}
                             className="h-20 w-20 rounded object-cover flex-shrink-0"
+                            loading="lazy"
                           />
                         ) : (
                           <div className="h-20 w-20 rounded bg-secondary flex items-center justify-center flex-shrink-0">
