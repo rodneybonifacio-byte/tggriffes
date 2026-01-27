@@ -19,6 +19,12 @@ import { useShippingPackageMetrics } from '@/hooks/useShippingPackageMetrics';
 
 const CHECKOUT_STORAGE_KEY = 'tg-checkout-state';
 
+// Generates a unique fingerprint for cart state to detect changes
+const generateCartFingerprint = (items: CartItem[]): string => {
+  const sorted = [...items].sort((a, b) => a.id.localeCompare(b.id));
+  return sorted.map(i => `${i.productId}:${i.variantId}:${i.quantity}`).join('|');
+};
+
 interface CheckoutState {
   step: 'info' | 'shipping' | 'review';
   customerName: string;
@@ -28,6 +34,7 @@ interface CheckoutState {
   showShippingCalculator: boolean;
   skipShipping: boolean;
   observations: string;
+  cartFingerprint?: string; // Fingerprint do carrinho quando o frete foi calculado
 }
 
 const getStoredState = (): Partial<CheckoutState> => {
@@ -84,6 +91,7 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const [showShippingCalculator, setShowShippingCalculator] = useState(storedState.showShippingCalculator || false);
   const [skipShipping, setSkipShipping] = useState(storedState.skipShipping || false);
   const [observations, setObservations] = useState(storedState.observations || '');
+  const [cartFingerprintAtShippingCalc, setCartFingerprintAtShippingCalc] = useState<string>(storedState.cartFingerprint || '');
 
   // Promotions
   const { data: promotion } = useApplicablePromotions(totalItems);
@@ -92,6 +100,29 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
     totalCents,
     totalItems
   );
+
+  // Current cart fingerprint to detect changes
+  const currentCartFingerprint = useMemo(() => generateCartFingerprint(items), [items]);
+
+  // Detect if cart changed since shipping was calculated - invalidate shipping if so
+  useEffect(() => {
+    if (selectedShipping && cartFingerprintAtShippingCalc && currentCartFingerprint !== cartFingerprintAtShippingCalc) {
+      // Cart changed after shipping was calculated - invalidate it
+      setSelectedShipping(null);
+      setCartFingerprintAtShippingCalc('');
+      toast({
+        title: 'Frete invalidado',
+        description: 'O carrinho foi alterado. Por favor, recalcule o frete.',
+        variant: 'default',
+      });
+    }
+  }, [currentCartFingerprint, cartFingerprintAtShippingCalc, selectedShipping, toast]);
+
+  // Handler to select shipping and capture cart fingerprint
+  const handleSelectShipping = useCallback((option: ShippingOption) => {
+    setSelectedShipping(option);
+    setCartFingerprintAtShippingCalc(currentCartFingerprint);
+  }, [currentCartFingerprint]);
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -104,8 +135,9 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
       showShippingCalculator,
       skipShipping,
       observations,
+      cartFingerprint: cartFingerprintAtShippingCalc,
     });
-  }, [step, customerName, customerWhatsapp, destCep, selectedShipping, showShippingCalculator, skipShipping, observations]);
+  }, [step, customerName, customerWhatsapp, destCep, selectedShipping, showShippingCalculator, skipShipping, observations, cartFingerprintAtShippingCalc]);
 
   const subtotalCents = totalCents;
   const shippingCents = selectedShipping?.price || 0;
@@ -344,6 +376,7 @@ ${pdfUrl}`;
       setShowShippingCalculator(false);
       setSkipShipping(false);
       setObservations('');
+      setCartFingerprintAtShippingCalc('');
       clearStoredState();
     }
     onOpenChange(false);
@@ -559,7 +592,7 @@ ${pdfUrl}`;
                     lengthCm={shippingMetrics.lengthCm}
                     widthCm={shippingMetrics.widthCm}
                     heightCm={shippingMetrics.heightCm}
-                    onSelectOption={setSelectedShipping}
+                    onSelectOption={handleSelectShipping}
                     selectedOption={selectedShipping}
                     onCepChange={handleCepChange}
                   />
@@ -571,6 +604,7 @@ ${pdfUrl}`;
                     onClick={() => {
                       setShowShippingCalculator(false);
                       setSelectedShipping(null);
+                      setCartFingerprintAtShippingCalc('');
                     }}
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
