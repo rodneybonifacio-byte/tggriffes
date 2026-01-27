@@ -133,6 +133,7 @@ export function ImageUpload({
                 src={url}
                 alt={`Imagem ${index + 1}`}
                 className="h-full w-full object-cover"
+                loading="lazy"
               />
               
               {/* Overlay */}

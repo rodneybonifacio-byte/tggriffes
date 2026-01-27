@@ -103,6 +103,7 @@ export function CartDrawer() {
                         src={item.imageUrl} 
                         alt={item.productName}
                         className="w-16 h-16 object-cover rounded"
+                        loading="lazy"
                       />
                     )}
                     <div className="flex-1 min-w-0">

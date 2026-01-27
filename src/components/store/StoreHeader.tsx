@@ -77,7 +77,7 @@ export function StoreHeader({ onSearch, searchValue = '' }: StoreHeaderProps) {
 
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <img src={logoImage} alt={settings?.store_name || 'TG GRIFFES'} className="h-10 md:h-12" />
+          <img src={logoImage} alt={settings?.store_name || 'TG GRIFFES'} className="h-10 md:h-12" loading="lazy" />
         </Link>
 
         {/* Desktop Search */}

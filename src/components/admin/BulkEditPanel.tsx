@@ -368,6 +368,7 @@ export function BulkEditPanel({ items, onItemsChange, onDeleteItems, products = 
                     src={imageUrl} 
                     alt={item.product_name}
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
