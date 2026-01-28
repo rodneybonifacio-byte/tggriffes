@@ -95,8 +95,14 @@ export async function generateThumbnail(file: File): Promise<File> {
 export function getThumbnailUrl(originalUrl: string): string {
   if (!originalUrl) return originalUrl;
   
-  // Convert: .../products/filename.jpeg → .../products/filename_thumb.jpeg
-  return originalUrl.replace(/(\.[^/.]+)$/, '_thumb$1');
+  // Only add _thumb to images we know have thumbnails (.jpeg files)
+  // For other extensions, return the original URL
+  if (originalUrl.endsWith('.jpeg')) {
+    return originalUrl.replace(/\.jpeg$/, '_thumb.jpeg');
+  }
+  
+  // For non-jpeg images (legacy .webp, .png, etc), return original URL
+  return originalUrl;
 }
 
 /**

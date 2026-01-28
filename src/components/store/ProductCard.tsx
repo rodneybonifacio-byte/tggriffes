@@ -118,10 +118,11 @@ export const ProductCard = React.forwardRef<HTMLDivElement, ProductCardProps>(
       return imgs;
     }, [product.main_image_url, images]);
 
-    // Fallback handler for missing thumbnails
+    // Fallback handler for missing thumbnails - restore original URL
     const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
       const img = e.currentTarget;
-      const originalUrl = img.src.replace('_thumb.jpeg', '.jpeg');
+      // Remove _thumb suffix to get original URL (handles any extension)
+      const originalUrl = img.src.replace(/_thumb(\.[^/.]+)$/, '$1');
       if (img.src !== originalUrl) {
         img.src = originalUrl;
       }
