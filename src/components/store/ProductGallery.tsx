@@ -26,10 +26,11 @@ export function ProductGallery({ images, mainImage, productName }: ProductGaller
     setCurrentIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
   };
 
-  // Fallback handler for missing thumbnails
+  // Fallback handler for missing thumbnails - restore original URL
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
-    const originalUrl = img.src.replace('_thumb.jpeg', '.jpeg');
+    // Remove _thumb suffix to get original URL (handles any extension)
+    const originalUrl = img.src.replace(/_thumb(\.[^/.]+)$/, '$1');
     if (img.src !== originalUrl) {
       img.src = originalUrl;
     }
