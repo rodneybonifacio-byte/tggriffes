@@ -93,16 +93,17 @@ export async function generateThumbnail(file: File): Promise<File> {
  * Thumbnail files are stored with _thumb suffix before extension
  */
 export function getThumbnailUrl(originalUrl: string): string {
-  if (!originalUrl) return originalUrl;
-  
-  // Only add _thumb to images we know have thumbnails (.jpeg files)
-  // For other extensions, return the original URL
-  if (originalUrl.endsWith('.jpeg')) {
-    return originalUrl.replace(/\.jpeg$/, '_thumb.jpeg');
-  }
-  
-  // For non-jpeg images (legacy .webp, .png, etc), return original URL
+  // TEMPORARILY DISABLED: Return original URL until all thumbnails are generated
+  // The fallback mechanism was causing issues with missing thumbnails
+  // Re-enable once bulk optimization is complete via /admin/otimizar-imagens
   return originalUrl;
+  
+  // Original logic (re-enable after all thumbnails are generated):
+  // if (!originalUrl) return originalUrl;
+  // if (originalUrl.endsWith('.jpeg')) {
+  //   return originalUrl.replace(/\.jpeg$/, '_thumb.jpeg');
+  // }
+  // return originalUrl;
 }
 
 /**
