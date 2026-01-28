@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ProductImage } from '@/hooks/useProducts';
-import { getThumbnailUrl } from '@/lib/imageCompression';
+import { getThumbnailUrl, getFullImageUrl } from '@/lib/imageCompression';
 
 interface ProductGalleryProps {
   images: ProductImage[];
@@ -48,10 +48,10 @@ export function ProductGallery({ images, mainImage, productName }: ProductGaller
 
   return (
     <div className="space-y-4">
-      {/* Main Image - uses full resolution for detailed view */}
+      {/* Main Image - uses full resolution for detailed view with cache-busting */}
       <div className="relative aspect-square overflow-hidden rounded-lg bg-secondary">
         <img
-          src={allImages[currentIndex]?.image_url}
+          src={getFullImageUrl(allImages[currentIndex]?.image_url)}
           alt={`${productName} - Imagem ${currentIndex + 1}`}
           className="h-full w-full object-cover"
           loading="lazy"
