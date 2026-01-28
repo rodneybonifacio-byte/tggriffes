@@ -88,22 +88,30 @@ export async function generateThumbnail(file: File): Promise<File> {
   return compressImage(file, { maxDimension: 400, quality: 0.75 });
 }
 
+// Cache-bust version - increment to force refresh
+const CACHE_VERSION = 'v2';
+
 /**
  * Convert a full-size image URL to its thumbnail URL
  * Thumbnail files are stored with _thumb suffix before extension
+ * Includes cache-busting parameter to force browser refresh
  */
 export function getThumbnailUrl(originalUrl: string): string {
-  // TEMPORARILY DISABLED: Return original URL until all thumbnails are generated
-  // The fallback mechanism was causing issues with missing thumbnails
-  // Re-enable once bulk optimization is complete via /admin/otimizar-imagens
-  return originalUrl;
+  if (!originalUrl) return originalUrl;
   
-  // Original logic (re-enable after all thumbnails are generated):
-  // if (!originalUrl) return originalUrl;
-  // if (originalUrl.endsWith('.jpeg')) {
-  //   return originalUrl.replace(/\.jpeg$/, '_thumb.jpeg');
-  // }
-  // return originalUrl;
+  // Add cache-busting parameter
+  const separator = originalUrl.includes('?') ? '&' : '?';
+  return `${originalUrl}${separator}cb=${CACHE_VERSION}`;
+}
+
+/**
+ * Get full resolution image URL with cache-busting
+ */
+export function getFullImageUrl(originalUrl: string): string {
+  if (!originalUrl) return originalUrl;
+  
+  const separator = originalUrl.includes('?') ? '&' : '?';
+  return `${originalUrl}${separator}cb=${CACHE_VERSION}`;
 }
 
 /**
