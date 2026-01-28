@@ -271,6 +271,7 @@ export const ProductCard = React.forwardRef<HTMLDivElement, ProductCardProps>(
               src={allImages[currentImageIndex]}
               alt={product.name}
               loading="lazy"
+              crossOrigin="anonymous"
               onError={handleImageError}
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               draggable={false}
