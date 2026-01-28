@@ -55,6 +55,8 @@ export function ProductGallery({ images, mainImage, productName }: ProductGaller
           alt={`${productName} - Imagem ${currentIndex + 1}`}
           className="h-full w-full object-cover"
           loading="lazy"
+          crossOrigin="anonymous"
+          onError={handleImageError}
         />
         
         {allImages.length > 1 && (
@@ -96,6 +98,7 @@ export function ProductGallery({ images, mainImage, productName }: ProductGaller
                 alt={`${productName} - Miniatura ${index + 1}`}
                 className="h-full w-full object-cover"
                 loading="lazy"
+                crossOrigin="anonymous"
                 onError={handleImageError}
               />
             </button>
