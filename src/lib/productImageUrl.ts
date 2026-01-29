@@ -6,7 +6,7 @@
  */
 
 // Cache-bust version - increment to force refresh
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 
 /**
  * Get the best available image URL for a product.
