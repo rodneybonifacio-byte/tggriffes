@@ -3,17 +3,21 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ProductImage } from '@/hooks/useProducts';
-import { getThumbnailUrl, getFullImageUrl } from '@/lib/imageCompression';
+import { getProductFullImageUrl, getProductThumbnailUrl, createImageFallbackHandler } from '@/lib/productImageUrl';
 
 interface ProductGalleryProps {
   images: ProductImage[];
   mainImage?: string | null;
+  shopifyImageUrl?: string | null;
   productName: string;
 }
 
-export function ProductGallery({ images, mainImage, productName }: ProductGalleryProps) {
-  const allImages = mainImage 
-    ? [{ id: 'main', image_url: mainImage, sort_order: -1 }, ...images.filter(img => img.image_url !== mainImage)]
+export function ProductGallery({ images, mainImage, shopifyImageUrl, productName }: ProductGalleryProps) {
+  // Build images array: Shopify CDN as primary for main, Supabase for gallery
+  const mainUrl = getProductFullImageUrl(shopifyImageUrl, mainImage);
+  
+  const allImages = mainUrl
+    ? [{ id: 'main', image_url: mainUrl, sort_order: -1 }, ...images.filter(img => img.image_url !== mainImage)]
     : images;
   
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -26,15 +30,8 @@ export function ProductGallery({ images, mainImage, productName }: ProductGaller
     setCurrentIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
   };
 
-  // Fallback handler for missing thumbnails - restore original URL
-  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const img = e.currentTarget;
-    // Remove _thumb suffix to get original URL (handles any extension)
-    const originalUrl = img.src.replace(/_thumb(\.[^/.]+)$/, '$1');
-    if (img.src !== originalUrl) {
-      img.src = originalUrl;
-    }
-  };
+  // Fallback handler: if Shopify/current image fails, try Supabase main image
+  const handleImageError = createImageFallbackHandler(mainImage);
 
   if (allImages.length === 0) {
     return (
@@ -48,10 +45,10 @@ export function ProductGallery({ images, mainImage, productName }: ProductGaller
 
   return (
     <div className="space-y-4">
-      {/* Main Image - uses full resolution for detailed view with cache-busting */}
+      {/* Main Image - uses full resolution from Shopify CDN with Supabase fallback */}
       <div className="relative aspect-square overflow-hidden rounded-lg bg-secondary">
         <img
-          src={getFullImageUrl(allImages[currentIndex]?.image_url)}
+          src={currentIndex === 0 ? mainUrl : getProductFullImageUrl(null, allImages[currentIndex]?.image_url)}
           alt={`${productName} - Imagem ${currentIndex + 1}`}
           className="h-full w-full object-cover"
           loading="lazy"
@@ -84,25 +81,31 @@ export function ProductGallery({ images, mainImage, productName }: ProductGaller
       {/* Thumbnails - uses 400px thumbnails for smaller previews */}
       {allImages.length > 1 && (
         <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-          {allImages.map((image, index) => (
-            <button
-              key={image.id}
-              onClick={() => setCurrentIndex(index)}
-              className={cn(
-                "flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
-                currentIndex === index ? "border-primary" : "border-transparent opacity-60 hover:opacity-100"
-              )}
-            >
-              <img
-                src={getThumbnailUrl(image.image_url)}
-                alt={`${productName} - Miniatura ${index + 1}`}
-                className="h-full w-full object-cover"
-                loading="lazy"
-                crossOrigin="anonymous"
-                onError={handleImageError}
-              />
-            </button>
-          ))}
+          {allImages.map((image, index) => {
+            const thumbUrl = index === 0 
+              ? getProductThumbnailUrl(shopifyImageUrl, mainImage)
+              : getProductThumbnailUrl(null, image.image_url);
+            
+            return (
+              <button
+                key={image.id}
+                onClick={() => setCurrentIndex(index)}
+                className={cn(
+                  "flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all",
+                  currentIndex === index ? "border-primary" : "border-transparent opacity-60 hover:opacity-100"
+                )}
+              >
+                <img
+                  src={thumbUrl}
+                  alt={`${productName} - Miniatura ${index + 1}`}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  crossOrigin="anonymous"
+                  onError={handleImageError}
+                />
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
