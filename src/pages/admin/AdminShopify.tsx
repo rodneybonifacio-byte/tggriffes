@@ -151,7 +151,7 @@ export default function AdminShopify() {
 
   // Missing mappings
   const { data: missingMappingProducts } = useMissingMappingProducts();
-  const { fixMappings, progress: fixProgress, reset: resetFixProgress } = useFixMissingMappings();
+  const { fixMappings, continueProcessing: continueFixMappings, progress: fixProgress, reset: resetFixProgress } = useFixMissingMappings();
 
   const syncedProductIds = new Set(mappings?.map(m => m.product_id) || []);
   const activeProductIds = new Set(products?.map(p => p.id) || []);
@@ -256,18 +256,14 @@ export default function AdminShopify() {
               )}
 
               {/* Fix Missing Mappings Button */}
-              {(missingMappingProducts?.length ?? 0) > 0 && (
+              {(missingMappingProducts?.length ?? 0) > 0 && !fixProgress.isRunning && !fixProgress.isPaused && (
                 <Button
                   variant="outline"
                   className="border-purple-500 text-purple-700 hover:bg-purple-50"
                   onClick={() => fixMappings(missingMappingProducts || [])}
                   disabled={fixProgress.isRunning}
                 >
-                  {fixProgress.isRunning ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Wrench className="w-4 h-4 mr-2" />
-                  )}
+                  <Wrench className="w-4 h-4 mr-2" />
                   Corrigir Mapeamentos ({missingMappingProducts?.length})
                 </Button>
               )}
@@ -347,35 +343,51 @@ export default function AdminShopify() {
           )}
 
           {/* Fix Progress Card */}
-          {(fixProgress.isRunning || fixProgress.results.length > 0) && (
+          {(fixProgress.isRunning || fixProgress.isPaused || fixProgress.results.length > 0) && (
             <Card className="border-purple-200 bg-purple-50/50">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-center">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <Wrench className="w-4 h-4" />
-                    Correção de Mapeamentos
+                    Correção de Mapeamentos (Lote {fixProgress.currentBatch}/{fixProgress.totalBatches})
                   </CardTitle>
-                  {!fixProgress.isRunning && fixProgress.results.length > 0 && (
-                    <Button variant="ghost" size="sm" onClick={resetFixProgress}>
-                      Fechar
-                    </Button>
-                  )}
+                  <div className="flex gap-2">
+                    {fixProgress.isRunning && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Processando...
+                      </div>
+                    )}
+                    {fixProgress.isPaused && (
+                      <Button variant="outline" size="sm" onClick={continueFixMappings}>
+                        <Play className="w-4 h-4 mr-1" />
+                        Continuar
+                      </Button>
+                    )}
+                    {!fixProgress.isRunning && !fixProgress.isPaused && fixProgress.results.length > 0 && (
+                      <Button variant="ghost" size="sm" onClick={resetFixProgress}>
+                        Fechar
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {fixProgress.isRunning && (
-                  <>
-                    <div className="flex justify-between text-sm">
-                      <span>Processando: {fixProgress.currentProduct}</span>
-                      <span>{fixProgress.current} / {fixProgress.total}</span>
-                    </div>
-                    <Progress value={(fixProgress.current / fixProgress.total) * 100} className="h-2" />
-                  </>
-                )}
+                <div className="flex justify-between text-sm">
+                  <span>
+                    {fixProgress.isRunning 
+                      ? `Processando: ${fixProgress.currentProduct}` 
+                      : fixProgress.isPaused 
+                        ? 'Pausado - aguardando continuar próximo lote'
+                        : 'Concluído'}
+                  </span>
+                  <span>{fixProgress.current} / {fixProgress.total}</span>
+                </div>
+                <Progress value={(fixProgress.current / fixProgress.total) * 100} className="h-2" />
                 
                 {fixProgress.results.length > 0 && (
                   <div className="max-h-40 overflow-y-auto space-y-1">
-                    {fixProgress.results.map((r, i) => (
+                    {fixProgress.results.slice(-10).map((r, i) => (
                       <div key={i} className="flex items-center gap-2 text-sm">
                         {r.success ? (
                           <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
@@ -388,19 +400,27 @@ export default function AdminShopify() {
                         </span>
                       </div>
                     ))}
-                  </div>
-                )}
-
-                {!fixProgress.isRunning && fixProgress.results.length > 0 && (
-                  <div className="text-sm font-medium pt-2 border-t">
-                    ✅ {fixProgress.results.filter(r => r.success).length} sucesso 
-                    {fixProgress.results.filter(r => !r.success).length > 0 && (
-                      <span className="text-red-600 ml-2">
-                        ❌ {fixProgress.results.filter(r => !r.success).length} erro
-                      </span>
+                    {fixProgress.results.length > 10 && (
+                      <div className="text-xs text-muted-foreground">
+                        ... e mais {fixProgress.results.length - 10} itens
+                      </div>
                     )}
                   </div>
                 )}
+
+                <div className="text-sm font-medium pt-2 border-t">
+                  ✅ {fixProgress.results.filter(r => r.success).length} sucesso 
+                  {fixProgress.results.filter(r => !r.success).length > 0 && (
+                    <span className="text-red-600 ml-2">
+                      ❌ {fixProgress.results.filter(r => !r.success).length} erro
+                    </span>
+                  )}
+                  {fixProgress.isPaused && (
+                    <span className="text-purple-600 ml-2">
+                      • {fixProgress.total - fixProgress.current} restantes
+                    </span>
+                  )}
+                </div>
               </CardContent>
             </Card>
           )}

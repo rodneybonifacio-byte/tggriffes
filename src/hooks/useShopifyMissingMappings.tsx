@@ -67,7 +67,12 @@ export interface FixMappingsProgress {
   currentProduct: string;
   results: { productId: string; productName: string; success: boolean; error?: string }[];
   isRunning: boolean;
+  isPaused: boolean;
+  currentBatch: number;
+  totalBatches: number;
 }
+
+const BATCH_SIZE = 20;
 
 export function useFixMissingMappings() {
   const queryClient = useQueryClient();
@@ -77,7 +82,11 @@ export function useFixMissingMappings() {
     currentProduct: '',
     results: [],
     isRunning: false,
+    isPaused: false,
+    currentBatch: 0,
+    totalBatches: 0,
   });
+  const [pendingProducts, setPendingProducts] = useState<MissingMappingProduct[]>([]);
 
   const fixMappings = useCallback(async (products: MissingMappingProduct[]) => {
     if (products.length === 0) {
@@ -85,17 +94,41 @@ export function useFixMissingMappings() {
       return;
     }
 
+    const totalBatches = Math.ceil(products.length / BATCH_SIZE);
+    
+    setPendingProducts(products);
     setProgress({
       current: 0,
       total: products.length,
       currentProduct: '',
       results: [],
       isRunning: true,
+      isPaused: false,
+      currentBatch: 1,
+      totalBatches,
     });
 
-    const results: FixMappingsProgress['results'] = [];
+    await processBatch(products, 0, [], totalBatches);
+  }, [queryClient]);
 
-    for (let i = 0; i < products.length; i++) {
+  const processBatch = useCallback(async (
+    products: MissingMappingProduct[], 
+    startIndex: number, 
+    previousResults: FixMappingsProgress['results'],
+    totalBatches: number
+  ) => {
+    const results = [...previousResults];
+    const endIndex = Math.min(startIndex + BATCH_SIZE, products.length);
+    const currentBatch = Math.floor(startIndex / BATCH_SIZE) + 1;
+
+    setProgress(prev => ({
+      ...prev,
+      isRunning: true,
+      isPaused: false,
+      currentBatch,
+    }));
+
+    for (let i = startIndex; i < endIndex; i++) {
       const product = products[i];
       
       setProgress(prev => ({
@@ -128,39 +161,68 @@ export function useFixMissingMappings() {
       setProgress(prev => ({ ...prev, results: [...results] }));
 
       // Small delay to avoid rate limiting
-      if (i < products.length - 1) {
+      if (i < endIndex - 1) {
         await new Promise(resolve => setTimeout(resolve, 800));
       }
     }
 
-    setProgress(prev => ({ ...prev, isRunning: false }));
-
-    // Invalidate queries
-    queryClient.invalidateQueries({ queryKey: ['shopify-missing-mappings'] });
-    queryClient.invalidateQueries({ queryKey: ['shopify-product-mappings'] });
-    queryClient.invalidateQueries({ queryKey: ['shopify-sync-logs'] });
-
-    const successCount = results.filter(r => r.success).length;
-    const errorCount = results.filter(r => !r.success).length;
-
-    if (errorCount === 0) {
-      toast.success(`${successCount} produtos corrigidos com sucesso!`);
-    } else if (successCount > 0) {
-      toast.warning(`${successCount} corrigidos, ${errorCount} com erro.`);
+    // Check if there are more batches
+    if (endIndex < products.length) {
+      // Pause after batch
+      setProgress(prev => ({ 
+        ...prev, 
+        isRunning: false, 
+        isPaused: true,
+        results: [...results],
+      }));
+      setPendingProducts(products);
     } else {
-      toast.error(`Falha ao corrigir ${errorCount} produtos.`);
+      // All done
+      setProgress(prev => ({ 
+        ...prev, 
+        isRunning: false, 
+        isPaused: false,
+        currentProduct: '',
+      }));
+
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ['shopify-missing-mappings'] });
+      queryClient.invalidateQueries({ queryKey: ['shopify-product-mappings'] });
+      queryClient.invalidateQueries({ queryKey: ['shopify-sync-logs'] });
+
+      const successCount = results.filter(r => r.success).length;
+      const errorCount = results.filter(r => !r.success).length;
+
+      if (errorCount === 0) {
+        toast.success(`${successCount} produtos corrigidos com sucesso!`);
+      } else if (successCount > 0) {
+        toast.warning(`${successCount} corrigidos, ${errorCount} com erro.`);
+      } else {
+        toast.error(`Falha ao corrigir ${errorCount} produtos.`);
+      }
     }
   }, [queryClient]);
 
+  const continueProcessing = useCallback(async () => {
+    if (!progress.isPaused || pendingProducts.length === 0) return;
+    
+    const nextStartIndex = progress.current;
+    await processBatch(pendingProducts, nextStartIndex, progress.results, progress.totalBatches);
+  }, [progress, pendingProducts, processBatch]);
+
   const reset = useCallback(() => {
+    setPendingProducts([]);
     setProgress({
       current: 0,
       total: 0,
       currentProduct: '',
       results: [],
       isRunning: false,
+      isPaused: false,
+      currentBatch: 0,
+      totalBatches: 0,
     });
   }, []);
 
-  return { fixMappings, progress, reset };
+  return { fixMappings, continueProcessing, progress, reset };
 }
