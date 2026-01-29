@@ -377,6 +377,7 @@ export type Database = {
           main_image_url: string | null
           name: string
           price_cents: number
+          shopify_image_url: string | null
           slug: string
           updated_at: string
           weight_grams: number | null
@@ -393,6 +394,7 @@ export type Database = {
           main_image_url?: string | null
           name: string
           price_cents?: number
+          shopify_image_url?: string | null
           slug: string
           updated_at?: string
           weight_grams?: number | null
@@ -409,6 +411,7 @@ export type Database = {
           main_image_url?: string | null
           name?: string
           price_cents?: number
+          shopify_image_url?: string | null
           slug?: string
           updated_at?: string
           weight_grams?: number | null

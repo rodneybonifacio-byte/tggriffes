@@ -252,7 +252,11 @@ serve(async (req) => {
         shopifyHandle = result.product.handle;
         createdVariants = result.product.variants || [];
 
-        // Update mapping
+        // Extract Shopify CDN image URL (if available)
+        const shopifyImages = result.product.images || [];
+        const shopifyImageUrl = shopifyImages.length > 0 ? shopifyImages[0].src : null;
+
+        // Update mapping and save Shopify CDN image URL to products table
         await supabase
           .from('shopify_product_mappings')
           .update({ 
@@ -260,6 +264,15 @@ serve(async (req) => {
             shopify_product_handle: shopifyHandle 
           })
           .eq('id', existingMapping.id);
+
+        // Store Shopify CDN URL in products table for frontend use
+        if (shopifyImageUrl) {
+          await supabase
+            .from('products')
+            .update({ shopify_image_url: shopifyImageUrl })
+            .eq('id', product.id);
+          console.log(`Updated shopify_image_url for product ${product.id}: ${shopifyImageUrl}`);
+        }
 
       } else {
         // Create new product with options based on variants
@@ -284,6 +297,10 @@ serve(async (req) => {
         shopifyHandle = result.product.handle;
         createdVariants = result.product.variants || [];
 
+        // Extract Shopify CDN image URL (if available)
+        const shopifyImages = result.product.images || [];
+        const shopifyImageUrl = shopifyImages.length > 0 ? shopifyImages[0].src : null;
+
         // Save mapping
         await supabase
           .from('shopify_product_mappings')
@@ -292,6 +309,15 @@ serve(async (req) => {
             shopify_product_id: shopifyProductId,
             shopify_product_handle: shopifyHandle,
           });
+
+        // Store Shopify CDN URL in products table for frontend use
+        if (shopifyImageUrl) {
+          await supabase
+            .from('products')
+            .update({ shopify_image_url: shopifyImageUrl })
+            .eq('id', product.id);
+          console.log(`Saved shopify_image_url for new product ${product.id}: ${shopifyImageUrl}`);
+        }
       }
 
       // Map variants (robusto): NÃO depende de posição/índice; usa SKU e fallback por opções.

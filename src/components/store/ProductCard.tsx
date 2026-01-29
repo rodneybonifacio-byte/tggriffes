@@ -8,7 +8,7 @@ import { useCart } from '@/hooks/useCart';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Minus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getThumbnailUrl } from '@/lib/imageCompression';
+import { getProductThumbnailUrl, createImageFallbackHandler } from '@/lib/productImageUrl';
 
 interface ProductCardProps {
   product: Product;
@@ -105,28 +105,28 @@ export const ProductCard = React.forwardRef<HTMLDivElement, ProductCardProps>(
     const totalStock = variants.reduce((sum, v) => sum + v.stock_qty, 0);
     const isOutOfStock = totalStock === 0;
 
-    // Build images array with thumbnails for listing (main + gallery)
+    // Get Shopify image URL (cast to access new column)
+    const shopifyImageUrl = (product as any).shopify_image_url as string | null;
+    
+    // Build images array with Shopify CDN as primary, Supabase as fallback
     const allImages = useMemo(() => {
       const imgs: string[] = [];
-      if (product.main_image_url) imgs.push(getThumbnailUrl(product.main_image_url));
+      // Main image: Shopify CDN first, then Supabase
+      const mainUrl = getProductThumbnailUrl(shopifyImageUrl, product.main_image_url);
+      if (mainUrl) imgs.push(mainUrl);
+      
+      // Gallery images from Supabase (no Shopify CDN for gallery yet)
       images
         .sort((a, b) => a.sort_order - b.sort_order)
         .forEach(img => {
-          const thumbUrl = getThumbnailUrl(img.image_url);
-          if (!imgs.includes(thumbUrl)) imgs.push(thumbUrl);
+          const thumbUrl = getProductThumbnailUrl(null, img.image_url);
+          if (thumbUrl && !imgs.includes(thumbUrl)) imgs.push(thumbUrl);
         });
       return imgs;
-    }, [product.main_image_url, images]);
+    }, [shopifyImageUrl, product.main_image_url, images]);
 
-    // Fallback handler for missing thumbnails - restore original URL
-    const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
-      const img = e.currentTarget;
-      // Remove _thumb suffix to get original URL (handles any extension)
-      const originalUrl = img.src.replace(/_thumb(\.[^/.]+)$/, '$1');
-      if (img.src !== originalUrl) {
-        img.src = originalUrl;
-      }
-    };
+    // Fallback handler: if Shopify fails, try Supabase
+    const handleImageError = createImageFallbackHandler(product.main_image_url);
 
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     // Track pending mutations to prevent double clicks

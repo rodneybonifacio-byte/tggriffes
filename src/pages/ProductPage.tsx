@@ -356,10 +356,11 @@ const ProductPage = () => {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-          {/* Gallery */}
+          {/* Gallery - uses Shopify CDN with Supabase fallback */}
           <ProductGallery 
             images={product.product_images || []}
             mainImage={product.main_image_url}
+            shopifyImageUrl={(product as any).shopify_image_url}
             productName={product.name}
           />
 
