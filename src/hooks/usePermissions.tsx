@@ -12,6 +12,7 @@ interface Permissions {
   canViewStock: boolean;
   canViewSettings: boolean;
   canViewPrices: boolean;
+  canSetPriceOnCreate: boolean;
   canViewPromotions: boolean;
   canViewShopify: boolean;
   canViewDashboard: boolean;
@@ -73,6 +74,7 @@ export function usePermissions(): Permissions & { isLoading: boolean } {
     canViewStock: isAdmin || isCollaborator,
     canViewSettings: isAdmin, // Apenas admin
     canViewPrices: isAdmin, // Apenas admin
+    canSetPriceOnCreate: isAdmin || isCollaborator, // Vendedor pode definir preço ao criar
     canViewPromotions: isAdmin, // Apenas admin (envolve preços)
     canViewShopify: isAdmin, // Apenas admin
     canViewDashboard: isAdmin || isCollaborator,

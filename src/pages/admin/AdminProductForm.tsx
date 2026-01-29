@@ -35,7 +35,8 @@ const AdminProductForm = () => {
   const { mutateAsync: createVariant } = useCreateVariant();
   const { mutateAsync: deleteVariant } = useDeleteVariant();
   const syncToShopify = useSyncSingleProduct();
-  const { canViewPrices } = usePermissions();
+  const { canViewPrices, canSetPriceOnCreate } = usePermissions();
+  const canShowPriceField = canViewPrices || (!isEditing && canSetPriceOnCreate);
 
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
@@ -106,8 +107,8 @@ const AdminProductForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Colaboradores podem salvar sem preço (mantém o preço existente)
-    const priceValid = canViewPrices ? priceCents > 0 : true;
+    // Validação de preço: admin sempre, vendedor só na criação
+    const priceValid = canShowPriceField ? priceCents > 0 : true;
     if (!name.trim() || !priceValid || images.length === 0 || variants.length === 0) {
       toast({ title: 'Preencha todos os campos obrigatórios', description: 'Nome, pelo menos 1 foto e 1 tamanho são necessários.', variant: 'destructive' });
       return;
@@ -136,8 +137,8 @@ const AdminProductForm = () => {
         main_image_url: mainImage || images[0] || null,
       };
       
-      // Apenas admin pode alterar preço
-      if (canViewPrices) {
+      // Admin pode alterar preço sempre, vendedor apenas na criação
+      if (canShowPriceField) {
         productData.price_cents = priceCents;
       }
 
@@ -145,10 +146,6 @@ const AdminProductForm = () => {
       if (isEditing && id) {
         await updateProduct({ id, ...productData } as any);
       } else {
-        // Colaborador precisa definir preço ao criar novo produto
-        if (!canViewPrices) {
-          productData.price_cents = 0; // Preço padrão, admin pode ajustar depois
-        }
         const newProduct = await createProduct(productData as any);
         productId = newProduct.id;
       }
@@ -266,7 +263,7 @@ const AdminProductForm = () => {
                     </Dialog>
                   </div>
                 </div>
-                {canViewPrices && (
+                {canShowPriceField && (
                   <div><Label>Preço *</Label><CurrencyInput value={priceCents} onChange={setPriceCents} required /></div>
                 )}
               </div>
