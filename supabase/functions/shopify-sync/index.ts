@@ -993,6 +993,83 @@ serve(async (req) => {
           ...cleanupResult
         };
 
+      } else if (action === 'fix_missing_images') {
+        // Fetch Shopify CDN URLs for products missing shopify_image_url
+        syncLog.sync_type = 'fix_images';
+        
+        console.log('[FixImages] Starting fix_missing_images action...');
+        
+        // Get all active products with mappings but missing shopify_image_url
+        // Use separate query to get products with null or empty shopify_image_url
+        const { data: productsWithMappings, error: queryError } = await supabase
+          .from('products')
+          .select(`
+            id,
+            name,
+            shopify_image_url,
+            shopify_product_mappings!inner(shopify_product_id)
+          `)
+          .eq('active', true);
+        
+        if (queryError) {
+          console.error('[FixImages] Query error:', queryError);
+          throw queryError;
+        }
+        
+        // Filter products missing shopify_image_url
+        const productsToFix = (productsWithMappings || []).filter(
+          p => !p.shopify_image_url || p.shopify_image_url === ''
+        );
+        
+        console.log(`[FixImages] Found ${productsToFix.length} products to fix`);
+        
+        const errors: any[] = [];
+        let fixed = 0;
+        
+        for (const product of productsToFix || []) {
+          try {
+            const shopifyProductId = (product.shopify_product_mappings as any[])?.[0]?.shopify_product_id;
+            if (!shopifyProductId) continue;
+            
+            console.log(`[FixImages] Fetching image for ${product.name} (Shopify ID: ${shopifyProductId})`);
+            
+            const shopifyProduct = await getShopifyProduct(shopifyProductId);
+            const shopifyImages = shopifyProduct?.images || [];
+            const shopifyImageUrl = shopifyImages.length > 0 ? shopifyImages[0].src : null;
+            
+            if (shopifyImageUrl) {
+              await supabase
+                .from('products')
+                .update({ shopify_image_url: shopifyImageUrl })
+                .eq('id', product.id);
+              
+              console.log(`[FixImages] Updated ${product.name}: ${shopifyImageUrl}`);
+              fixed++;
+            } else {
+              console.log(`[FixImages] No image found in Shopify for ${product.name}`);
+            }
+            
+            // Small delay to avoid rate limiting
+            await delay(500);
+          } catch (err: any) {
+            console.error(`[FixImages] Error for ${product.name}: ${err.message}`);
+            errors.push({ product_id: product.id, name: product.name, error: err.message });
+          }
+        }
+        
+        syncLog.products_synced = fixed;
+        if (errors.length > 0) {
+          syncLog.status = 'partial';
+          syncLog.errors = errors;
+        }
+        
+        result = {
+          message: `Fixed ${fixed} of ${productsToFix?.length || 0} products with missing images`,
+          fixed,
+          total: productsToFix?.length || 0,
+          errors,
+        };
+
       } else {
         throw new Error('Invalid action');
       }
