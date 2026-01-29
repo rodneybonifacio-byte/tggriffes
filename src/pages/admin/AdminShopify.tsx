@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,10 @@ import {
   Loader2,
   Store,
   Trash2,
-  Wrench
+  Wrench,
+  Play,
+  Pause,
+  ImageIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -29,19 +32,122 @@ import {
   useSyncPendingProducts,
   useSyncInventory,
   useCleanupOrphans,
+  useSyncBatch,
+  BatchSyncResult,
 } from '@/hooks/useShopifySync';
 import { useProducts } from '@/hooks/useProducts';
 import { useMissingMappingProducts, useFixMissingMappings } from '@/hooks/useShopifyMissingMappings';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export default function AdminShopify() {
-  const { data: syncLogs, isLoading: logsLoading } = useShopifySyncLogs();
-  const { data: mappings, isLoading: mappingsLoading } = useShopifyProductMappings();
-  const { data: products } = useProducts({ status: 'active' });
+  const { data: syncLogs, isLoading: logsLoading, refetch: refetchLogs } = useShopifySyncLogs();
+  const { data: mappings, isLoading: mappingsLoading, refetch: refetchMappings } = useShopifyProductMappings();
+  const { data: products, refetch: refetchProducts } = useProducts({ status: 'active' });
   
   const syncAllProducts = useSyncAllProducts();
   const syncPendingProducts = useSyncPendingProducts();
   const syncInventory = useSyncInventory();
   const cleanupOrphans = useCleanupOrphans();
+  const syncBatch = useSyncBatch();
+
+  // Batch sync state
+  const [batchProgress, setBatchProgress] = useState<{
+    isRunning: boolean;
+    isPaused: boolean;
+    current: number;
+    total: number;
+    processed: number;
+    errors: any[];
+  }>({ isRunning: false, isPaused: false, current: 0, total: 0, processed: 0, errors: [] });
+
+  // Count products missing shopify_image_url
+  const [missingImageCount, setMissingImageCount] = useState<number>(0);
+
+  useEffect(() => {
+    async function fetchMissingImageCount() {
+      const { count } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('active', true)
+        .is('shopify_image_url', null);
+      setMissingImageCount(count || 0);
+    }
+    fetchMissingImageCount();
+  }, [products]);
+
+  // Batch sync runner
+  const runBatchSync = useCallback(async () => {
+    if (batchProgress.isPaused) return;
+    
+    try {
+      const result = await syncBatch.mutateAsync({ 
+        offset: batchProgress.current, 
+        limit: 25 
+      });
+      
+      setBatchProgress(prev => ({
+        ...prev,
+        current: result.nextOffset || prev.current + result.processed,
+        total: result.totalPending + prev.processed,
+        processed: prev.processed + result.processed,
+        errors: [...prev.errors, ...result.errors],
+      }));
+
+      // Refresh counts
+      setMissingImageCount(result.remainingCount);
+      refetchMappings();
+      refetchProducts();
+
+      if (result.hasMore && !batchProgress.isPaused) {
+        // Schedule next batch after a short delay
+        setTimeout(() => runBatchSync(), 1000);
+      } else {
+        // Finished
+        setBatchProgress(prev => ({ ...prev, isRunning: false }));
+        if (result.hasMore) {
+          toast.info(`Sincronização pausada. ${result.remainingCount} produtos restantes.`);
+        } else {
+          toast.success(`Sincronização concluída! ${batchProgress.processed + result.processed} produtos processados.`);
+        }
+        refetchLogs();
+      }
+    } catch (error: any) {
+      setBatchProgress(prev => ({ ...prev, isRunning: false }));
+      toast.error(`Erro no lote: ${error.message}`);
+    }
+  }, [batchProgress.current, batchProgress.isPaused, batchProgress.processed, syncBatch, refetchMappings, refetchProducts, refetchLogs]);
+
+  const startBatchSync = () => {
+    setBatchProgress({
+      isRunning: true,
+      isPaused: false,
+      current: 0,
+      total: missingImageCount,
+      processed: 0,
+      errors: [],
+    });
+  };
+
+  const pauseBatchSync = () => {
+    setBatchProgress(prev => ({ ...prev, isPaused: true, isRunning: false }));
+    toast.info('Sincronização pausada. Clique em "Continuar" para retomar.');
+  };
+
+  const resumeBatchSync = () => {
+    setBatchProgress(prev => ({ ...prev, isPaused: false, isRunning: true }));
+  };
+
+  const resetBatchSync = () => {
+    setBatchProgress({ isRunning: false, isPaused: false, current: 0, total: 0, processed: 0, errors: [] });
+  };
+
+  // Effect to run batch when started/resumed
+  useEffect(() => {
+    if (batchProgress.isRunning && !batchProgress.isPaused) {
+      runBatchSync();
+    }
+  }, [batchProgress.isRunning, batchProgress.isPaused]);
 
   // Missing mappings
   const { data: missingMappingProducts } = useMissingMappingProducts();
@@ -180,6 +286,66 @@ export default function AdminShopify() {
             </div>
           </div>
 
+          {/* Batch Sync Progress Card - NEW */}
+          {(batchProgress.isRunning || batchProgress.isPaused || batchProgress.processed > 0) && (
+            <Card className="border-blue-200 bg-blue-50/50">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4" />
+                    Sincronização em Blocos (Imagens Shopify CDN)
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    {batchProgress.isRunning ? (
+                      <Button variant="outline" size="sm" onClick={pauseBatchSync}>
+                        <Pause className="w-4 h-4 mr-1" />
+                        Pausar
+                      </Button>
+                    ) : batchProgress.isPaused ? (
+                      <Button variant="outline" size="sm" onClick={resumeBatchSync}>
+                        <Play className="w-4 h-4 mr-1" />
+                        Continuar
+                      </Button>
+                    ) : null}
+                    {!batchProgress.isRunning && batchProgress.processed > 0 && (
+                      <Button variant="ghost" size="sm" onClick={resetBatchSync}>
+                        Fechar
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span>
+                    {batchProgress.isRunning ? 'Processando...' : batchProgress.isPaused ? 'Pausado' : 'Concluído'}
+                  </span>
+                  <span>
+                    {batchProgress.processed} processados 
+                    {missingImageCount > 0 && ` • ${missingImageCount} restantes`}
+                  </span>
+                </div>
+                <Progress 
+                  value={batchProgress.total > 0 ? (batchProgress.processed / batchProgress.total) * 100 : 0} 
+                  className="h-2" 
+                />
+                
+                {batchProgress.errors.length > 0 && (
+                  <div className="text-sm text-red-600">
+                    ❌ {batchProgress.errors.length} erro(s)
+                  </div>
+                )}
+                
+                {syncBatch.isPending && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Sincronizando lote...
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Fix Progress Card */}
           {(fixProgress.isRunning || fixProgress.results.length > 0) && (
             <Card className="border-purple-200 bg-purple-50/50">
@@ -240,7 +406,33 @@ export default function AdminShopify() {
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+            {/* NEW: Missing Images Card with Batch Sync Button */}
+            <Card className={missingImageCount > 0 ? 'border-blue-300 bg-blue-50/30' : ''}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Imagens Faltando
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  {missingImageCount}
+                </div>
+                {missingImageCount > 0 && !batchProgress.isRunning && !batchProgress.isPaused && (
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="mt-2 w-full border-blue-400 text-blue-700 hover:bg-blue-100"
+                    onClick={startBatchSync}
+                    disabled={syncBatch.isPending}
+                  >
+                    <Play className="w-3 h-3 mr-1" />
+                    Sync em Blocos
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
