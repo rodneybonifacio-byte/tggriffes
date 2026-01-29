@@ -528,7 +528,79 @@ serve(async (req) => {
     };
 
     try {
-      if (action === 'sync_all' || action === 'sync_pending') {
+      // NEW: sync_batch action - syncs a limited batch to avoid timeout
+      if (action === 'sync_batch') {
+        const { offset = 0, limit = 30, onlyMissingImages = true } = await req.json().catch(() => ({}));
+        
+        // Build query for products needing sync
+        let query = supabase
+          .from('products')
+          .select(`
+            *,
+            category:categories(name),
+            variants:product_variants(*)
+          `)
+          .eq('active', true);
+        
+        // Only sync products missing shopify_image_url (most common use case)
+        if (onlyMissingImages) {
+          query = query.is('shopify_image_url', null);
+        }
+        
+        const { data: allProducts, count } = await query
+          .order('name', { ascending: true })
+          .range(offset, offset + limit - 1);
+        
+        // Get total count for progress
+        const { count: totalCount } = await supabase
+          .from('products')
+          .select('*', { count: 'exact', head: true })
+          .eq('active', true)
+          .is('shopify_image_url', null);
+        
+        console.log(`Batch sync: offset=${offset}, limit=${limit}, found=${allProducts?.length || 0}, totalPending=${totalCount}`);
+
+        const results = [];
+        const errors = [];
+
+        for (let i = 0; i < (allProducts || []).length; i++) {
+          const product = (allProducts || [])[i];
+          try {
+            console.log(`[Batch] Processing ${offset + i + 1}: ${product.name}`);
+            const syncResult = await syncProduct(product);
+            results.push({ id: product.id, name: product.name, ...syncResult });
+            syncLog.products_synced++;
+            syncLog.variants_synced += syncResult.variantCount;
+            
+            // Delay to avoid rate limits
+            await delay(700);
+          } catch (err: any) {
+            console.error(`Error syncing ${product.name}: ${err.message}`);
+            errors.push({ productId: product.id, productName: product.name, error: err.message });
+            await delay(400);
+          }
+        }
+
+        if (errors.length > 0) {
+          syncLog.status = 'partial';
+          syncLog.errors = errors;
+        }
+
+        const processedCount = offset + results.length;
+        const hasMore = (totalCount || 0) > processedCount;
+
+        result = { 
+          message: 'Batch sync completed', 
+          processed: results.length,
+          offset,
+          nextOffset: hasMore ? offset + limit : null,
+          totalPending: totalCount || 0,
+          remainingCount: Math.max(0, (totalCount || 0) - processedCount),
+          hasMore,
+          errors 
+        };
+
+      } else if (action === 'sync_all' || action === 'sync_pending') {
         // Get already synced product IDs
         const { data: mappings } = await supabase
           .from('shopify_product_mappings')

@@ -158,6 +158,40 @@ export function useSyncInventory() {
   });
 }
 
+// NEW: Sync batch of products (for avoiding timeouts)
+export interface BatchSyncResult {
+  processed: number;
+  offset: number;
+  nextOffset: number | null;
+  totalPending: number;
+  remainingCount: number;
+  hasMore: boolean;
+  errors: any[];
+}
+
+export function useSyncBatch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ offset = 0, limit = 30 }: { offset?: number; limit?: number }): Promise<BatchSyncResult> => {
+      const { data, error } = await supabase.functions.invoke('shopify-sync', {
+        body: { action: 'sync_batch', offset, limit, onlyMissingImages: true },
+      });
+
+      if (error) throw error;
+      return data as BatchSyncResult;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['shopify-sync-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['shopify-product-mappings'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+    onError: (error: any) => {
+      toast.error(`Erro no lote: ${error.message}`);
+    },
+  });
+}
+
 export function useCleanupOrphans() {
   const queryClient = useQueryClient();
 
