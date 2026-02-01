@@ -55,7 +55,30 @@ const Index = () => {
     return product.product_variants?.reduce((sum, v) => sum + v.stock_qty, 0) || 0;
   };
 
-  // Filter and sort products
+  // Common color names to strip from product names (Portuguese)
+  const colorSuffixes = [
+    'BEGE', 'PRETA', 'PRETO', 'BRANCA', 'BRANCO', 'AZUL', 'VERDE', 'VERMELHO', 'VERMELHA',
+    'AMARELO', 'AMARELA', 'ROSA', 'CINZA', 'MARROM', 'LARANJA', 'ROXO', 'ROXA', 'LILÁS',
+    'DOURADO', 'DOURADA', 'PRATA', 'VINHO', 'BORDÔ', 'CARAMELO', 'CREME', 'OFFWHITE',
+    'OFF WHITE', 'OFF-WHITE', 'NUDE', 'CORAL', 'TURQUESA', 'MARINHO', 'CAQUI', 'MOSTARDA',
+    'SALMÃO', 'TERRACOTA', 'AREIA', 'GRAFITE', 'CHUMBO', 'GELO', 'MENTA', 'LAVANDA',
+    'OLIVA', 'PETRÓLEO', 'FERRUGEM', 'GOIABA', 'PESSEGO', 'PÊSSEGO'
+  ];
+
+  // Extract base name by removing color suffix from product name
+  const getBaseName = (productName: string) => {
+    const upperName = productName.toUpperCase().trim();
+    for (const color of colorSuffixes) {
+      // Check if ends with color (with optional space before)
+      const regex = new RegExp(`\\s+${color}$`, 'i');
+      if (regex.test(upperName)) {
+        return upperName.replace(regex, '').trim();
+      }
+    }
+    return upperName;
+  };
+
+  // Filter and sort products with grouping logic
   const filteredProducts = useMemo(() => {
     let result = products.filter(product => {
       // Price filter
@@ -75,25 +98,85 @@ const Index = () => {
       return true;
     });
 
-    // Sort products using STABLE stock values (initial snapshot)
+    // Group products by base name (without color suffix)
+    const groupedByBaseName = new Map<string, typeof result>();
+    result.forEach(product => {
+      const baseName = getBaseName(product.name);
+      if (!groupedByBaseName.has(baseName)) {
+        groupedByBaseName.set(baseName, []);
+      }
+      groupedByBaseName.get(baseName)!.push(product);
+    });
+
+    // For each group, calculate max stock and sort products within group by stock desc
+    const groupsWithMaxStock: { baseName: string; maxStock: number; products: typeof result }[] = [];
+    groupedByBaseName.forEach((groupProducts, baseName) => {
+      // Sort products within group by stock descending
+      groupProducts.sort((a, b) => getStableStock(b) - getStableStock(a));
+      const maxStock = Math.max(...groupProducts.map(p => getStableStock(p)));
+      groupsWithMaxStock.push({ baseName, maxStock, products: groupProducts });
+    });
+
+    // Sort groups by max stock descending (default relevance sort)
+    // Then flatten back to a single array
     if (sortBy === 'relevance') {
-      result = [...result].sort((a, b) => getStableStock(b) - getStableStock(a));
+      groupsWithMaxStock.sort((a, b) => b.maxStock - a.maxStock);
+      result = groupsWithMaxStock.flatMap(g => g.products);
     } else if (sortBy === 'stock-asc') {
-      result = [...result].sort((a, b) => getStableStock(a) - getStableStock(b));
-    } else if (sortBy === 'price-asc') {
-      result = [...result].sort((a, b) => a.price_cents - b.price_cents);
-    } else if (sortBy === 'price-desc') {
-      result = [...result].sort((a, b) => b.price_cents - a.price_cents);
-    } else if (sortBy === 'newest') {
-      result = [...result].sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-    } else if (sortBy === 'color') {
-      result = [...result].sort((a, b) => {
-        const colorA = a.product_variants?.[0]?.color?.toLowerCase() || 'zzz';
-        const colorB = b.product_variants?.[0]?.color?.toLowerCase() || 'zzz';
-        return colorA.localeCompare(colorB, 'pt-BR');
+      // For ascending, sort groups by min stock
+      groupsWithMaxStock.forEach(g => {
+        g.products.sort((a, b) => getStableStock(a) - getStableStock(b));
       });
+      const groupsWithMinStock = groupsWithMaxStock.map(g => ({
+        ...g,
+        minStock: Math.min(...g.products.map(p => getStableStock(p)))
+      }));
+      groupsWithMinStock.sort((a, b) => a.minStock - b.minStock);
+      result = groupsWithMinStock.flatMap(g => g.products);
+    } else if (sortBy === 'price-asc') {
+      groupsWithMaxStock.forEach(g => {
+        g.products.sort((a, b) => a.price_cents - b.price_cents);
+      });
+      const groupsWithMinPrice = groupsWithMaxStock.map(g => ({
+        ...g,
+        minPrice: Math.min(...g.products.map(p => p.price_cents))
+      }));
+      groupsWithMinPrice.sort((a, b) => a.minPrice - b.minPrice);
+      result = groupsWithMinPrice.flatMap(g => g.products);
+    } else if (sortBy === 'price-desc') {
+      groupsWithMaxStock.forEach(g => {
+        g.products.sort((a, b) => b.price_cents - a.price_cents);
+      });
+      const groupsWithMaxPrice = groupsWithMaxStock.map(g => ({
+        ...g,
+        maxPrice: Math.max(...g.products.map(p => p.price_cents))
+      }));
+      groupsWithMaxPrice.sort((a, b) => b.maxPrice - a.maxPrice);
+      result = groupsWithMaxPrice.flatMap(g => g.products);
+    } else if (sortBy === 'newest') {
+      groupsWithMaxStock.forEach(g => {
+        g.products.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+      });
+      const groupsWithNewest = groupsWithMaxStock.map(g => ({
+        ...g,
+        newestDate: Math.max(...g.products.map(p => new Date(p.created_at).getTime()))
+      }));
+      groupsWithNewest.sort((a, b) => b.newestDate - a.newestDate);
+      result = groupsWithNewest.flatMap(g => g.products);
+    } else if (sortBy === 'color') {
+      // Sort by color, but still keep groups together
+      groupsWithMaxStock.forEach(g => {
+        g.products.sort((a, b) => {
+          const colorA = a.product_variants?.[0]?.color?.toLowerCase() || 'zzz';
+          const colorB = b.product_variants?.[0]?.color?.toLowerCase() || 'zzz';
+          return colorA.localeCompare(colorB, 'pt-BR');
+        });
+      });
+      // Sort groups alphabetically by base name for color sort
+      groupsWithMaxStock.sort((a, b) => a.baseName.localeCompare(b.baseName, 'pt-BR'));
+      result = groupsWithMaxStock.flatMap(g => g.products);
     }
 
     return result;
