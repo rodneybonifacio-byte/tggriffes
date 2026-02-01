@@ -11,7 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText, Phone, User, MessageSquare, Pencil, History, Clock, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText, Phone, User, MessageSquare, Pencil, History, Clock, AlertTriangle, Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { OrderIntent } from '@/hooks/useOrders';
@@ -30,6 +31,7 @@ const getStatusColor = (status: string) => {
 
 const AdminOrders = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedOrder, setSelectedOrder] = useState<OrderIntent | null>(null);
   const [editingOrder, setEditingOrder] = useState<OrderIntent | null>(null);
   const [cancelConfirmOrder, setCancelConfirmOrder] = useState<{ id: string; currentStatus: string } | null>(null);
@@ -52,9 +54,20 @@ const AdminOrders = () => {
     window.open(`/pedidos/pdf/${order.order_number}`, '_blank', 'noopener,noreferrer');
   };
 
-  const filteredOrders = statusFilter === 'all' 
-    ? orders 
-    : orders.filter(o => o.status === statusFilter);
+  const filteredOrders = orders.filter(order => {
+    // Filter by status
+    if (statusFilter !== 'all' && order.status !== statusFilter) return false;
+    
+    // Filter by search query (name or phone)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      const nameMatch = order.customer_name?.toLowerCase().includes(query);
+      const phoneMatch = order.customer_whatsapp?.replace(/\D/g, '').includes(query.replace(/\D/g, ''));
+      if (!nameMatch && !phoneMatch) return false;
+    }
+    
+    return true;
+  });
 
   const handleStatusChange = async (orderId: string, newStatus: string, currentStatus?: string) => {
     // Show confirmation dialog for cancellation
@@ -134,7 +147,28 @@ const AdminOrders = () => {
             </SelectContent>
           </Select>
 
-          <div className="flex-1 text-right text-sm text-muted-foreground self-center">
+          {/* Search by name or phone */}
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome ou telefone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-9"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                onClick={() => setSearchQuery('')}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          <div className="text-right text-sm text-muted-foreground self-center whitespace-nowrap">
             {filteredOrders.length} pedido{filteredOrders.length !== 1 ? 's' : ''}
           </div>
         </div>
