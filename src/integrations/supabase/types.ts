@@ -239,8 +239,12 @@ export type Database = {
           order_number: number | null
           seller_user_id: string | null
           shipping_deadline_days: number | null
+          shipping_height_cm: number | null
+          shipping_length_cm: number | null
           shipping_price_cents: number | null
           shipping_service: string | null
+          shipping_weight_grams: number | null
+          shipping_width_cm: number | null
           status: string
           subtotal_cents: number
           total_cents: number
@@ -257,8 +261,12 @@ export type Database = {
           order_number?: number | null
           seller_user_id?: string | null
           shipping_deadline_days?: number | null
+          shipping_height_cm?: number | null
+          shipping_length_cm?: number | null
           shipping_price_cents?: number | null
           shipping_service?: string | null
+          shipping_weight_grams?: number | null
+          shipping_width_cm?: number | null
           status?: string
           subtotal_cents?: number
           total_cents?: number
@@ -275,8 +283,12 @@ export type Database = {
           order_number?: number | null
           seller_user_id?: string | null
           shipping_deadline_days?: number | null
+          shipping_height_cm?: number | null
+          shipping_length_cm?: number | null
           shipping_price_cents?: number | null
           shipping_service?: string | null
+          shipping_weight_grams?: number | null
+          shipping_width_cm?: number | null
           status?: string
           subtotal_cents?: number
           total_cents?: number

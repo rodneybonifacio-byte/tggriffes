@@ -81,6 +81,11 @@ export default function PedidoPDF() {
         skipShipping: !order.dest_cep,
         siteUrl: window.location.origin,
         logoUrl: settings?.store_logo_url || '',
+        // Include shipping package metrics from saved order data
+        shippingWeightGrams: order.shipping_weight_grams || undefined,
+        shippingLengthCm: order.shipping_length_cm || undefined,
+        shippingWidthCm: order.shipping_width_cm || undefined,
+        shippingHeightCm: order.shipping_height_cm || undefined,
         items: order.order_intent_items?.map((item: any) => {
           const product = item.product_id ? productsMap[item.product_id] : null;
           return {
