@@ -704,26 +704,26 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       page.drawText("ENVIO", {
         x: MARGIN,
         y,
-        size: 20,
+        size: 10,
         font: fontBold,
         color: black,
       });
       
-      y -= 28;
+      y -= 16;
       
       // Shipping method
       const shippingMethodText = order.skipShipping ? 'A combinar' : order.shippingService;
       page.drawText(`Método: ${shippingMethodText}`, {
         x: MARGIN,
         y,
-        size: 20,
+        size: 10,
         font: fontRegular,
         color: black,
       });
       
-      // If shipping was calculated (not skipped), show the package dimensions used
-      if (!order.skipShipping && order.shippingWeightGrams) {
-        y -= 22;
+      // Always show package weight breakdown if we have the data
+      if (order.shippingWeightGrams && totalPieces > 0) {
+        y -= 16;
         
         // Calculate weight per piece
         const weightPerPieceGrams = order.shippingWeightGrams / totalPieces;
@@ -740,21 +740,23 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
           color: black,
         });
         
-        y -= 16;
-        
         // Package dimensions
-        const dimensionsText = `Dimensões: ${order.shippingLengthCm || 0} x ${order.shippingWidthCm || 0} x ${order.shippingHeightCm || 0} cm`;
+        if (order.shippingLengthCm && order.shippingWidthCm && order.shippingHeightCm) {
+          y -= 16;
+          
+          const dimensionsText = `Dimensões: ${order.shippingLengthCm} x ${order.shippingWidthCm} x ${order.shippingHeightCm} cm`;
+          
+          page.drawText(dimensionsText, {
+            x: MARGIN,
+            y,
+            size: 10,
+            font: fontRegular,
+            color: black,
+          });
+        }
         
-        page.drawText(dimensionsText, {
-          x: MARGIN,
-          y,
-          size: 10,
-          font: fontRegular,
-          color: black,
-        });
-        
-        // Deadline
-        if (order.shippingDeadlineDays > 0) {
+        // Deadline (only for shipping orders)
+        if (!order.skipShipping && order.shippingDeadlineDays > 0) {
           y -= 16;
           
           const deadlineText = order.shippingDeadlineDays === 1 
