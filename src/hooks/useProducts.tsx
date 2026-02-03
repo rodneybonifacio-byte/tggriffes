@@ -73,8 +73,8 @@ export function useProducts(filters?: ProductFilters) {
 
       return products;
     },
-    staleTime: 10000, // 10 seconds - products data can change frequently
-    gcTime: 60000, // 1 minute cache
+    staleTime: 30000, // 30 seconds - reduces refetches on navigation
+    gcTime: 120000, // 2 minutes cache
   });
 }
 
@@ -141,6 +141,8 @@ export function useCategories() {
       if (error) throw error;
       return data as Category[];
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes - categories rarely change
+    gcTime: 10 * 60 * 1000, // 10 minutes cache
   });
 }
 
