@@ -40,19 +40,26 @@ export default function PedidoPDF() {
         return;
       }
 
-      // Get unique product IDs to fetch images and categories
+      // Get unique product IDs to fetch images, categories, and dimensions
       const productIds = [...new Set(
         order.order_intent_items
           ?.map((item: any) => item.product_id)
           .filter(Boolean) || []
       )];
 
-      // Fetch products with images and categories
-      let productsMap: Record<string, { main_image_url: string | null; category_name: string }> = {};
+      // Fetch products with images, categories, and dimensions for weight calculation
+      let productsMap: Record<string, { 
+        main_image_url: string | null; 
+        category_name: string;
+        weight_grams: number | null;
+        length_cm: number | null;
+        width_cm: number | null;
+        height_cm: number | null;
+      }> = {};
       if (productIds.length > 0) {
         const { data: products } = await supabase
           .from('products')
-          .select('id, main_image_url, categories:category_id(name)')
+          .select('id, main_image_url, weight_grams, length_cm, width_cm, height_cm, categories:category_id(name)')
           .in('id', productIds);
 
         if (products) {
@@ -60,9 +67,52 @@ export default function PedidoPDF() {
             productsMap[p.id] = {
               main_image_url: p.main_image_url,
               category_name: (p.categories as any)?.name || 'Outros',
+              weight_grams: p.weight_grams,
+              length_cm: p.length_cm ? Number(p.length_cm) : null,
+              width_cm: p.width_cm ? Number(p.width_cm) : null,
+              height_cm: p.height_cm ? Number(p.height_cm) : null,
             };
           }
         }
+      }
+
+      // Calculate package metrics if not saved in order
+      const DEFAULT_WEIGHT_GRAMS = 300;
+      const DEFAULT_LENGTH_CM = 30;
+      const DEFAULT_WIDTH_CM = 30;
+      const DEFAULT_HEIGHT_CM_PER_ITEM = 2;
+
+      let calculatedWeightGrams = order.shipping_weight_grams;
+      let calculatedLengthCm = order.shipping_length_cm;
+      let calculatedWidthCm = order.shipping_width_cm;
+      let calculatedHeightCm = order.shipping_height_cm;
+
+      // If metrics aren't saved, calculate from products
+      if (!calculatedWeightGrams && order.order_intent_items?.length) {
+        let totalWeight = 0;
+        let maxLength = DEFAULT_LENGTH_CM;
+        let maxWidth = DEFAULT_WIDTH_CM;
+        let totalHeight = 0;
+
+        for (const item of order.order_intent_items) {
+          const qty = item.qty || 1;
+          const product = item.product_id ? productsMap[item.product_id] : null;
+
+          const w = product?.weight_grams ?? DEFAULT_WEIGHT_GRAMS;
+          const l = product?.length_cm ?? DEFAULT_LENGTH_CM;
+          const wd = product?.width_cm ?? DEFAULT_WIDTH_CM;
+          const h = product?.height_cm ?? DEFAULT_HEIGHT_CM_PER_ITEM;
+
+          totalWeight += w * qty;
+          maxLength = Math.max(maxLength, l);
+          maxWidth = Math.max(maxWidth, wd);
+          totalHeight += h * qty;
+        }
+
+        calculatedWeightGrams = Math.max(1, Math.round(totalWeight));
+        calculatedLengthCm = Math.max(1, Math.round(maxLength));
+        calculatedWidthCm = Math.max(1, Math.round(maxWidth));
+        calculatedHeightCm = Math.max(1, Math.round(totalHeight));
       }
 
       // Build order data for PDF generation
@@ -81,18 +131,18 @@ export default function PedidoPDF() {
         skipShipping: !order.dest_cep,
         siteUrl: window.location.origin,
         logoUrl: settings?.store_logo_url || '',
-        // Include shipping package metrics from saved order data
-        shippingWeightGrams: order.shipping_weight_grams || undefined,
-        shippingLengthCm: order.shipping_length_cm || undefined,
-        shippingWidthCm: order.shipping_width_cm || undefined,
-        shippingHeightCm: order.shipping_height_cm || undefined,
+        // Include shipping package metrics (saved or calculated)
+        shippingWeightGrams: calculatedWeightGrams || undefined,
+        shippingLengthCm: calculatedLengthCm || undefined,
+        shippingWidthCm: calculatedWidthCm || undefined,
+        shippingHeightCm: calculatedHeightCm || undefined,
         items: order.order_intent_items?.map((item: any) => {
           const product = item.product_id ? productsMap[item.product_id] : null;
           return {
             productName: item.product_name || 'Item',
             size: item.size || '',
             color: item.color || null,
-            quantity: item.qty || 1, // Edge function expects "quantity", not "qty"
+            quantity: item.qty || 1,
             unitPriceCents: item.unit_price_cents || 0,
             imageUrl: product?.main_image_url || '',
             category: product?.category_name || 'Outros',
