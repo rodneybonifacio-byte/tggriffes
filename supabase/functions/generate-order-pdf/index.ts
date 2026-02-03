@@ -723,23 +723,39 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
       
       // If shipping was calculated (not skipped), show the package dimensions used
       if (!order.skipShipping && order.shippingWeightGrams) {
-        y -= 28;
+        y -= 22;
         
-        // Package dimensions info
-        const weightKg = (order.shippingWeightGrams / 1000).toFixed(2);
-        const dimensionsText = `Peso: ${weightKg}kg  •  Dimensões: ${order.shippingLengthCm || 0}x${order.shippingWidthCm || 0}x${order.shippingHeightCm || 0}cm`;
+        // Calculate weight per piece
+        const weightPerPieceGrams = order.shippingWeightGrams / totalPieces;
+        const totalWeightKg = (order.shippingWeightGrams / 1000).toFixed(2);
+        
+        // Weight breakdown: Ex: "30 peças x 300g = 9.00kg"
+        const weightBreakdown = `${totalPieces} peças x ${Math.round(weightPerPieceGrams)}g = ${totalWeightKg}kg`;
+        
+        page.drawText(`Peso: ${weightBreakdown}`, {
+          x: MARGIN,
+          y,
+          size: 10,
+          font: fontRegular,
+          color: black,
+        });
+        
+        y -= 16;
+        
+        // Package dimensions
+        const dimensionsText = `Dimensões: ${order.shippingLengthCm || 0} x ${order.shippingWidthCm || 0} x ${order.shippingHeightCm || 0} cm`;
         
         page.drawText(dimensionsText, {
           x: MARGIN,
           y,
-          size: 20,
+          size: 10,
           font: fontRegular,
           color: black,
         });
         
         // Deadline
         if (order.shippingDeadlineDays > 0) {
-          y -= 28;
+          y -= 16;
           
           const deadlineText = order.shippingDeadlineDays === 1 
             ? '1 dia útil' 
@@ -748,7 +764,7 @@ async function generatePDF(order: OrderData): Promise<Uint8Array> {
           page.drawText(`Prazo: ${deadlineText}`, {
             x: MARGIN,
             y,
-            size: 20,
+            size: 10,
             font: fontRegular,
             color: black,
           });
