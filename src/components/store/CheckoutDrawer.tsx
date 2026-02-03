@@ -266,6 +266,11 @@ ${pdfUrl}`;
           observations: discountCents > 0 
             ? `${observations.trim() ? observations.trim() + ' | ' : ''}Promoção aplicada: ${promoDescription} (-${formatPrice(discountCents)})`
             : (observations.trim() || null),
+          // Save shipping package metrics for PDF generation
+          shipping_weight_grams: !skipShipping && selectedShipping ? shippingMetrics.weightGrams : null,
+          shipping_length_cm: !skipShipping && selectedShipping ? shippingMetrics.lengthCm : null,
+          shipping_width_cm: !skipShipping && selectedShipping ? shippingMetrics.widthCm : null,
+          shipping_height_cm: !skipShipping && selectedShipping ? shippingMetrics.heightCm : null,
         });
 
       if (orderError) throw orderError;
