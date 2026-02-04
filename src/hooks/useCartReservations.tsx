@@ -29,7 +29,10 @@ export interface CartReservation {
   image_url: string | null;
   reserved_at: string;
   expires_at: string;
+  added_from: 'catalog' | 'product_page' | null;
 }
+
+export type AddedFromSource = 'catalog' | 'product_page';
 
 export interface CreateReservationParams {
   productId: string;
@@ -39,6 +42,7 @@ export interface CreateReservationParams {
   quantity: number;
   unitPriceCents: number;
   imageUrl: string | null;
+  addedFrom: AddedFromSource;
 }
 
 // Hook para buscar reservas da sessão atual
@@ -81,6 +85,7 @@ export function useCreateReservation() {
         p_product_name: params.productName,
         p_unit_price_cents: params.unitPriceCents,
         p_image_url: params.imageUrl,
+        p_added_from: params.addedFrom,
       });
       
       if (error) {
@@ -129,6 +134,7 @@ export function useCreateReservation() {
           image_url: params.imageUrl,
           reserved_at: new Date().toISOString(),
           expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          added_from: params.addedFrom,
         }];
       });
       

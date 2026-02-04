@@ -277,6 +277,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
         unit_price_cents: product.price_cents,
         line_total_cents: newQty * product.price_cents,
         created_at: new Date().toISOString(),
+        added_from: 'catalog',
       };
       setEditedItems([...editedItems, newItem]);
     }
@@ -648,6 +649,7 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
                               qty: 1,
                               unit_price_cents: selectedProduct.price_cents,
                               line_total_cents: selectedProduct.price_cents,
+                              added_from: 'catalog',
                               created_at: new Date().toISOString(),
                             };
                             setEditedItems([...editedItems, newItem]);

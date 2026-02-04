@@ -286,6 +286,7 @@ ${pdfUrl}`;
         qty: item.quantity,
         unit_price_cents: item.unitPriceCents,
         line_total_cents: item.unitPriceCents * item.quantity,
+        added_from: item.addedFrom || 'catalog',
       }));
 
       // 4. Deletar reservas de carrinho (restaura estoque via trigger)

@@ -1,6 +1,7 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CustomerBehaviorCard } from '@/components/admin/CustomerBehaviorCard';
 import { useProducts } from '@/hooks/useProducts';
 import { useOrderIntents } from '@/hooks/useOrders';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -275,6 +276,13 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Customer Behavior Analytics */}
+        {showPrices && (
+          <div className="mt-8">
+            <CustomerBehaviorCard />
+          </div>
+        )}
       </AdminLayout>
     </AdminGuard>
   );
