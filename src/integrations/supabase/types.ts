@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       cart_reservations: {
         Row: {
+          added_from: string | null
           color: string | null
           created_at: string
           expires_at: string
@@ -31,6 +32,7 @@ export type Database = {
           variant_id: string
         }
         Insert: {
+          added_from?: string | null
           color?: string | null
           created_at?: string
           expires_at?: string
@@ -46,6 +48,7 @@ export type Database = {
           variant_id: string
         }
         Update: {
+          added_from?: string | null
           color?: string | null
           created_at?: string
           expires_at?: string
@@ -165,6 +168,7 @@ export type Database = {
       }
       order_intent_items: {
         Row: {
+          added_from: string | null
           color: string | null
           created_at: string
           id: string
@@ -178,6 +182,7 @@ export type Database = {
           variant_id: string | null
         }
         Insert: {
+          added_from?: string | null
           color?: string | null
           created_at?: string
           id?: string
@@ -191,6 +196,7 @@ export type Database = {
           variant_id?: string | null
         }
         Update: {
+          added_from?: string | null
           color?: string | null
           created_at?: string
           id?: string
@@ -755,6 +761,7 @@ export type Database = {
           p_variant_id: string
         }
         Returns: {
+          added_from: string | null
           color: string | null
           created_at: string
           expires_at: string
@@ -788,6 +795,7 @@ export type Database = {
           p_unit_price_cents: number
         }
         Returns: {
+          added_from: string | null
           color: string | null
           created_at: string
           expires_at: string
