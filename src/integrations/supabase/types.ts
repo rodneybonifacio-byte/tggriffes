@@ -783,40 +783,76 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      add_cart_reservation_by_attrs: {
-        Args: {
-          p_color: string
-          p_image_url: string
-          p_product_id: string
-          p_product_name: string
-          p_quantity: number
-          p_session_id: string
-          p_size: string
-          p_unit_price_cents: number
-        }
-        Returns: {
-          added_from: string | null
-          color: string | null
-          created_at: string
-          expires_at: string
-          id: string
-          image_url: string | null
-          product_id: string
-          product_name: string
-          quantity: number
-          reserved_at: string
-          session_id: string
-          size: string
-          unit_price_cents: number
-          variant_id: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "cart_reservations"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      add_cart_reservation_by_attrs:
+        | {
+            Args: {
+              p_color: string
+              p_image_url: string
+              p_product_id: string
+              p_product_name: string
+              p_quantity: number
+              p_session_id: string
+              p_size: string
+              p_unit_price_cents: number
+            }
+            Returns: {
+              added_from: string | null
+              color: string | null
+              created_at: string
+              expires_at: string
+              id: string
+              image_url: string | null
+              product_id: string
+              product_name: string
+              quantity: number
+              reserved_at: string
+              session_id: string
+              size: string
+              unit_price_cents: number
+              variant_id: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "cart_reservations"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_added_from?: string
+              p_color: string
+              p_image_url: string
+              p_product_id: string
+              p_product_name: string
+              p_quantity: number
+              p_session_id: string
+              p_size: string
+              p_unit_price_cents: number
+            }
+            Returns: {
+              added_from: string | null
+              color: string | null
+              created_at: string
+              expires_at: string
+              id: string
+              image_url: string | null
+              product_id: string
+              product_name: string
+              quantity: number
+              reserved_at: string
+              session_id: string
+              size: string
+              unit_price_cents: number
+              variant_id: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "cart_reservations"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       convert_reservations_to_order: {
         Args: { p_session_id: string }
         Returns: undefined

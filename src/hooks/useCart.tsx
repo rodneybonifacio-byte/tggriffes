@@ -5,7 +5,8 @@ import {
   useUpdateReservation, 
   useDeleteReservation,
   useClearSessionReservations,
-  CartReservation
+  CartReservation,
+  AddedFromSource
 } from './useCartReservations';
 
 export interface CartItem {
@@ -19,6 +20,7 @@ export interface CartItem {
   unitPriceCents: number;
   imageUrl: string | null;
   category: string | null;
+  addedFrom: AddedFromSource | null;
 }
 
 export interface AddItemResult {
@@ -36,6 +38,7 @@ export interface AddItemParams {
   unitPriceCents: number;
   imageUrl: string | null;
   category: string | null;
+  addedFrom: AddedFromSource;
 }
 
 interface CartContextType {
@@ -74,6 +77,7 @@ function reservationToCartItem(reservation: CartReservation): CartItem {
     unitPriceCents: reservation.unit_price_cents,
     imageUrl: reservation.image_url,
     category: null,
+    addedFrom: reservation.added_from as AddedFromSource | null,
   };
 }
 
@@ -101,6 +105,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         quantity: item.quantity,
         unitPriceCents: item.unitPriceCents,
         imageUrl: item.imageUrl,
+        addedFrom: item.addedFrom,
       });
       return { success: true };
     } catch (error: unknown) {
