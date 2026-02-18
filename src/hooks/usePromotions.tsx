@@ -37,6 +37,8 @@ export function usePromotions() {
       if (error) throw error;
       return data as Promotion[];
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes - reduces repeated calls
+    gcTime: 10 * 60 * 1000,
   });
 }
 
@@ -152,6 +154,8 @@ export function useApplicablePromotions(quantity: number, productId?: string, ca
       return applicable[0] || null;
     },
     enabled: quantity > 0,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000,
   });
 }
 
