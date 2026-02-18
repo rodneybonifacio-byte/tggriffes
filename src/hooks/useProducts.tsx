@@ -73,8 +73,8 @@ export function useProducts(filters?: ProductFilters) {
 
       return products;
     },
-    staleTime: 30000, // 30 seconds - reduces refetches on navigation
-    gcTime: 120000, // 2 minutes cache
+    staleTime: 5 * 60 * 1000, // 5 minutes - reduces DB calls significantly
+    gcTime: 10 * 60 * 1000, // 10 minutes cache
   });
 }
 
@@ -124,8 +124,8 @@ export function useProductBySlug(slug: string | undefined) {
       return data as Product | null;
     },
     enabled: !!slug,
-    staleTime: 5000, // 5 seconds - product page needs fresh data
-    gcTime: 60000,
+    staleTime: 60 * 1000, // 1 minute - balances freshness with cost
+    gcTime: 5 * 60 * 1000, // 5 minutes cache
   });
 }
 
