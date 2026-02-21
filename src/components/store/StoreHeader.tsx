@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useCategories } from '@/hooks/useProducts';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { useAuth } from '@/hooks/useAuth';
+import { usePermissions } from '@/hooks/usePermissions';
 import { getWhatsAppLink } from '@/lib/utils';
 import logoImage from '@/assets/logo.png';
 import { CartDrawer } from './CartDrawer';
@@ -22,6 +23,7 @@ export function StoreHeader({ onSearch, searchValue = '' }: StoreHeaderProps) {
   const { data: categories } = useCategories();
   const { data: settings } = useStoreSettings();
   const { user } = useAuth();
+  const { isAdmin, isCollaborator } = usePermissions();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,10 +52,12 @@ export function StoreHeader({ onSearch, searchValue = '' }: StoreHeaderProps) {
                 <User className="h-5 w-5" />
                 {user ? 'Minha Conta' : 'Entrar'}
               </Link>
-              <Link to="/admin" className="text-lg font-medium hover:text-primary/80 flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Painel Admin
-              </Link>
+              {(isAdmin || isCollaborator) && (
+                <Link to="/admin" className="text-lg font-medium hover:text-primary/80 flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Painel Admin
+                </Link>
+              )}
               <div className="border-t pt-4">
                 <p className="text-sm font-semibold text-muted-foreground mb-2">Categorias</p>
                 {categories?.map((cat) => (
