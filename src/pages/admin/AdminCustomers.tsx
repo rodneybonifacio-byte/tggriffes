@@ -38,6 +38,20 @@ export default function AdminCustomers() {
   const [sortField, setSortField] = useState<SortField>('order_count');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [periodLabel, setPeriodLabel] = useState<string>('');
+
+  const applyPreset = (label: string, from: Date, to: Date) => {
+    setDateRange({ from, to });
+    setPeriodLabel(label);
+  };
+
+  const clearPeriod = () => {
+    setDateRange(undefined);
+    setPeriodLabel('');
+  };
+
+  const now = new Date();
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
