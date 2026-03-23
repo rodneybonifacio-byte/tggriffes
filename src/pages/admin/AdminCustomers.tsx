@@ -206,6 +206,85 @@ export default function AdminCustomers() {
           </Card>
         </div>
 
+        {/* Filtro por Período */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+            <Filter className="h-4 w-4" /> Período:
+          </span>
+          <Button variant={periodLabel === 'Hoje' ? 'default' : 'outline'} size="sm"
+            onClick={() => applyPreset('Hoje', startOfDay(now), endOfDay(now))}>
+            Hoje
+          </Button>
+          <Button variant={periodLabel === '7 dias' ? 'default' : 'outline'} size="sm"
+            onClick={() => applyPreset('7 dias', subDays(now, 7), now)}>
+            7 dias
+          </Button>
+          <Button variant={periodLabel === '30 dias' ? 'default' : 'outline'} size="sm"
+            onClick={() => applyPreset('30 dias', subDays(now, 30), now)}>
+            30 dias
+          </Button>
+          <Button variant={periodLabel === 'Este mês' ? 'default' : 'outline'} size="sm"
+            onClick={() => applyPreset('Este mês', startOfMonth(now), endOfMonth(now))}>
+            Este mês
+          </Button>
+          <Button variant={periodLabel === 'Mês passado' ? 'default' : 'outline'} size="sm"
+            onClick={() => {
+              const lastMonth = subMonths(now, 1);
+              applyPreset('Mês passado', startOfMonth(lastMonth), endOfMonth(lastMonth));
+            }}>
+            Mês passado
+          </Button>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant={periodLabel === 'Personalizado' ? 'default' : 'outline'} size="sm" className="gap-1.5">
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {periodLabel === 'Personalizado' && dateRange?.from
+                  ? `${format(dateRange.from, 'dd/MM', { locale: ptBR })} - ${dateRange.to ? format(dateRange.to, 'dd/MM', { locale: ptBR }) : '...'}`
+                  : 'Personalizado'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={dateRange}
+                onSelect={(range) => {
+                  setDateRange(range);
+                  setPeriodLabel('Personalizado');
+                }}
+                numberOfMonths={2}
+                locale={ptBR}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {dateRange?.from && (
+            <Button variant="ghost" size="sm" onClick={clearPeriod} className="gap-1">
+              <X className="h-3.5 w-3.5" /> Limpar
+            </Button>
+          )}
+        </div>
+
+        {dateRange?.from && (
+          <div className="mb-4 p-3 rounded-lg bg-muted/50 border text-sm text-muted-foreground">
+            Exibindo clientes com pedidos entre{' '}
+            <span className="font-medium text-foreground">
+              {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })}
+            </span>
+            {dateRange.to && dateRange.to.getTime() !== dateRange.from.getTime() && (
+              <>
+                {' '}e{' '}
+                <span className="font-medium text-foreground">
+                  {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
+                </span>
+              </>
+            )}
+            {' '}• {totalCustomers} clientes ativos no período
+          </div>
+        )}
+
         {/* Busca + Ordenação */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
