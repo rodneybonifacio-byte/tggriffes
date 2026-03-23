@@ -9,10 +9,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { formatPrice } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn, formatPrice } from '@/lib/utils';
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { DateRange } from 'react-day-picker';
 import { 
   Search, Users, Phone, ShoppingBag, TrendingUp, 
-  ChevronDown, ChevronUp, ArrowUpDown, ArrowDown, ArrowUp 
+  ChevronDown, ChevronUp, ArrowUpDown, ArrowDown, ArrowUp,
+  CalendarIcon, Filter, X
 } from 'lucide-react';
 
 type SortField = 'name' | 'order_count' | 'total_spent' | 'created_at';
