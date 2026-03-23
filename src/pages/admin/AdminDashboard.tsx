@@ -278,12 +278,11 @@ const AdminDashboard = () => {
           </Card>
         </div>
 
-        {/* Customer Behavior Analytics */}
-        {showPrices && (
-          <div className="mt-8">
-            <CustomerBehaviorCard />
-          </div>
-        )}
+        {/* Top Customers + Customer Behavior */}
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          <TopCustomersCard />
+          {showPrices && <CustomerBehaviorCard />}
+        </div>
       </AdminLayout>
     </AdminGuard>
   );
