@@ -2,6 +2,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CustomerBehaviorCard } from '@/components/admin/CustomerBehaviorCard';
+import { TopCustomersCard } from '@/components/admin/TopCustomersCard';
 import { useProducts } from '@/hooks/useProducts';
 import { useOrderIntents } from '@/hooks/useOrders';
 import { usePermissions } from '@/hooks/usePermissions';
