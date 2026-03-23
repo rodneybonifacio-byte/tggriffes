@@ -62,14 +62,36 @@ export default function AdminCustomers() {
     }
   };
 
+  // Filtra pedidos por período e recalcula stats
+  const customersWithPeriodFilter = useMemo(() => {
+    if (!customers) return [];
+    if (!dateRange?.from) return customers;
+
+    const from = startOfDay(dateRange.from);
+    const to = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+
+    return customers.map(c => {
+      const filteredOrders = c.orders.filter(o => {
+        const d = new Date(o.created_at);
+        return d >= from && d <= to;
+      });
+      return {
+        ...c,
+        orders: filteredOrders,
+        order_count: filteredOrders.length,
+        total_spent: filteredOrders.reduce((sum, o) => sum + (o.total_cents || 0), 0),
+      };
+    });
+  }, [customers, dateRange]);
+
   const filteredAndSorted = useMemo(() => {
-    let list = customers?.filter(c => {
+    let list = customersWithPeriodFilter.filter(c => {
       const searchLower = search.toLowerCase();
       return (
         c.name?.toLowerCase().includes(searchLower) ||
         c.whatsapp.includes(search.replace(/\D/g, ''))
       );
-    }) || [];
+    });
 
     list.sort((a, b) => {
       let cmp = 0;
@@ -91,12 +113,15 @@ export default function AdminCustomers() {
     });
 
     return list;
-  }, [customers, search, sortField, sortDir]);
+  }, [customersWithPeriodFilter, search, sortField, sortDir]);
 
-  // Estatísticas
-  const totalCustomers = customers?.length || 0;
-  const totalOrders = customers?.reduce((sum, c) => sum + c.order_count, 0) || 0;
-  const totalRevenue = customers?.reduce((sum, c) => sum + c.total_spent, 0) || 0;
+  // Estatísticas (baseadas no período filtrado)
+  const activeCustomers = dateRange?.from 
+    ? customersWithPeriodFilter.filter(c => c.order_count > 0) 
+    : customersWithPeriodFilter;
+  const totalCustomers = activeCustomers.length;
+  const totalOrders = activeCustomers.reduce((sum, c) => sum + c.order_count, 0);
+  const totalRevenue = activeCustomers.reduce((sum, c) => sum + c.total_spent, 0);
   const avgOrdersPerCustomer = totalCustomers > 0 ? (totalOrders / totalCustomers).toFixed(1) : '0';
 
   const formatWhatsAppDisplay = (whatsapp: string) => {
