@@ -9,10 +9,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { formatPrice } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn, formatPrice } from '@/lib/utils';
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays, subWeeks, subMonths } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { DateRange } from 'react-day-picker';
 import { 
   Search, Users, Phone, ShoppingBag, TrendingUp, 
-  ChevronDown, ChevronUp, ArrowUpDown, ArrowDown, ArrowUp 
+  ChevronDown, ChevronUp, ArrowUpDown, ArrowDown, ArrowUp,
+  CalendarIcon, Filter, X
 } from 'lucide-react';
 
 type SortField = 'name' | 'order_count' | 'total_spent' | 'created_at';
@@ -32,6 +38,20 @@ export default function AdminCustomers() {
   const [sortField, setSortField] = useState<SortField>('order_count');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [periodLabel, setPeriodLabel] = useState<string>('');
+
+  const applyPreset = (label: string, from: Date, to: Date) => {
+    setDateRange({ from, to });
+    setPeriodLabel(label);
+  };
+
+  const clearPeriod = () => {
+    setDateRange(undefined);
+    setPeriodLabel('');
+  };
+
+  const now = new Date();
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -42,14 +62,36 @@ export default function AdminCustomers() {
     }
   };
 
+  // Filtra pedidos por período e recalcula stats
+  const customersWithPeriodFilter = useMemo(() => {
+    if (!customers) return [];
+    if (!dateRange?.from) return customers;
+
+    const from = startOfDay(dateRange.from);
+    const to = dateRange.to ? endOfDay(dateRange.to) : endOfDay(dateRange.from);
+
+    return customers.map(c => {
+      const filteredOrders = c.orders.filter(o => {
+        const d = new Date(o.created_at);
+        return d >= from && d <= to;
+      });
+      return {
+        ...c,
+        orders: filteredOrders,
+        order_count: filteredOrders.length,
+        total_spent: filteredOrders.reduce((sum, o) => sum + (o.total_cents || 0), 0),
+      };
+    });
+  }, [customers, dateRange]);
+
   const filteredAndSorted = useMemo(() => {
-    let list = customers?.filter(c => {
+    let list = customersWithPeriodFilter.filter(c => {
       const searchLower = search.toLowerCase();
       return (
         c.name?.toLowerCase().includes(searchLower) ||
         c.whatsapp.includes(search.replace(/\D/g, ''))
       );
-    }) || [];
+    });
 
     list.sort((a, b) => {
       let cmp = 0;
@@ -71,12 +113,15 @@ export default function AdminCustomers() {
     });
 
     return list;
-  }, [customers, search, sortField, sortDir]);
+  }, [customersWithPeriodFilter, search, sortField, sortDir]);
 
-  // Estatísticas
-  const totalCustomers = customers?.length || 0;
-  const totalOrders = customers?.reduce((sum, c) => sum + c.order_count, 0) || 0;
-  const totalRevenue = customers?.reduce((sum, c) => sum + c.total_spent, 0) || 0;
+  // Estatísticas (baseadas no período filtrado)
+  const activeCustomers = dateRange?.from 
+    ? customersWithPeriodFilter.filter(c => c.order_count > 0) 
+    : customersWithPeriodFilter;
+  const totalCustomers = activeCustomers.length;
+  const totalOrders = activeCustomers.reduce((sum, c) => sum + c.order_count, 0);
+  const totalRevenue = activeCustomers.reduce((sum, c) => sum + c.total_spent, 0);
   const avgOrdersPerCustomer = totalCustomers > 0 ? (totalOrders / totalCustomers).toFixed(1) : '0';
 
   const formatWhatsAppDisplay = (whatsapp: string) => {
@@ -160,6 +205,85 @@ export default function AdminCustomers() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Filtro por Período */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+            <Filter className="h-4 w-4" /> Período:
+          </span>
+          <Button variant={periodLabel === 'Hoje' ? 'default' : 'outline'} size="sm"
+            onClick={() => applyPreset('Hoje', startOfDay(now), endOfDay(now))}>
+            Hoje
+          </Button>
+          <Button variant={periodLabel === '7 dias' ? 'default' : 'outline'} size="sm"
+            onClick={() => applyPreset('7 dias', subDays(now, 7), now)}>
+            7 dias
+          </Button>
+          <Button variant={periodLabel === '30 dias' ? 'default' : 'outline'} size="sm"
+            onClick={() => applyPreset('30 dias', subDays(now, 30), now)}>
+            30 dias
+          </Button>
+          <Button variant={periodLabel === 'Este mês' ? 'default' : 'outline'} size="sm"
+            onClick={() => applyPreset('Este mês', startOfMonth(now), endOfMonth(now))}>
+            Este mês
+          </Button>
+          <Button variant={periodLabel === 'Mês passado' ? 'default' : 'outline'} size="sm"
+            onClick={() => {
+              const lastMonth = subMonths(now, 1);
+              applyPreset('Mês passado', startOfMonth(lastMonth), endOfMonth(lastMonth));
+            }}>
+            Mês passado
+          </Button>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant={periodLabel === 'Personalizado' ? 'default' : 'outline'} size="sm" className="gap-1.5">
+                <CalendarIcon className="h-3.5 w-3.5" />
+                {periodLabel === 'Personalizado' && dateRange?.from
+                  ? `${format(dateRange.from, 'dd/MM', { locale: ptBR })} - ${dateRange.to ? format(dateRange.to, 'dd/MM', { locale: ptBR }) : '...'}`
+                  : 'Personalizado'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={dateRange}
+                onSelect={(range) => {
+                  setDateRange(range);
+                  setPeriodLabel('Personalizado');
+                }}
+                numberOfMonths={2}
+                locale={ptBR}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {dateRange?.from && (
+            <Button variant="ghost" size="sm" onClick={clearPeriod} className="gap-1">
+              <X className="h-3.5 w-3.5" /> Limpar
+            </Button>
+          )}
+        </div>
+
+        {dateRange?.from && (
+          <div className="mb-4 p-3 rounded-lg bg-muted/50 border text-sm text-muted-foreground">
+            Exibindo clientes com pedidos entre{' '}
+            <span className="font-medium text-foreground">
+              {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })}
+            </span>
+            {dateRange.to && dateRange.to.getTime() !== dateRange.from.getTime() && (
+              <>
+                {' '}e{' '}
+                <span className="font-medium text-foreground">
+                  {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
+                </span>
+              </>
+            )}
+            {' '}• {totalCustomers} clientes ativos no período
+          </div>
+        )}
 
         {/* Busca + Ordenação */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
