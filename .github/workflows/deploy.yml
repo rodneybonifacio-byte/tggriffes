@@ -18,6 +18,10 @@ jobs:
             set -e
             cd /opt/apps/tggriffes-clone && git pull origin main
             cd /opt/apps
-            docker compose build --no-cache tggriffes
+            docker compose build --no-cache \
+              --build-arg VITE_SUPABASE_URL=${{ secrets.PROD_SUPABASE_URL }} \
+              --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.PROD_SUPABASE_ANON_KEY }} \
+              --build-arg VITE_SUPABASE_PROJECT_ID=self-hosted \
+              tggriffes
             docker compose up -d --no-deps tggriffes
             docker image prune -f
