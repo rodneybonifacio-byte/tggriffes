@@ -44,7 +44,7 @@ export function PromoBanner() {
         
         {/* Price highlight */}
         <div className="flex items-center gap-1 bg-white text-rose-600 font-black px-4 py-1.5 md:px-6 md:py-2 rounded-full shadow-lg shrink-0">
-          <span className="text-lg md:text-2xl">R$ 38</span>
+          <span className="text-lg md:text-2xl">R$ 35</span>
           <span className="text-xs md:text-sm font-bold opacity-80">/peça</span>
         </div>
       </div>
