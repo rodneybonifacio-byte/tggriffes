@@ -34,7 +34,7 @@ export function PromoBanner() {
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2">
             <span className="text-yellow-200 font-bold text-sm md:text-lg tracking-wide">
-              Acima de 35 peças
+              Acima de 10 peças
             </span>
             <span className="text-white/80 text-xs md:text-sm font-medium">
               em tamanhos variados
