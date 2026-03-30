@@ -1,0 +1,1 @@
+UPDATE promotions SET min_quantity = 35, name = 'Acima de 35 Produtos 38 reais M G GG' WHERE id = '1777e611-811f-4b3c-baf8-6898fc05bf26';
