@@ -19,9 +19,9 @@ jobs:
             cd /opt/apps/tggriffes-clone && git pull origin main
             cd /opt/apps
             docker compose build --no-cache \
-              --build-arg VITE_SUPABASE_URL=${{ secrets.PROD_SUPABASE_URL }} \
-              --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=${{ secrets.PROD_SUPABASE_ANON_KEY }} \
-              --build-arg VITE_SUPABASE_PROJECT_ID=self-hosted \
+              --build-arg VITE_SUPABASE_URL=https://dvqeitcliexenhnfradm.supabase.co \
+              --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2cWVpdGNsaWV4ZW5obmZyYWRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2MjY3ODksImV4cCI6MjA4MzIwMjc4OX0.UJrQF1SALl0qYRZqY7H-PGI_83DEJ6hFzY8OaJPpwl4 \
+              --build-arg VITE_SUPABASE_PROJECT_ID=dvqeitcliexenhnfradm \
               tggriffes
             docker compose up -d --no-deps tggriffes
             docker image prune -f
