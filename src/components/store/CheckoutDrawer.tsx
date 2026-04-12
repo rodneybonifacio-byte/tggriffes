@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -210,7 +210,12 @@ ${pdfUrl}`;
     return message;
   };
 
+  const isSubmittingRef = useRef(false);
+
   const handleFinalize = async () => {
+    // Prevent double-click / concurrent submissions
+    if (isSubmittingRef.current) return;
+
     if (!settings?.seller_whatsapp) {
       toast({
         title: 'Erro',
@@ -220,6 +225,7 @@ ${pdfUrl}`;
       return;
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
 
     try {
@@ -368,6 +374,7 @@ ${pdfUrl}`;
         variant: 'destructive',
       });
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
