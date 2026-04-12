@@ -210,7 +210,12 @@ ${pdfUrl}`;
     return message;
   };
 
+  const isSubmittingRef = useRef(false);
+
   const handleFinalize = async () => {
+    // Prevent double-click / concurrent submissions
+    if (isSubmittingRef.current) return;
+
     if (!settings?.seller_whatsapp) {
       toast({
         title: 'Erro',
@@ -220,6 +225,7 @@ ${pdfUrl}`;
       return;
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
 
     try {
