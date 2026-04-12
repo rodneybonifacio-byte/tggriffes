@@ -374,6 +374,7 @@ ${pdfUrl}`;
         variant: 'destructive',
       });
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
