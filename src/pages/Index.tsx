@@ -117,10 +117,18 @@ const Index = () => {
       groupsWithMaxStock.push({ baseName, maxStock, products: groupProducts });
     });
 
+    // Helper: groups whose base name contains OVERSIZED come first
+    const isOversized = (baseName: string) => /OVERSIZED/i.test(baseName);
+
     // Sort groups by max stock descending (default relevance sort)
     // Then flatten back to a single array
     if (sortBy === 'relevance') {
-      groupsWithMaxStock.sort((a, b) => b.maxStock - a.maxStock);
+      groupsWithMaxStock.sort((a, b) => {
+        const aOver = isOversized(a.baseName) ? 1 : 0;
+        const bOver = isOversized(b.baseName) ? 1 : 0;
+        if (aOver !== bOver) return bOver - aOver;
+        return b.maxStock - a.maxStock;
+      });
       result = groupsWithMaxStock.flatMap(g => g.products);
     } else if (sortBy === 'stock-asc') {
       // For ascending, sort groups by min stock
