@@ -13,6 +13,7 @@ import {
   ShoppingBasket,
   Store,
   UserCog,
+  LayoutGrid,
   LucideIcon
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
@@ -33,6 +34,7 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/admin', permission: 'canViewDashboard' },
   { icon: Package, label: 'Produtos', href: '/admin/produtos', permission: 'canViewProducts' },
+  { icon: LayoutGrid, label: 'Organizar Home', href: '/admin/organizar-home', permission: 'canEditProducts' },
   { icon: Warehouse, label: 'Estoque', href: '/admin/estoque', permission: 'canViewStock' },
   { icon: Tag, label: 'Promoções', href: '/admin/promocoes', permission: 'canViewPromotions' },
   { icon: ShoppingCart, label: 'Pedidos', href: '/admin/pedidos', permission: 'canViewOrders' },
