@@ -389,8 +389,11 @@ export type Database = {
           category_id: string | null
           created_at: string
           description: string | null
+          display_order: number | null
           height_cm: number | null
+          hidden_from_home: boolean
           id: string
+          is_featured: boolean
           length_cm: number | null
           main_image_url: string | null
           name: string
@@ -406,8 +409,11 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           description?: string | null
+          display_order?: number | null
           height_cm?: number | null
+          hidden_from_home?: boolean
           id?: string
+          is_featured?: boolean
           length_cm?: number | null
           main_image_url?: string | null
           name: string
@@ -423,8 +429,11 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           description?: string | null
+          display_order?: number | null
           height_cm?: number | null
+          hidden_from_home?: boolean
           id?: string
+          is_featured?: boolean
           length_cm?: number | null
           main_image_url?: string | null
           name?: string
