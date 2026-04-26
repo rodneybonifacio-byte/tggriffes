@@ -123,6 +123,58 @@ const Index = () => {
     // Sort groups by max stock descending (default relevance sort)
     // Then flatten back to a single array
     if (sortBy === 'relevance') {
+      // Filter out products hidden from home
+      groupsWithMaxStock.forEach(g => {
+        g.products = g.products.filter(p => !(p as any).hidden_from_home);
+      });
+      const visibleGroups = groupsWithMaxStock.filter(g => g.products.length > 0);
+
+      // Helpers for manual organization
+      const groupHasFeatured = (g: typeof visibleGroups[number]) =>
+        g.products.some(p => (p as any).is_featured);
+      const groupMinDisplayOrder = (g: typeof visibleGroups[number]) => {
+        const orders = g.products
+          .map(p => (p as any).display_order as number | null)
+          .filter((v): v is number => v !== null && v !== undefined);
+        return orders.length > 0 ? Math.min(...orders) : Number.POSITIVE_INFINITY;
+      };
+
+      // Sort products WITHIN each group: featured first, then by display_order, then stock
+      visibleGroups.forEach(g => {
+        g.products.sort((a, b) => {
+          const af = (a as any).is_featured ? 1 : 0;
+          const bf = (b as any).is_featured ? 1 : 0;
+          if (af !== bf) return bf - af;
+          const ao = (a as any).display_order;
+          const bo = (b as any).display_order;
+          const aHas = ao !== null && ao !== undefined;
+          const bHas = bo !== null && bo !== undefined;
+          if (aHas && bHas) return ao - bo;
+          if (aHas) return -1;
+          if (bHas) return 1;
+          return getStableStock(b) - getStableStock(a);
+        });
+      });
+
+      // Sort GROUPS: featured groups first, then by min display_order, then oversized, then stock
+      visibleGroups.sort((a, b) => {
+        const af = groupHasFeatured(a) ? 1 : 0;
+        const bf = groupHasFeatured(b) ? 1 : 0;
+        if (af !== bf) return bf - af;
+
+        const ao = groupMinDisplayOrder(a);
+        const bo = groupMinDisplayOrder(b);
+        if (ao !== bo && (ao !== Number.POSITIVE_INFINITY || bo !== Number.POSITIVE_INFINITY)) {
+          return ao - bo;
+        }
+
+        const aOver = isOversized(a.baseName) ? 1 : 0;
+        const bOver = isOversized(b.baseName) ? 1 : 0;
+        if (aOver !== bOver) return bOver - aOver;
+        return b.maxStock - a.maxStock;
+      });
+      result = visibleGroups.flatMap(g => g.products);
+    } else if (sortBy === '__legacy_relevance__') {
       groupsWithMaxStock.sort((a, b) => {
         const aOver = isOversized(a.baseName) ? 1 : 0;
         const bOver = isOversized(b.baseName) ? 1 : 0;
