@@ -312,19 +312,19 @@ function AdminHomeOrganizationContent() {
           <p className="text-xs text-muted-foreground">Total</p>
           <p className="text-2xl font-bold">{localProducts.length}</p>
         </Card>
-        <Card className="p-4 bg-gradient-to-br from-yellow-500/10 to-orange-500/5 border-yellow-500/20">
+        <Card className="p-4 bg-gradient-to-br from-primary/15 to-primary/5 border-primary/30">
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Star className="h-3 w-3" /> Destaques
           </p>
           <p className="text-2xl font-bold">{featuredCount}</p>
         </Card>
-        <Card className="p-4 bg-gradient-to-br from-emerald-500/10 to-green-500/5 border-emerald-500/20">
+        <Card className="p-4 bg-gradient-to-br from-secondary/40 to-secondary/10 border-secondary">
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Eye className="h-3 w-3" /> Visíveis
           </p>
           <p className="text-2xl font-bold">{localProducts.length - hiddenCount}</p>
         </Card>
-        <Card className="p-4 bg-gradient-to-br from-rose-500/10 to-red-500/5 border-rose-500/20">
+        <Card className="p-4 bg-gradient-to-br from-destructive/10 to-destructive/5 border-destructive/20">
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <EyeOff className="h-3 w-3" /> Ocultos
           </p>
@@ -382,7 +382,7 @@ function AdminHomeOrganizationContent() {
           </div>
         </div>
         {isDirty && (
-          <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+          <p className="text-xs text-primary mt-2 flex items-center gap-1">
             <Sparkles className="h-3 w-3" /> Você tem alterações não salvas
           </p>
         )}
@@ -395,7 +395,7 @@ function AdminHomeOrganizationContent() {
           <p className="text-sm text-muted-foreground mb-3">
             Arraste pelo canto superior direito de cada card para reordenar.
             {visibleProducts.length !== localProducts.length && (
-              <span className="ml-2 text-amber-600 dark:text-amber-400">
+              <span className="ml-2 text-primary">
                 Mostrando {visibleProducts.length} de {localProducts.length}
               </span>
             )}
