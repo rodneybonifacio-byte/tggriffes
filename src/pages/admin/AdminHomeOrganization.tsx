@@ -59,7 +59,7 @@ function SortableProductCard({ product, index, onToggleFeatured, onToggleHidden 
   };
 
   const totalStock = product.product_variants?.reduce((sum, v) => sum + v.stock_qty, 0) || 0;
-  const imageUrl = getProductImageUrl(product.main_image_url, product.shopify_image_url);
+  const imageUrl = getProductImageUrl(product.shopify_image_url, product.main_image_url, '400x');
 
   return (
     <div
@@ -152,7 +152,7 @@ function SortableProductCard({ product, index, onToggleFeatured, onToggleHidden 
 }
 
 function PreviewCard({ product, index }: { product: OrgProduct; index: number }) {
-  const imageUrl = getProductImageUrl(product.main_image_url, product.shopify_image_url);
+  const imageUrl = getProductImageUrl(product.shopify_image_url, product.main_image_url, '200x');
   return (
     <div className="relative bg-card border rounded-lg overflow-hidden">
       <div className="absolute top-1 left-1 z-10">
