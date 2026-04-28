@@ -64,6 +64,9 @@ export function AdminLayout({ children, title, backHref }: AdminLayoutProps) {
 
   // Filtrar itens do menu baseado nas permissões
   const visibleMenuItems = menuItems.filter(item => {
+    // Durante carregamento das permissões, mostrar todos os itens para evitar
+    // que o menu pisque vazio (especialmente após deploy/refresh)
+    if (permissions.isLoading) return true;
     if (!item.permission) return true;
     return permissions[item.permission] === true;
   });
