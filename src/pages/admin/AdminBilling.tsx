@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useBillingInvoices, useBillingSettings, useGenerateCharge, useCheckPayment } from '@/hooks/useBilling';
-import { Copy, RefreshCw, Zap, AlertTriangle, CheckCircle2, Clock, Lock, Headphones, Wrench, Server, Sparkles } from 'lucide-react';
+import { Copy, RefreshCw, Zap, AlertTriangle, CheckCircle2, Clock, Lock, Headphones, Wrench, Server, Sparkles, Crown, BadgePercent } from 'lucide-react';
 import { toast } from 'sonner';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -31,6 +31,23 @@ export default function AdminBilling() {
   const check = useCheckPayment();
   const [open, setOpen] = useState<string | null>(null);
   const current = invoices.find(i => i.id === open);
+
+  const monthlyCents = settings?.monthly_amount_cents ?? 0;
+  const annualFullCents = monthlyCents * 12;
+  const annualDiscountedCents = Math.round(annualFullCents * 0.8);
+  const annualSavingsCents = annualFullCents - annualDiscountedCents;
+
+  const handleAnnual = () => {
+    generate.mutate({ plan: 'annual' }, {
+      onSuccess: (res: any) => {
+        if (res?.invoice?.id) {
+          setOpen(res.invoice.id);
+          toast.success('PIX anual gerado!');
+        }
+      },
+      onError: (e: any) => toast.error(e.message),
+    });
+  };
 
   return (
     <AdminLayout title="Mensalidade">
@@ -84,6 +101,61 @@ export default function AdminBilling() {
               </CardDescription>
             </div>
           </CardHeader>
+        </Card>
+      )}
+
+      {/* Chamariz: Plano Anual com 20% OFF */}
+      {settings && (
+        <Card className="mb-6 overflow-hidden border-2 border-amber-400 bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 shadow-lg">
+          <CardContent className="p-6">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="rounded-full bg-amber-500 p-1.5">
+                    <Crown className="h-4 w-4 text-white" />
+                  </div>
+                  <Badge className="bg-rose-600 hover:bg-rose-600 text-white border-0">
+                    <BadgePercent className="h-3 w-3 mr-1" /> 20% OFF
+                  </Badge>
+                  <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
+                    Oferta exclusiva
+                  </span>
+                </div>
+                <h3 className="text-2xl font-bold text-zinc-900">
+                  Pague 1 ano e economize {formatBRL(annualSavingsCents)}
+                </h3>
+                <p className="text-sm text-zinc-700">
+                  Garanta 12 meses de mensalidade com <strong>20% de desconto</strong>.
+                  Sem reajuste, sem preocupação, sem cobrança mensal.
+                </p>
+                <div className="flex items-baseline gap-3 flex-wrap">
+                  <span className="text-sm text-zinc-500 line-through">
+                    {formatBRL(annualFullCents)}
+                  </span>
+                  <span className="text-3xl font-extrabold text-rose-700">
+                    {formatBRL(annualDiscountedCents)}
+                  </span>
+                  <span className="text-xs text-zinc-600">
+                    equivale a {formatBRL(Math.round(annualDiscountedCents / 12))}/mês
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 md:items-end">
+                <Button
+                  size="lg"
+                  onClick={handleAnnual}
+                  disabled={generate.isPending}
+                  className="bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white shadow-md text-base h-12 px-8"
+                >
+                  <Zap className="h-5 w-5" />
+                  {generate.isPending ? 'Gerando PIX...' : 'Quero pagar 1 ano'}
+                </Button>
+                <p className="text-[11px] text-zinc-600 text-center md:text-right">
+                  PIX gerado na hora • válido por 7 dias
+                </p>
+              </div>
+            </div>
+          </CardContent>
         </Card>
       )}
 
