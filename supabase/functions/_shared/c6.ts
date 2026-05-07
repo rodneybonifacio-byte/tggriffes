@@ -11,13 +11,27 @@ const C6_BASE = (Deno.env.get('C6_ENVIRONMENT') ?? 'production').toLowerCase() =
   ? 'https://baas-api-sandbox.c6bank.info'
   : 'https://baas-api.c6bank.info';
 
+function normalizePem(raw: string): string {
+  // Aceita PEM com \n literais (quando colado via formulário de secret),
+  // CRLF, ou já bem-formatado. Garante terminação com newline.
+  let s = raw.trim();
+  if (s.includes('\\n')) s = s.replace(/\\n/g, '\n');
+  s = s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  if (!s.endsWith('\n')) s += '\n';
+  return s;
+}
+
 // mTLS client (criado uma única vez)
 let mtlsClient: Deno.HttpClient | null = null;
 function getClient(): Deno.HttpClient {
   if (mtlsClient) return mtlsClient;
-  const cert = Deno.env.get('C6_CERT_PEM');
-  const key = Deno.env.get('C6_KEY_PEM');
-  if (!cert || !key) throw new Error('C6_CERT_PEM e C6_KEY_PEM são obrigatórios');
+  const certRaw = Deno.env.get('C6_CERT_PEM');
+  const keyRaw = Deno.env.get('C6_KEY_PEM');
+  if (!certRaw || !keyRaw) throw new Error('C6_CERT_PEM e C6_KEY_PEM são obrigatórios');
+  const cert = normalizePem(certRaw);
+  const key = normalizePem(keyRaw);
+  if (!cert.includes('-----BEGIN')) throw new Error('C6_CERT_PEM inválido: faltam marcadores BEGIN/END');
+  if (!key.includes('-----BEGIN')) throw new Error('C6_KEY_PEM inválido: faltam marcadores BEGIN/END');
   // @ts-ignore Deno API
   mtlsClient = Deno.createHttpClient({ cert, key });
   return mtlsClient;
