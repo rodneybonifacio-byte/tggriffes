@@ -14,6 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
+      billing_invoices: {
+        Row: {
+          amount_cents: number
+          attempts: number
+          c6_correlation_id: string | null
+          c6_txid: string | null
+          created_at: string
+          due_date: string
+          id: string
+          last_check_at: string | null
+          last_error: string | null
+          paid_at: string | null
+          pix_copia_cola: string | null
+          pix_expires_at: string | null
+          pix_qrcode: string | null
+          reference_month: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents?: number
+          attempts?: number
+          c6_correlation_id?: string | null
+          c6_txid?: string | null
+          created_at?: string
+          due_date: string
+          id?: string
+          last_check_at?: string | null
+          last_error?: string | null
+          paid_at?: string | null
+          pix_copia_cola?: string | null
+          pix_expires_at?: string | null
+          pix_qrcode?: string | null
+          reference_month: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          attempts?: number
+          c6_correlation_id?: string | null
+          c6_txid?: string | null
+          created_at?: string
+          due_date?: string
+          id?: string
+          last_check_at?: string | null
+          last_error?: string | null
+          paid_at?: string | null
+          pix_copia_cola?: string | null
+          pix_expires_at?: string | null
+          pix_qrcode?: string | null
+          reference_month?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      billing_settings: {
+        Row: {
+          blocked_at: string | null
+          blocked_invoice_id: string | null
+          charge_day: number
+          created_at: string
+          grace_days: number
+          id: string
+          is_blocked: boolean
+          monthly_amount_cents: number
+          notification_message: string | null
+          pix_recipient_document: string
+          pix_recipient_name: string
+          updated_at: string
+        }
+        Insert: {
+          blocked_at?: string | null
+          blocked_invoice_id?: string | null
+          charge_day?: number
+          created_at?: string
+          grace_days?: number
+          id?: string
+          is_blocked?: boolean
+          monthly_amount_cents?: number
+          notification_message?: string | null
+          pix_recipient_document?: string
+          pix_recipient_name?: string
+          updated_at?: string
+        }
+        Update: {
+          blocked_at?: string | null
+          blocked_invoice_id?: string | null
+          charge_day?: number
+          created_at?: string
+          grace_days?: number
+          id?: string
+          is_blocked?: boolean
+          monthly_amount_cents?: number
+          notification_message?: string | null
+          pix_recipient_document?: string
+          pix_recipient_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cart_reservations: {
         Row: {
           added_from: string | null
