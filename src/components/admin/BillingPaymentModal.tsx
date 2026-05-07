@@ -23,7 +23,7 @@ export function BillingPaymentModal() {
     .filter(i => ['PENDENTE', 'ATRASADO', 'BLOQUEADO'].includes(i.status) && !i.paid_at)
     .sort((a, b) => a.reference_month.localeCompare(b.reference_month))[0];
 
-  // Gera QR localmente a partir do "copia e cola" caso C6 não tenha retornado imagem
+  // Gera QR localmente a partir do "copia e cola" caso o provedor não tenha retornado imagem
   useEffect(() => {
     if (!open) { setQrDataUrl(''); return; }
     if (open.pix_qrcode) {
@@ -74,7 +74,7 @@ export function BillingPaymentModal() {
             <DialogTitle>{title}</DialogTitle>
           </div>
           <DialogDescription>
-            Esta janela só será fechada após a confirmação automática do pagamento via C6 Bank.
+            Esta janela só será fechada após a confirmação automática do pagamento.
           </DialogDescription>
         </DialogHeader>
 
