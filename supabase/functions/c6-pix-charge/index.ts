@@ -27,24 +27,49 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const referenceMonth: string = body.reference_month ?? monthStart();
+    const plan: 'monthly' | 'annual' = body.plan === 'annual' ? 'annual' : 'monthly';
 
     const { data: settings, error: settingsErr } = await supabase
       .from('billing_settings').select('*').limit(1).single();
     if (settingsErr) throw settingsErr;
 
-    // Reaproveita fatura existente do mês se houver
-    const { data: existing } = await supabase
-      .from('billing_invoices').select('*')
-      .eq('reference_month', referenceMonth).maybeSingle();
+    // Para plano anual: reusa fatura anual aberta do ano corrente, se houver
+    let existing: any = null;
+    if (plan === 'annual') {
+      const year = referenceMonth.slice(0, 4);
+      const { data } = await supabase
+        .from('billing_invoices').select('*')
+        .gte('reference_month', `${year}-01-01`)
+        .lte('reference_month', `${year}-12-31`)
+        .ilike('custom_label', 'Anual%')
+        .neq('status', 'PAGO')
+        .order('created_at', { ascending: false })
+        .limit(1).maybeSingle();
+      existing = data;
+    } else {
+      const { data } = await supabase
+        .from('billing_invoices').select('*')
+        .eq('reference_month', referenceMonth)
+        .is('custom_label', null)
+        .maybeSingle();
+      existing = data;
+    }
 
     let invoice = existing;
     if (!invoice) {
+      const monthlyCents = settings.monthly_amount_cents;
+      const annualCents = Math.round(monthlyCents * 12 * 0.8); // 20% off
+      const amountCents = plan === 'annual' ? annualCents : monthlyCents;
+      const customLabel = plan === 'annual'
+        ? `Anual ${referenceMonth.slice(0, 4)} (12 meses, 20% OFF)`
+        : null;
       const { data: created, error: insErr } = await supabase
         .from('billing_invoices').insert({
           reference_month: referenceMonth,
-          amount_cents: settings.monthly_amount_cents,
+          amount_cents: amountCents,
           due_date: dueDate(referenceMonth, settings.charge_day, settings.grace_days),
           status: 'PENDENTE',
+          custom_label: customLabel,
         }).select().single();
       if (insErr) throw insErr;
       invoice = created;
@@ -61,7 +86,9 @@ Deno.serve(async (req) => {
       amountCents: invoice.amount_cents,
       expiresInSeconds: 7 * 24 * 3600,
       payerName: 'TG Griffes',
-      description: `Mensalidade BRHUB ${referenceMonth.slice(0, 7)}`,
+      description: plan === 'annual'
+        ? `Plano Anual BRHUB ${referenceMonth.slice(0, 4)} - 20% OFF`
+        : `Mensalidade BRHUB ${referenceMonth.slice(0, 7)}`,
     });
 
     const { data: updated, error: updErr } = await supabase
