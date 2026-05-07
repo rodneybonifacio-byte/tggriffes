@@ -137,7 +137,7 @@ export default function AdminBilling() {
               <TableBody>
                 {invoices.map(inv => (
                   <TableRow key={inv.id}>
-                    <TableCell className="capitalize">{formatMonth(inv.reference_month)}</TableCell>
+                    <TableCell className="capitalize">{inv.custom_label ?? formatMonth(inv.reference_month)}</TableCell>
                     <TableCell>{formatBRL(inv.amount_cents)}</TableCell>
                     <TableCell>{new Date(inv.due_date + 'T12:00:00Z').toLocaleDateString('pt-BR')}</TableCell>
                     <TableCell>
@@ -164,6 +164,9 @@ export default function AdminBilling() {
           </DialogHeader>
           {current && (
             <div className="space-y-4">
+              <div className="text-center text-sm text-muted-foreground capitalize">
+                {current.custom_label ?? formatMonth(current.reference_month)}
+              </div>
               {current.pix_qrcode && (
                 <img src={current.pix_qrcode.startsWith('data:') ? current.pix_qrcode : `data:image/png;base64,${current.pix_qrcode}`}
                   alt="QR Code PIX" className="mx-auto w-56 h-56 border rounded-lg" />
