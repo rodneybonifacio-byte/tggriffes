@@ -29,13 +29,14 @@ export function useBillingInvoices() {
 export function useGenerateCharge() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (params?: string | { referenceMonth?: string; plan?: 'monthly' | 'annual' }) => {
+    mutationFn: async (params?: string | { referenceMonth?: string; plan?: 'monthly' | 'annual'; invoiceId?: string }) => {
       const body: any = {};
       if (typeof params === 'string') {
         body.reference_month = params;
       } else if (params) {
         if (params.referenceMonth) body.reference_month = params.referenceMonth;
         if (params.plan) body.plan = params.plan;
+        if (params.invoiceId) body.invoice_id = params.invoiceId;
       }
       const { data, error } = await supabase.functions.invoke('c6-pix-charge', {
         body,

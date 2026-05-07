@@ -28,14 +28,19 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const referenceMonth: string = body.reference_month ?? monthStart();
     const plan: 'monthly' | 'annual' = body.plan === 'annual' ? 'annual' : 'monthly';
+    const invoiceId: string | undefined = body.invoice_id;
 
     const { data: settings, error: settingsErr } = await supabase
       .from('billing_settings').select('*').limit(1).single();
     if (settingsErr) throw settingsErr;
 
-    // Para plano anual: reusa fatura anual aberta do ano corrente, se houver
     let existing: any = null;
-    if (plan === 'annual') {
+    if (invoiceId) {
+      const { data } = await supabase
+        .from('billing_invoices').select('*')
+        .eq('id', invoiceId).maybeSingle();
+      existing = data;
+    } else if (plan === 'annual') {
       const year = referenceMonth.slice(0, 4);
       const { data } = await supabase
         .from('billing_invoices').select('*')
@@ -50,7 +55,6 @@ Deno.serve(async (req) => {
       const { data } = await supabase
         .from('billing_invoices').select('*')
         .eq('reference_month', referenceMonth)
-        .is('custom_label', null)
         .maybeSingle();
       existing = data;
     }

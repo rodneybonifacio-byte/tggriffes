@@ -99,7 +99,7 @@ export function BillingPaymentModal() {
               <p className="text-sm text-muted-foreground">
                 Ainda não há um PIX gerado para esta fatura.
               </p>
-              <Button className="w-full" onClick={() => generate.mutate(open.reference_month, {
+              <Button className="w-full" onClick={() => generate.mutate({ invoiceId: open.id }, {
                 onSuccess: () => toast.success('PIX gerado'),
                 onError: (e: any) => toast.error(e.message ?? 'Falha ao gerar PIX'),
               })} disabled={generate.isPending}>
