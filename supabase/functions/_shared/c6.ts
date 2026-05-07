@@ -1,18 +1,26 @@
 // Helper para autenticar e chamar a API PIX do C6 Bank
-// Docs: https://developers.c6bank.com.br/
+// Docs (referência): https://developers.c6bank.com.br/  e SDKs públicos
+// Endpoints corretos:
+//   Produção:  https://baas-api.c6bank.info
+//   Sandbox:   https://baas-api-sandbox.c6bank.info
+//   Auth:      POST /v1/auth   (form-urlencoded, mTLS)
+//   PIX cob:   PUT /v2/pix/cob/{txid}   (mTLS + Bearer)
+//   PIX cob:   GET /v2/pix/cob/{txid}
 
 const C6_BASE = (Deno.env.get('C6_ENVIRONMENT') ?? 'production').toLowerCase() === 'sandbox'
-  ? 'https://baas-sandbox.c6bank.info'
-  : 'https://baas.c6bank.info';
+  ? 'https://baas-api-sandbox.c6bank.info'
+  : 'https://baas-api.c6bank.info';
 
-function pemToArrayBuffer(pem: string): ArrayBuffer {
-  const b64 = pem.replace(/-----BEGIN [^-]+-----/g, '')
-    .replace(/-----END [^-]+-----/g, '')
-    .replace(/\s+/g, '');
-  const bin = atob(b64);
-  const buf = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-  return buf.buffer;
+// mTLS client (criado uma única vez)
+let mtlsClient: Deno.HttpClient | null = null;
+function getClient(): Deno.HttpClient {
+  if (mtlsClient) return mtlsClient;
+  const cert = Deno.env.get('C6_CERT_PEM');
+  const key = Deno.env.get('C6_KEY_PEM');
+  if (!cert || !key) throw new Error('C6_CERT_PEM e C6_KEY_PEM são obrigatórios');
+  // @ts-ignore Deno API
+  mtlsClient = Deno.createHttpClient({ cert, key });
+  return mtlsClient;
 }
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
@@ -28,13 +36,14 @@ async function getAccessToken(): Promise<string> {
     grant_type: 'client_credentials',
     client_id: clientId,
     client_secret: clientSecret,
-    scope: 'pix.read pix.write cob.read cob.write',
   });
 
-  const res = await fetch(`${C6_BASE}/auth/oauth2/v1/token`, {
+  const res = await fetch(`${C6_BASE}/v1/auth`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body,
+    // @ts-ignore Deno fetch supports client option
+    client: getClient(),
   });
   if (!res.ok) {
     throw new Error(`C6 auth falhou [${res.status}]: ${await res.text()}`);
@@ -76,13 +85,15 @@ export async function createPixCob(input: CreatePixCobInput): Promise<CreatePixC
     solicitacaoPagador: input.description.slice(0, 140),
   };
 
-  const res = await fetch(`${C6_BASE}/pix/v2/cob/${txid}`, {
+  const res = await fetch(`${C6_BASE}/v2/pix/cob/${txid}`, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
+    // @ts-ignore mTLS
+    client: getClient(),
   });
   if (!res.ok) {
     throw new Error(`C6 cob falhou [${res.status}]: ${await res.text()}`);
@@ -94,8 +105,10 @@ export async function createPixCob(input: CreatePixCobInput): Promise<CreatePixC
   let pixCopiaCola = cob.pixCopiaECola ?? '';
   let qrCodeBase64 = '';
   if (locId) {
-    const qrRes = await fetch(`${C6_BASE}/pix/v2/loc/${locId}/qrcode`, {
+    const qrRes = await fetch(`${C6_BASE}/v2/pix/loc/${locId}/qrcode`, {
       headers: { 'Authorization': `Bearer ${token}` },
+      // @ts-ignore mTLS
+      client: getClient(),
     });
     if (qrRes.ok) {
       const qr = await qrRes.json();
@@ -124,8 +137,10 @@ export interface PixCobStatus {
 
 export async function getPixCobStatus(txid: string): Promise<PixCobStatus> {
   const token = await getAccessToken();
-  const res = await fetch(`${C6_BASE}/pix/v2/cob/${txid}`, {
+  const res = await fetch(`${C6_BASE}/v2/pix/cob/${txid}`, {
     headers: { 'Authorization': `Bearer ${token}` },
+    // @ts-ignore mTLS
+    client: getClient(),
   });
   if (!res.ok) {
     throw new Error(`C6 cob status falhou [${res.status}]: ${await res.text()}`);
