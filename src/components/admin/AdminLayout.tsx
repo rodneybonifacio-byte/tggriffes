@@ -14,6 +14,7 @@ import {
   Store,
   UserCog,
   LayoutGrid,
+  Receipt,
   LucideIcon
 } from 'lucide-react';
 import logoImage from '@/assets/logo.png';
@@ -23,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { cn } from '@/lib/utils';
+import { BillingBanner } from '@/components/admin/BillingBanner';
 
 interface MenuItem {
   icon: LucideIcon;
@@ -43,6 +45,7 @@ const menuItems: MenuItem[] = [
   { icon: Store, label: 'Shopify', href: '/admin/shopify', permission: 'canViewShopify' },
   { icon: UserCog, label: 'Usuários', href: '/admin/usuarios', permission: 'canManageUsers' },
   { icon: Settings, label: 'Configurações', href: '/admin/configuracoes', permission: 'canViewSettings' },
+  { icon: Receipt, label: 'Cobrança BRHUB', href: '/admin/cobranca', permission: 'canViewSettings' },
 ];
 
 interface AdminLayoutProps {
@@ -155,6 +158,7 @@ export function AdminLayout({ children, title, backHref }: AdminLayoutProps) {
 
       {/* Main Content */}
       <main className="lg:pl-64">
+        <BillingBanner />
         <div className="p-4 lg:p-8">
           {/* Desktop Title */}
           {title && (
