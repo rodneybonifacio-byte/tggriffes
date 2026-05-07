@@ -81,7 +81,9 @@ export function BillingPaymentModal() {
         <div className="space-y-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground capitalize">
-              {new Date(open.reference_month + 'T12:00:00Z').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+              {open.custom_label
+                ? open.custom_label
+                : new Date(open.reference_month + 'T12:00:00Z').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
             </span>
             <Badge variant="outline" className={
               blocked ? 'border-red-300 bg-red-50 text-red-700'
