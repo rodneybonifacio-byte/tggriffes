@@ -160,7 +160,7 @@ export default function AdminBilling() {
       <Dialog open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>PIX — {current && formatMonth(current.reference_month)}</DialogTitle>
+            <DialogTitle>PIX — {current && (current.custom_label ?? formatMonth(current.reference_month))}</DialogTitle>
           </DialogHeader>
           {current && (
             <div className="space-y-4">
