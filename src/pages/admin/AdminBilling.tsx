@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useBillingInvoices, useBillingSettings, useGenerateCharge, useCheckPayment } from '@/hooks/useBilling';
-import { Copy, RefreshCw, Zap, AlertTriangle, CheckCircle2, Clock, Lock } from 'lucide-react';
+import { Copy, RefreshCw, Zap, AlertTriangle, CheckCircle2, Clock, Lock, Headphones, Wrench, Server, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 const STATUS_STYLES: Record<string, string> = {
@@ -34,6 +34,45 @@ export default function AdminBilling() {
 
   return (
     <AdminLayout title="Assinatura BRHUB">
+      <Card className="mb-6 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
+        <CardHeader>
+          <CardTitle className="text-lg">O que está incluso na sua mensalidade</CardTitle>
+          <CardDescription>
+            A assinatura BRHUB garante que sua loja continue operando com performance, segurança e evolução contínua.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex gap-3">
+            <div className="rounded-lg bg-primary/10 p-2 h-fit"><Headphones className="h-5 w-5 text-primary" /></div>
+            <div>
+              <p className="font-semibold text-sm">Suporte dedicado</p>
+              <p className="text-xs text-muted-foreground">Atendimento prioritário para dúvidas e incidentes.</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="rounded-lg bg-primary/10 p-2 h-fit"><Wrench className="h-5 w-5 text-primary" /></div>
+            <div>
+              <p className="font-semibold text-sm">Manutenção contínua</p>
+              <p className="text-xs text-muted-foreground">Correções, atualizações de segurança e monitoramento.</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="rounded-lg bg-primary/10 p-2 h-fit"><Server className="h-5 w-5 text-primary" /></div>
+            <div>
+              <p className="font-semibold text-sm">Hospedagem</p>
+              <p className="text-xs text-muted-foreground">Infraestrutura, banco de dados, CDN e backups.</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="rounded-lg bg-primary/10 p-2 h-fit"><Sparkles className="h-5 w-5 text-primary" /></div>
+            <div>
+              <p className="font-semibold text-sm">Ajustes e melhorias</p>
+              <p className="text-xs text-muted-foreground">Pequenos ajustes de layout, textos e novas funcionalidades.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {settings?.is_blocked && (
         <Card className="mb-6 border-red-300 bg-red-50">
           <CardHeader className="flex-row items-center gap-3">
