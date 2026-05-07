@@ -25,6 +25,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { cn } from '@/lib/utils';
 import { BillingBanner } from '@/components/admin/BillingBanner';
+import { BillingPaymentModal } from '@/components/admin/BillingPaymentModal';
 
 interface MenuItem {
   icon: LucideIcon;
