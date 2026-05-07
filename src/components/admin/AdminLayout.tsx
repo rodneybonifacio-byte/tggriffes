@@ -46,7 +46,7 @@ const menuItems: MenuItem[] = [
   { icon: Store, label: 'Shopify', href: '/admin/shopify', permission: 'canViewShopify' },
   { icon: UserCog, label: 'Usuários', href: '/admin/usuarios', permission: 'canManageUsers' },
   { icon: Settings, label: 'Configurações', href: '/admin/configuracoes', permission: 'canViewSettings' },
-  { icon: Receipt, label: 'Assinatura BRHUB', href: '/admin/cobranca', permission: 'canViewSettings' },
+  { icon: Receipt, label: 'Mensalidade', href: '/admin/cobranca', permission: 'canViewSettings' },
 ];
 
 interface AdminLayoutProps {
