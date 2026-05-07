@@ -20,7 +20,7 @@ export function BillingPaymentModal() {
 
   // Fatura mais antiga em aberto (pendente, atrasada ou bloqueada)
   const open = invoices
-    .filter(i => ['PENDENTE', 'ATRASADO', 'BLOQUEADO'].includes(i.status))
+    .filter(i => ['PENDENTE', 'ATRASADO', 'BLOQUEADO'].includes(i.status) && !i.paid_at)
     .sort((a, b) => a.reference_month.localeCompare(b.reference_month))[0];
 
   // Gera QR localmente a partir do "copia e cola" caso C6 não tenha retornado imagem
