@@ -33,12 +33,12 @@ export default function AdminBilling() {
   const current = invoices.find(i => i.id === open);
 
   return (
-    <AdminLayout title="Assinatura BRHUB">
+    <AdminLayout title="Mensalidade">
       <Card className="mb-6 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
         <CardHeader>
           <CardTitle className="text-lg">O que está incluso na sua mensalidade</CardTitle>
           <CardDescription>
-            A assinatura BRHUB garante que sua loja continue operando com performance, segurança e evolução contínua.
+            Sua mensalidade garante que a loja continue operando com performance, segurança e evolução contínua.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
