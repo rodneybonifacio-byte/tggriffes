@@ -21,6 +21,7 @@ export type Database = {
           c6_correlation_id: string | null
           c6_txid: string | null
           created_at: string
+          custom_label: string | null
           due_date: string
           id: string
           last_check_at: string | null
@@ -39,6 +40,7 @@ export type Database = {
           c6_correlation_id?: string | null
           c6_txid?: string | null
           created_at?: string
+          custom_label?: string | null
           due_date: string
           id?: string
           last_check_at?: string | null
@@ -57,6 +59,7 @@ export type Database = {
           c6_correlation_id?: string | null
           c6_txid?: string | null
           created_at?: string
+          custom_label?: string | null
           due_date?: string
           id?: string
           last_check_at?: string | null
