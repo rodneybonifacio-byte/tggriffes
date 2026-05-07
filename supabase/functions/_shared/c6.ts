@@ -132,6 +132,8 @@ export interface PixCobStatus {
   status: 'ATIVA' | 'CONCLUIDA' | 'REMOVIDA_PELO_USUARIO_RECEBEDOR' | 'REMOVIDA_PELO_PSP' | string;
   paid: boolean;
   paidAt?: string;
+  paidAmountCents?: number;
+  endToEndId?: string;
   raw: unknown;
 }
 
@@ -148,10 +150,17 @@ export async function getPixCobStatus(txid: string): Promise<PixCobStatus> {
   const cob = await res.json();
   const status = cob.status as string;
   const pix = Array.isArray(cob.pix) && cob.pix.length > 0 ? cob.pix[0] : null;
+  // Confirmação estrita: só consideramos pago quando o C6 marca a cobrança
+  // como CONCLUIDA e existe um registro de PIX recebido (com valor).
+  const hasReceivedPix = !!pix && typeof pix.valor === 'string' && Number(pix.valor) > 0;
+  const paid = status === 'CONCLUIDA' && hasReceivedPix;
+  const paidAmountCents = hasReceivedPix ? Math.round(Number(pix.valor) * 100) : undefined;
   return {
     status,
-    paid: status === 'CONCLUIDA' || !!pix,
+    paid,
     paidAt: pix?.horario,
+    paidAmountCents,
+    endToEndId: pix?.endToEndId,
     raw: cob,
   };
 }

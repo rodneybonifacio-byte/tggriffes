@@ -31,14 +31,24 @@ Deno.serve(async (req) => {
       try {
         const st = await getPixCobStatus(inv.c6_txid);
         const updates: Record<string, unknown> = { last_check_at: new Date().toISOString() };
+        // Só damos baixa quando o C6 confirma o recebimento (CONCLUIDA + pix recebido)
+        // e o valor pago cobre o valor da fatura. Caso contrário, registramos o motivo
+        // em last_error para auditoria — sem alterar o status.
         if (st.paid) {
-          updates.status = 'PAGO';
-          updates.paid_at = st.paidAt ?? new Date().toISOString();
+          const expected = inv.amount_cents as number;
+          const received = st.paidAmountCents ?? 0;
+          if (received >= expected) {
+            updates.status = 'PAGO';
+            updates.paid_at = st.paidAt ?? new Date().toISOString();
+            updates.last_error = null;
+          } else {
+            updates.last_error = `Pagamento parcial detectado: recebido R$ ${(received/100).toFixed(2)} de R$ ${(expected/100).toFixed(2)}`;
+          }
         }
         await supabase.from('billing_invoices').update(updates).eq('id', inv.id);
 
         // Se foi pago e era a fatura bloqueadora, libera o site
-        if (st.paid) {
+        if (updates.status === 'PAGO') {
           const { data: settings } = await supabase.from('billing_settings').select('*').limit(1).single();
           if (settings?.is_blocked && settings.blocked_invoice_id === inv.id) {
             await supabase.from('billing_settings').update({
@@ -48,7 +58,13 @@ Deno.serve(async (req) => {
             }).eq('id', settings.id);
           }
         }
-        results.push({ id: inv.id, paid: st.paid, status: st.status });
+        results.push({
+          id: inv.id,
+          paid: updates.status === 'PAGO',
+          status: st.status,
+          received_cents: st.paidAmountCents ?? 0,
+          expected_cents: inv.amount_cents,
+        });
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         await supabase.from('billing_invoices').update({
