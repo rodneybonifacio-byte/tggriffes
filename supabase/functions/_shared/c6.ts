@@ -21,15 +21,35 @@ function normalizePem(raw: string): string {
   return s;
 }
 
+function pemFromBase64(b64: string): string {
+  // Decodifica um arquivo PEM inteiro que foi codificado em base64 (uma linha só).
+  const clean = b64.replace(/\s+/g, '');
+  const bytes = Uint8Array.from(atob(clean), c => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+function loadCert(): string {
+  const b64 = Deno.env.get('C6_CERT_B64');
+  if (b64) return normalizePem(pemFromBase64(b64));
+  const raw = Deno.env.get('C6_CERT_PEM');
+  if (raw) return normalizePem(raw);
+  throw new Error('Configure C6_CERT_B64 (recomendado) ou C6_CERT_PEM');
+}
+
+function loadKey(): string {
+  const b64 = Deno.env.get('C6_KEY_B64');
+  if (b64) return normalizePem(pemFromBase64(b64));
+  const raw = Deno.env.get('C6_KEY_PEM');
+  if (raw) return normalizePem(raw);
+  throw new Error('Configure C6_KEY_B64 (recomendado) ou C6_KEY_PEM');
+}
+
 // mTLS client (criado uma única vez)
 let mtlsClient: Deno.HttpClient | null = null;
 function getClient(): Deno.HttpClient {
   if (mtlsClient) return mtlsClient;
-  const certRaw = Deno.env.get('C6_CERT_PEM');
-  const keyRaw = Deno.env.get('C6_KEY_PEM');
-  if (!certRaw || !keyRaw) throw new Error('C6_CERT_PEM e C6_KEY_PEM são obrigatórios');
-  const cert = normalizePem(certRaw);
-  const key = normalizePem(keyRaw);
+  const cert = loadCert();
+  const key = loadKey();
   if (!cert.includes('-----BEGIN')) throw new Error('C6_CERT_PEM inválido: faltam marcadores BEGIN/END');
   if (!key.includes('-----BEGIN')) throw new Error('C6_KEY_PEM inválido: faltam marcadores BEGIN/END');
   // @ts-ignore Deno API
