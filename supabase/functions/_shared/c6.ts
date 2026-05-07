@@ -11,8 +11,6 @@ const C6_BASE = (Deno.env.get('C6_ENVIRONMENT') ?? 'production').toLowerCase() =
   ? 'https://baas-api-sandbox.c6bank.info'
   : 'https://baas-api.c6bank.info';
 
-import { C6_CERT_B64_EMBEDDED, C6_KEY_B64_EMBEDDED } from './c6-cert.ts';
-
 function normalizePem(raw: string): string {
   // Aceita PEM com \n literais (quando colado via formulário de secret),
   // CRLF, ou já bem-formatado. Garante terminação com newline.
@@ -31,7 +29,7 @@ function pemFromBase64(b64: string): string {
 }
 
 function loadCert(): string {
-  const b64 = Deno.env.get('C6_CERT_B64') || C6_CERT_B64_EMBEDDED;
+  const b64 = Deno.env.get('C6_CERT_B64');
   if (b64) return normalizePem(pemFromBase64(b64));
   const raw = Deno.env.get('C6_CERT_PEM');
   if (raw) return normalizePem(raw);
@@ -39,7 +37,7 @@ function loadCert(): string {
 }
 
 function loadKey(): string {
-  const b64 = Deno.env.get('C6_KEY_B64') || C6_KEY_B64_EMBEDDED;
+  const b64 = Deno.env.get('C6_KEY_B64');
   if (b64) return normalizePem(pemFromBase64(b64));
   const raw = Deno.env.get('C6_KEY_PEM');
   if (raw) return normalizePem(raw);
