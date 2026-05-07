@@ -25,6 +25,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { cn } from '@/lib/utils';
 import { BillingBanner } from '@/components/admin/BillingBanner';
+import { BillingPaymentModal } from '@/components/admin/BillingPaymentModal';
 
 interface MenuItem {
   icon: LucideIcon;
@@ -159,6 +160,7 @@ export function AdminLayout({ children, title, backHref }: AdminLayoutProps) {
       {/* Main Content */}
       <main className="lg:pl-64">
         <BillingBanner />
+        <BillingPaymentModal />
         <div className="p-4 lg:p-8">
           {/* Desktop Title */}
           {title && (
