@@ -33,7 +33,7 @@ export default function AdminBilling() {
   const current = invoices.find(i => i.id === open);
 
   return (
-    <AdminLayout title="Cobrança BRHUB">
+    <AdminLayout title="Assinatura BRHUB">
       {settings?.is_blocked && (
         <Card className="mb-6 border-red-300 bg-red-50">
           <CardHeader className="flex-row items-center gap-3">
