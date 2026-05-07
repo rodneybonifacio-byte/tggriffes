@@ -29,9 +29,16 @@ export function useBillingInvoices() {
 export function useGenerateCharge() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (referenceMonth?: string) => {
+    mutationFn: async (params?: string | { referenceMonth?: string; plan?: 'monthly' | 'annual' }) => {
+      const body: any = {};
+      if (typeof params === 'string') {
+        body.reference_month = params;
+      } else if (params) {
+        if (params.referenceMonth) body.reference_month = params.referenceMonth;
+        if (params.plan) body.plan = params.plan;
+      }
       const { data, error } = await supabase.functions.invoke('c6-pix-charge', {
-        body: { reference_month: referenceMonth },
+        body,
       });
       if (error) throw error;
       return data;
