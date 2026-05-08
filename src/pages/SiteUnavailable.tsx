@@ -1,4 +1,5 @@
-import { Wrench, MessageCircle, Sparkles, Clock } from 'lucide-react';
+import { Wrench, MessageCircle, Sparkles, Clock, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 
 export default function SiteUnavailable() {
@@ -70,10 +71,20 @@ export default function SiteUnavailable() {
           )}
         </div>
 
-        <p className="text-center text-xs text-zinc-600 mt-6 flex items-center justify-center gap-1.5">
-          <Clock className="h-3 w-3" />
-          Última atualização: agora há pouco
-        </p>
+        <div className="mt-6 flex items-center justify-center gap-4 text-xs text-zinc-600">
+          <span className="flex items-center gap-1.5">
+            <Clock className="h-3 w-3" />
+            Última atualização: agora há pouco
+          </span>
+          <span className="text-zinc-700">•</span>
+          <Link
+            to="/admin/login"
+            className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            <Lock className="h-3 w-3" />
+            Acesso administrativo
+          </Link>
+        </div>
       </div>
     </div>
   );
