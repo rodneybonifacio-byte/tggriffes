@@ -1,6 +1,7 @@
-import { Wrench, MessageCircle, Sparkles, Clock, Lock } from 'lucide-react';
+import { MessageCircle, Clock, Lock, Instagram } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
+import logoImage from '@/assets/logo.png';
 
 export default function SiteUnavailable() {
   const { data: settings } = useStoreSettings();
@@ -11,49 +12,41 @@ export default function SiteUnavailable() {
   const storeName = settings?.store_name || 'TG Griffes';
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#09090b] flex items-center justify-center p-6">
-      {/* Animated gradient blobs */}
-      <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full bg-amber-500/20 blur-3xl animate-pulse" />
-      <div className="absolute -bottom-40 -right-40 w-[500px] h-[500px] rounded-full bg-orange-600/20 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+    <div className="min-h-screen relative overflow-hidden bg-white flex items-center justify-center p-6">
+      {/* subtle texture */}
       <div className="absolute inset-0 opacity-[0.04]"
-        style={{ backgroundImage: 'linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
+        style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, black 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+      <div className="absolute top-0 inset-x-0 h-1 bg-black" />
 
       <div className="relative max-w-lg w-full">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-xl shadow-2xl p-8 md:p-12 text-center space-y-7">
-          {/* Logo or store name */}
-          {settings?.store_logo_url ? (
-            <img src={settings.store_logo_url} alt={storeName} className="h-10 mx-auto opacity-90" />
-          ) : (
-            <p className="text-xs uppercase tracking-[0.3em] text-zinc-500 font-medium">{storeName}</p>
-          )}
+        <div className="bg-white border border-black/10 shadow-[0_30px_60px_-20px_rgba(0,0,0,0.15)] p-10 md:p-14 text-center space-y-8">
+          {/* Logo */}
+          <img src={logoImage} alt={storeName} className="h-16 md:h-20 mx-auto" />
 
-          {/* Icon */}
-          <div className="relative inline-flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 blur-2xl opacity-50 animate-pulse" />
-            <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-2xl shadow-orange-500/40 rotate-3">
-              <Wrench className="h-11 w-11 text-white -rotate-3" strokeWidth={2.5} />
-            </div>
-            <Sparkles className="absolute -top-2 -right-3 h-5 w-5 text-amber-300 animate-pulse" />
-          </div>
+          <div className="h-px w-16 mx-auto bg-black/20" />
 
           {/* Title */}
-          <div className="space-y-3">
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-br from-white via-zinc-100 to-zinc-400 bg-clip-text text-transparent">
-              Estamos em manutenção
+          <div className="space-y-4">
+            <p className="text-[10px] uppercase tracking-[0.4em] text-black/50 font-medium">
+              Aviso
+            </p>
+            <h1 className="text-3xl md:text-4xl font-light tracking-tight text-black leading-tight">
+              Loja temporariamente<br />
+              <span className="font-semibold">indisponível</span>
             </h1>
-            <p className="text-zinc-400 leading-relaxed">
-              Nossa loja online está passando por uma atualização rápida.<br className="hidden sm:block" />
-              Voltamos em instantes — obrigado pela paciência!
+            <p className="text-sm text-black/60 leading-relaxed max-w-sm mx-auto">
+              Estamos finalizando ajustes para melhor atendê-lo.
+              Nosso atendimento via WhatsApp continua ativo para receber seu pedido.
             </p>
           </div>
 
           {/* Status pill */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black/[0.03] border border-black/10">
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
-            <span className="text-xs font-medium text-emerald-300">Atendimento ativo no WhatsApp</span>
+            <span className="text-[11px] font-medium text-black/70 uppercase tracking-wider">Atendimento ativo</span>
           </div>
 
           {/* WhatsApp CTA */}
@@ -62,29 +55,32 @@ export default function SiteUnavailable() {
               href={waLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-center justify-center gap-3 w-full px-6 py-4 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-semibold shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all hover:scale-[1.02]"
+              className="group flex items-center justify-center gap-3 w-full px-6 py-4 bg-black hover:bg-black/90 text-white font-medium tracking-wide uppercase text-sm transition-all"
             >
-              <MessageCircle className="h-5 w-5" />
-              Falar com a loja no WhatsApp
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+              <MessageCircle className="h-4 w-4" />
+              Falar com um vendedor
             </a>
           )}
         </div>
 
-        <div className="mt-6 flex items-center justify-center gap-4 text-xs text-zinc-600">
+        <div className="mt-8 flex items-center justify-center gap-4 text-[11px] text-black/40 uppercase tracking-wider">
           <span className="flex items-center gap-1.5">
             <Clock className="h-3 w-3" />
-            Última atualização: agora há pouco
+            Voltamos em breve
           </span>
-          <span className="text-zinc-700">•</span>
+          <span className="text-black/20">•</span>
           <Link
             to="/admin/login"
-            className="flex items-center gap-1.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="flex items-center gap-1.5 hover:text-black transition-colors"
           >
             <Lock className="h-3 w-3" />
-            Acesso administrativo
+            Admin
           </Link>
         </div>
+
+        <p className="mt-10 text-center text-[10px] uppercase tracking-[0.3em] text-black/30">
+          {storeName} · Atacado
+        </p>
       </div>
     </div>
   );
