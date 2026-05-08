@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Copy, RefreshCw, Lock, AlertTriangle, Clock, Loader2 } from 'lucide-react';
 import { useBillingInvoices, useBillingSettings, useGenerateCharge, useCheckPayment } from '@/hooks/useBilling';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 function formatBRL(cents: number) {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -16,6 +18,8 @@ export function BillingPaymentModal() {
   const { data: invoices = [] } = useBillingInvoices();
   const generate = useGenerateCharge();
   const check = useCheckPayment();
+  const qc = useQueryClient();
+  const [regenerating, setRegenerating] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   // Fatura mais antiga em aberto (pendente, atrasada ou bloqueada)
@@ -58,6 +62,32 @@ export function BillingPaymentModal() {
     : 'Mensalidade em aberto';
 
   const hasPix = !!open.pix_copia_cola;
+
+  const regeneratePix = async () => {
+    if (!open) return;
+    setRegenerating(true);
+    try {
+      // Limpa o PIX atual para forçar geração de um novo
+      const { error: clearErr } = await supabase
+        .from('billing_invoices' as any)
+        .update({
+          pix_copia_cola: null,
+          pix_qrcode: null,
+          c6_txid: null,
+          c6_correlation_id: null,
+          pix_expires_at: null,
+        })
+        .eq('id', open.id);
+      if (clearErr) throw clearErr;
+      await qc.invalidateQueries({ queryKey: ['billing-invoices'] });
+      await generate.mutateAsync({ invoiceId: open.id });
+      toast.success('Novo PIX gerado');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Falha ao gerar novo PIX');
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   return (
     <Dialog open modal>
@@ -134,6 +164,11 @@ export function BillingPaymentModal() {
               })} disabled={check.isPending}>
                 {check.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 Já paguei — verificar agora
+              </Button>
+
+              <Button variant="outline" className="w-full" onClick={regeneratePix} disabled={regenerating || generate.isPending}>
+                {regenerating || generate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Gerar novo PIX
               </Button>
 
               <p className="text-[11px] text-center text-muted-foreground">
