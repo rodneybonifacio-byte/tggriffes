@@ -278,10 +278,10 @@ export default function AdminShopify() {
               )}
               
               <Button
-                onClick={() => syncAllProducts.mutate()}
-                disabled={syncAllProducts.isPending}
+                onClick={() => startBatchSync(false)}
+                disabled={batchProgress.isRunning || batchProgress.isPaused}
               >
-                {syncAllProducts.isPending ? (
+                {batchProgress.isRunning ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
                   <RefreshCw className="w-4 h-4 mr-2" />
