@@ -531,7 +531,7 @@ serve(async (req) => {
     try {
       // NEW: sync_batch action - syncs a limited batch to avoid timeout
       if (action === 'sync_batch') {
-        const { offset = 0, limit = 30, onlyMissingImages = true } = await req.json().catch(() => ({}));
+        const { offset = 0, limit = 30, onlyMissingImages = true } = body;
         
         // Build query for products needing sync
         let query = supabase
@@ -553,11 +553,14 @@ serve(async (req) => {
           .range(offset, offset + limit - 1);
         
         // Get total count for progress
-        const { count: totalCount } = await supabase
+        let countQuery = supabase
           .from('products')
           .select('*', { count: 'exact', head: true })
-          .eq('active', true)
-          .is('shopify_image_url', null);
+          .eq('active', true);
+        if (onlyMissingImages) {
+          countQuery = countQuery.is('shopify_image_url', null);
+        }
+        const { count: totalCount } = await countQuery;
         
         console.log(`Batch sync: offset=${offset}, limit=${limit}, found=${allProducts?.length || 0}, totalPending=${totalCount}`);
 
