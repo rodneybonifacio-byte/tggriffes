@@ -148,7 +148,7 @@ export default function AdminShopify() {
   };
 
   const resetBatchSync = () => {
-    setBatchProgress({ isRunning: false, isPaused: false, current: 0, total: 0, processed: 0, errors: [] });
+    setBatchProgress({ isRunning: false, isPaused: false, current: 0, total: 0, processed: 0, errors: [], onlyMissingImages: true });
   };
 
   // Effect to run batch when started/resumed
@@ -452,7 +452,7 @@ export default function AdminShopify() {
                     size="sm" 
                     variant="outline" 
                     className="mt-2 w-full border-blue-400 text-blue-700 hover:bg-blue-100"
-                    onClick={startBatchSync}
+                    onClick={() => startBatchSync(true)}
                     disabled={syncBatch.isPending}
                   >
                     <Play className="w-3 h-3 mr-1" />
