@@ -173,9 +173,9 @@ export function useSyncBatch() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ offset = 0, limit = 30 }: { offset?: number; limit?: number }): Promise<BatchSyncResult> => {
+    mutationFn: async ({ offset = 0, limit = 30, onlyMissingImages = true }: { offset?: number; limit?: number; onlyMissingImages?: boolean }): Promise<BatchSyncResult> => {
       const { data, error } = await supabase.functions.invoke('shopify-sync', {
-        body: { action: 'sync_batch', offset, limit, onlyMissingImages: true },
+        body: { action: 'sync_batch', offset, limit, onlyMissingImages },
       });
 
       if (error) throw error;
