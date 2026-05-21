@@ -47,7 +47,8 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
     
-    const { action, productId, variantId, stockQty, nameQuery } = await req.json();
+    const body = await req.json();
+    const { action, productId, variantId, stockQty, nameQuery } = body;
 
     // Shopify API base URL - ensure no trailing slashes or extra chars
     const cleanDomain = SHOPIFY_STORE_DOMAIN.replace(/^https?:\/\//, '').replace(/\/$/, '');
