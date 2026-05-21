@@ -59,21 +59,28 @@ export default function AdminShopify() {
     total: number;
     processed: number;
     errors: any[];
-  }>({ isRunning: false, isPaused: false, current: 0, total: 0, processed: 0, errors: [] });
+    onlyMissingImages: boolean;
+  }>({ isRunning: false, isPaused: false, current: 0, total: 0, processed: 0, errors: [], onlyMissingImages: true });
 
   // Count products missing shopify_image_url
   const [missingImageCount, setMissingImageCount] = useState<number>(0);
+  const [activeProductsCount, setActiveProductsCount] = useState<number>(0);
 
   useEffect(() => {
-    async function fetchMissingImageCount() {
+    async function fetchCounts() {
       const { count } = await supabase
         .from('products')
         .select('*', { count: 'exact', head: true })
         .eq('active', true)
         .is('shopify_image_url', null);
       setMissingImageCount(count || 0);
+      const { count: activeCount } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('active', true);
+      setActiveProductsCount(activeCount || 0);
     }
-    fetchMissingImageCount();
+    fetchCounts();
   }, [products]);
 
   // Batch sync runner
@@ -83,7 +90,8 @@ export default function AdminShopify() {
     try {
       const result = await syncBatch.mutateAsync({ 
         offset: batchProgress.current, 
-        limit: 25 
+        limit: 25,
+        onlyMissingImages: batchProgress.onlyMissingImages,
       });
       
       setBatchProgress(prev => ({
@@ -118,14 +126,15 @@ export default function AdminShopify() {
     }
   }, [batchProgress.current, batchProgress.isPaused, batchProgress.processed, syncBatch, refetchMappings, refetchProducts, refetchLogs]);
 
-  const startBatchSync = () => {
+  const startBatchSync = (onlyMissingImages: boolean = true) => {
     setBatchProgress({
       isRunning: true,
       isPaused: false,
       current: 0,
-      total: missingImageCount,
+      total: onlyMissingImages ? missingImageCount : activeProductsCount,
       processed: 0,
       errors: [],
+      onlyMissingImages,
     });
   };
 
@@ -139,7 +148,7 @@ export default function AdminShopify() {
   };
 
   const resetBatchSync = () => {
-    setBatchProgress({ isRunning: false, isPaused: false, current: 0, total: 0, processed: 0, errors: [] });
+    setBatchProgress({ isRunning: false, isPaused: false, current: 0, total: 0, processed: 0, errors: [], onlyMissingImages: true });
   };
 
   // Effect to run batch when started/resumed
@@ -269,10 +278,10 @@ export default function AdminShopify() {
               )}
               
               <Button
-                onClick={() => syncAllProducts.mutate()}
-                disabled={syncAllProducts.isPending}
+                onClick={() => startBatchSync(false)}
+                disabled={batchProgress.isRunning || batchProgress.isPaused}
               >
-                {syncAllProducts.isPending ? (
+                {batchProgress.isRunning ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
                   <RefreshCw className="w-4 h-4 mr-2" />
@@ -443,7 +452,7 @@ export default function AdminShopify() {
                     size="sm" 
                     variant="outline" 
                     className="mt-2 w-full border-blue-400 text-blue-700 hover:bg-blue-100"
-                    onClick={startBatchSync}
+                    onClick={() => startBatchSync(true)}
                     disabled={syncBatch.isPending}
                   >
                     <Play className="w-3 h-3 mr-1" />
