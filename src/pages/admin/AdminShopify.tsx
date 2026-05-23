@@ -368,8 +368,64 @@ export default function AdminShopify() {
                 )}
                 Sincronizar Tudo
               </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    disabled={replicationState.isRunning || batchProgress.isRunning}
+                  >
+                    {replicationState.isRunning ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-2" />
+                    )}
+                    Arquivar Shopify + Replicar
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Arquivar tudo no Shopify e replicar?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação vai <strong>arquivar todos os produtos no Shopify</strong> (não exclui — ficam como "archived" e podem ser restaurados manualmente),
+                      apagar os mapeamentos locais e em seguida <strong>replicar apenas produtos ativos com estoque &gt; 0</strong> do banco para o Shopify.
+                      <br /><br />
+                      Pode demorar alguns minutos. Não feche esta página enquanto estiver rodando.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={runFullReplication}>Sim, arquivar e replicar</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
+
+          {(replicationState.isRunning || replicationState.phase === 'done') && (
+            <Card className="border-red-200 bg-red-50/30">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Trash2 className="w-4 h-4" />
+                  Arquivar Shopify + Replicar Ativos com Estoque
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div>Fase: <strong>{replicationState.phase}</strong></div>
+                <div>Arquivados no Shopify: <strong>{replicationState.archived}</strong></div>
+                <div>Replicados (criados): <strong>{replicationState.replicated}</strong></div>
+                {replicationState.errors.length > 0 && (
+                  <div className="text-red-600">❌ {replicationState.errors.length} erro(s)</div>
+                )}
+                <details className="text-xs text-muted-foreground">
+                  <summary>Log</summary>
+                  <ul className="mt-1 space-y-0.5">
+                    {replicationState.log.slice(-30).map((l, i) => <li key={i}>{l}</li>)}
+                  </ul>
+                </details>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Batch Sync Progress Card - NEW */}
           {(batchProgress.isRunning || batchProgress.isPaused || batchProgress.processed > 0) && (
