@@ -34,7 +34,20 @@ import {
   useCleanupOrphans,
   useSyncBatch,
   BatchSyncResult,
+  useArchiveShopifyBatch,
+  useReplicateWithStockBatch,
 } from '@/hooks/useShopifySync';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useProducts } from '@/hooks/useProducts';
 import { useMissingMappingProducts, useFixMissingMappings } from '@/hooks/useShopifyMissingMappings';
 import { supabase } from '@/integrations/supabase/client';
