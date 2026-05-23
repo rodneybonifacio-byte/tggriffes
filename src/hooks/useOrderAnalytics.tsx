@@ -49,32 +49,44 @@ export interface DailyTrend {
 
 export function useOrderAnalytics() {
   return useQuery({
-    queryKey: ['order-analytics'],
+    queryKey: ['order-analytics', 'paginated-v1'],
     queryFn: async (): Promise<OrderSourceAnalytics> => {
-      // Buscar todos os order_intent_items com dados do pedido
-      const { data: items, error } = await supabase
-        .from('order_intent_items')
-        .select(`
-          id,
-          qty,
-          line_total_cents,
-          added_from,
-          created_at,
-          order_intents (
+      // PostgREST retorna no máximo 1000 linhas por request.
+      // Este relatório precisa de TODOS os itens para não subcontar os totais.
+      const PAGE_SIZE = 1000;
+      const items: any[] = [];
+
+      for (let i = 0; i < 100; i++) {
+        const from = i * PAGE_SIZE;
+        const { data, error } = await supabase
+          .from('order_intent_items')
+          .select(`
             id,
-            customer_id,
-            customer_name,
-            customer_whatsapp,
-            status,
-            created_at
-          )
-        `)
-        .not('order_intents', 'is', null);
-      
-      if (error) throw error;
+            qty,
+            line_total_cents,
+            added_from,
+            created_at,
+            order_intents (
+              id,
+              customer_id,
+              customer_name,
+              customer_whatsapp,
+              status,
+              created_at
+            )
+          `)
+          .order('created_at', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (error) throw error;
+
+        const batch = data ?? [];
+        items.push(...batch);
+        if (batch.length < PAGE_SIZE) break;
+      }
       
       // Filtrar pedidos não cancelados
-      const validItems = (items || []).filter(
+      const validItems = items.filter(
         (item: any) => item.order_intents?.status !== 'CANCELADO'
       );
       
