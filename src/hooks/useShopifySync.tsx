@@ -220,6 +220,38 @@ export function useCleanupOrphans() {
   });
 }
 
+// Archive a batch of non-archived Shopify products (and wipe local mappings).
+export function useArchiveShopifyBatch() {
+  return useMutation({
+    mutationFn: async ({ status = 'active', limit = 30 }: { status?: 'active' | 'draft'; limit?: number }) => {
+      const { data, error } = await supabase.functions.invoke('shopify-sync', {
+        body: { action: 'archive_shopify_batch', status, limit },
+      });
+      if (error) throw error;
+      return data as { archived: number; fetched: number; status: string; hasMore: boolean; errors: any[] };
+    },
+  });
+}
+
+// Replicate a batch of active local products that have stock > 0 and no Shopify mapping.
+export function useReplicateWithStockBatch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ limit = 15 }: { limit?: number }) => {
+      const { data, error } = await supabase.functions.invoke('shopify-sync', {
+        body: { action: 'replicate_with_stock_batch', limit },
+      });
+      if (error) throw error;
+      return data as { processed: number; totalEligible: number; remainingCount: number; hasMore: boolean; errors: any[] };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shopify-product-mappings'] });
+      queryClient.invalidateQueries({ queryKey: ['shopify-sync-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
+}
+
 // Function to sync inventory automatically (call from stock update hooks)
 export async function syncVariantInventoryToShopify(variantId: string, stockQty: number) {
   try {

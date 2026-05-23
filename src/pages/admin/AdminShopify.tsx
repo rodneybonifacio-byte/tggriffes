@@ -34,7 +34,20 @@ import {
   useCleanupOrphans,
   useSyncBatch,
   BatchSyncResult,
+  useArchiveShopifyBatch,
+  useReplicateWithStockBatch,
 } from '@/hooks/useShopifySync';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useProducts } from '@/hooks/useProducts';
 import { useMissingMappingProducts, useFixMissingMappings } from '@/hooks/useShopifyMissingMappings';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,6 +63,73 @@ export default function AdminShopify() {
   const syncInventory = useSyncInventory();
   const cleanupOrphans = useCleanupOrphans();
   const syncBatch = useSyncBatch();
+  const archiveShopifyBatch = useArchiveShopifyBatch();
+  const replicateWithStockBatch = useReplicateWithStockBatch();
+
+  // Full replication state (archive-all-then-replicate-with-stock)
+  const [replicationState, setReplicationState] = useState<{
+    isRunning: boolean;
+    phase: 'idle' | 'archiving' | 'replicating' | 'done';
+    archived: number;
+    replicated: number;
+    errors: any[];
+    log: string[];
+  }>({ isRunning: false, phase: 'idle', archived: 0, replicated: 0, errors: [], log: [] });
+
+  const runFullReplication = useCallback(async () => {
+    setReplicationState({ isRunning: true, phase: 'archiving', archived: 0, replicated: 0, errors: [], log: ['Iniciando arquivamento no Shopify...'] });
+    const errors: any[] = [];
+    let archived = 0;
+
+    try {
+      // Phase 1: archive ALL non-archived Shopify products (active then draft)
+      for (const status of ['active', 'draft'] as const) {
+        let hasMore = true;
+        let safety = 0;
+        while (hasMore && safety < 200) {
+          safety++;
+          const res = await archiveShopifyBatch.mutateAsync({ status, limit: 30 });
+          archived += res.archived;
+          errors.push(...(res.errors || []));
+          hasMore = res.hasMore;
+          setReplicationState(prev => ({
+            ...prev,
+            archived,
+            errors: [...errors],
+            log: [...prev.log, `Arquivados ${res.archived} (${status}). Restam mais? ${hasMore ? 'sim' : 'não'}`],
+          }));
+        }
+      }
+
+      // Phase 2: replicate active products with stock
+      setReplicationState(prev => ({ ...prev, phase: 'replicating', log: [...prev.log, 'Replicando produtos ativos com estoque...'] }));
+      let hasMore = true;
+      let safety = 0;
+      let replicated = 0;
+      while (hasMore && safety < 200) {
+        safety++;
+        const res = await replicateWithStockBatch.mutateAsync({ limit: 10 });
+        replicated += res.processed;
+        errors.push(...(res.errors || []));
+        hasMore = res.hasMore;
+        setReplicationState(prev => ({
+          ...prev,
+          replicated,
+          errors: [...errors],
+          log: [...prev.log, `Replicados ${res.processed}. Restantes: ${res.remainingCount}`],
+        }));
+      }
+
+      setReplicationState(prev => ({ ...prev, isRunning: false, phase: 'done', log: [...prev.log, 'Concluído.'] }));
+      refetchMappings();
+      refetchProducts();
+      refetchLogs();
+      toast.success(`Replicação concluída: ${archived} arquivados, ${replicated} replicados.`);
+    } catch (err: any) {
+      setReplicationState(prev => ({ ...prev, isRunning: false, phase: 'done', errors: [...prev.errors, { error: err.message }], log: [...prev.log, `Erro: ${err.message}`] }));
+      toast.error(`Erro na replicação: ${err.message}`);
+    }
+  }, [archiveShopifyBatch, replicateWithStockBatch, refetchMappings, refetchProducts, refetchLogs]);
 
   // Batch sync state
   const [batchProgress, setBatchProgress] = useState<{
@@ -288,8 +368,64 @@ export default function AdminShopify() {
                 )}
                 Sincronizar Tudo
               </Button>
+
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    disabled={replicationState.isRunning || batchProgress.isRunning}
+                  >
+                    {replicationState.isRunning ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 mr-2" />
+                    )}
+                    Arquivar Shopify + Replicar
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Arquivar tudo no Shopify e replicar?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação vai <strong>arquivar todos os produtos no Shopify</strong> (não exclui — ficam como "archived" e podem ser restaurados manualmente),
+                      apagar os mapeamentos locais e em seguida <strong>replicar apenas produtos ativos com estoque &gt; 0</strong> do banco para o Shopify.
+                      <br /><br />
+                      Pode demorar alguns minutos. Não feche esta página enquanto estiver rodando.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={runFullReplication}>Sim, arquivar e replicar</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </div>
+
+          {(replicationState.isRunning || replicationState.phase === 'done') && (
+            <Card className="border-red-200 bg-red-50/30">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Trash2 className="w-4 h-4" />
+                  Arquivar Shopify + Replicar Ativos com Estoque
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div>Fase: <strong>{replicationState.phase}</strong></div>
+                <div>Arquivados no Shopify: <strong>{replicationState.archived}</strong></div>
+                <div>Replicados (criados): <strong>{replicationState.replicated}</strong></div>
+                {replicationState.errors.length > 0 && (
+                  <div className="text-red-600">❌ {replicationState.errors.length} erro(s)</div>
+                )}
+                <details className="text-xs text-muted-foreground">
+                  <summary>Log</summary>
+                  <ul className="mt-1 space-y-0.5">
+                    {replicationState.log.slice(-30).map((l, i) => <li key={i}>{l}</li>)}
+                  </ul>
+                </details>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Batch Sync Progress Card - NEW */}
           {(batchProgress.isRunning || batchProgress.isPaused || batchProgress.processed > 0) && (

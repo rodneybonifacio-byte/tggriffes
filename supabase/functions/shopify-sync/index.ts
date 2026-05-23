@@ -997,6 +997,155 @@ serve(async (req) => {
           ...cleanupResult
         };
 
+      } else if (action === 'archive_shopify_batch') {
+        // Archive a batch of non-archived Shopify products (active or draft).
+        // Also wipes local mappings for archived products so they can be re-created.
+        const { status = 'active', limit = 30 } = body;
+        syncLog.sync_type = 'archive_shopify_batch';
+
+        const listResp = await shopifyRequest(
+          `/products.json?status=${status}&limit=${Math.min(limit, 50)}&fields=id,title,handle`,
+          'GET'
+        );
+        const items = listResp?.products || [];
+        console.log(`[ArchiveBatch] status=${status}, fetched ${items.length}`);
+
+        const errors: any[] = [];
+        let archived = 0;
+
+        for (const sp of items) {
+          try {
+            await shopifyRequest(
+              `/products/${sp.id}.json`,
+              'PUT',
+              { product: { id: sp.id, status: 'archived' } }
+            );
+
+            // Find local mapping (if any) and wipe it so re-sync recreates the product.
+            const { data: mapping } = await supabase
+              .from('shopify_product_mappings')
+              .select('product_id')
+              .eq('shopify_product_id', String(sp.id))
+              .maybeSingle();
+
+            if (mapping?.product_id) {
+              const { data: variants } = await supabase
+                .from('product_variants')
+                .select('id')
+                .eq('product_id', mapping.product_id);
+              if (variants && variants.length > 0) {
+                await supabase
+                  .from('shopify_variant_mappings')
+                  .delete()
+                  .in('variant_id', variants.map(v => v.id));
+              }
+              await supabase
+                .from('shopify_product_mappings')
+                .delete()
+                .eq('shopify_product_id', String(sp.id));
+              // Clear cached Shopify image url so it will be re-fetched on next sync
+              await supabase
+                .from('products')
+                .update({ shopify_image_url: null })
+                .eq('id', mapping.product_id);
+            }
+
+            archived++;
+            await delay(400);
+          } catch (err: any) {
+            console.error(`[ArchiveBatch] Error for ${sp.id}: ${err.message}`);
+            errors.push({ shopifyId: sp.id, title: sp.title, error: err.message });
+            await delay(400);
+          }
+        }
+
+        syncLog.products_synced = archived;
+        if (errors.length > 0) {
+          syncLog.status = 'partial';
+          syncLog.errors = errors;
+        }
+
+        result = {
+          message: `Archived ${archived} Shopify products (status=${status})`,
+          archived,
+          fetched: items.length,
+          status,
+          hasMore: items.length >= Math.min(limit, 50),
+          errors,
+        };
+
+      } else if (action === 'replicate_with_stock_batch') {
+        // Sync a batch of active products that have stock > 0 AND no Shopify mapping yet.
+        // Used after archive_shopify_batch to recreate only products that should be live.
+        // NOTE: each call recomputes eligibility (mapped products are excluded), so the
+        // client should keep invoking this action until hasMore=false; offset is not used.
+        const { limit = 15 } = body;
+        syncLog.sync_type = 'replicate_with_stock_batch';
+
+        // Get all active products with variants
+        const { data: allActive } = await supabase
+          .from('products')
+          .select(`
+            *,
+            category:categories(name),
+            variants:product_variants(*)
+          `)
+          .eq('active', true)
+          .order('name', { ascending: true });
+
+        // Get existing mappings to exclude
+        const { data: existingMappings } = await supabase
+          .from('shopify_product_mappings')
+          .select('product_id');
+        const mappedIds = new Set((existingMappings || []).map(m => m.product_id));
+
+        const eligible = (allActive || []).filter((p: any) => {
+          if (mappedIds.has(p.id)) return false;
+          const totalStock = (p.variants || []).reduce(
+            (s: number, v: any) => s + (v.stock_qty || 0),
+            0
+          );
+          return totalStock > 0;
+        });
+
+        const totalEligible = eligible.length;
+        const slice = eligible.slice(0, limit);
+
+        const results: any[] = [];
+        const errors: any[] = [];
+
+        for (let i = 0; i < slice.length; i++) {
+          const product = slice[i];
+          try {
+            console.log(`[Replicate] ${i + 1}/${totalEligible}: ${product.name}`);
+            const syncResult = await syncProduct(product);
+            results.push({ id: product.id, name: product.name, ...syncResult });
+            syncLog.products_synced++;
+            syncLog.variants_synced += syncResult.variantCount;
+            await delay(700);
+          } catch (err: any) {
+            console.error(`[Replicate] Error ${product.name}: ${err.message}`);
+            errors.push({ productId: product.id, productName: product.name, error: err.message });
+            await delay(400);
+          }
+        }
+
+        if (errors.length > 0) {
+          syncLog.status = 'partial';
+          syncLog.errors = errors;
+        }
+
+        const remaining = Math.max(0, totalEligible - results.length);
+
+        result = {
+          message: 'Replicate batch completed',
+          processed: results.length,
+          totalEligible,
+          remainingCount: remaining,
+          hasMore: remaining > 0,
+          errors,
+        };
+
       } else if (action === 'fix_missing_images') {
         // Fetch Shopify CDN URLs for products missing shopify_image_url
         syncLog.sync_type = 'fix_images';
