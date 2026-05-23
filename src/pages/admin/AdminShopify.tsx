@@ -430,6 +430,19 @@ export default function AdminShopify() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+
+              <Button
+                variant="default"
+                onClick={runReplicationOnly}
+                disabled={replicationState.isRunning || batchProgress.isRunning}
+              >
+                {replicationState.isRunning && replicationState.phase === 'replicating' ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                Replicar Ativos com Estoque
+              </Button>
             </div>
           </div>
 
