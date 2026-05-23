@@ -6,6 +6,8 @@ export type OrderIntent = Tables<'order_intents'> & {
   order_intent_items?: Tables<'order_intent_items'>[];
 };
 
+export type OrderIntentSummary = Tables<'order_intents'>;
+
 export interface OrderHistoryEntry {
   id: string;
   order_intent_id: string;
@@ -40,6 +42,34 @@ export function useOrderIntents() {
       }
       return all;
     },
+  });
+}
+
+export function useOrderIntentSummaries() {
+  return useQuery({
+    queryKey: ['order-intent-summaries', 'paginated-v1'],
+    queryFn: async () => {
+      const PAGE_SIZE = 1000;
+      const all: OrderIntentSummary[] = [];
+
+      for (let i = 0; i < 50; i++) {
+        const from = i * PAGE_SIZE;
+        const { data, error } = await supabase
+          .from('order_intents')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (error) throw error;
+
+        const batch = (data ?? []) as OrderIntentSummary[];
+        all.push(...batch);
+        if (batch.length < PAGE_SIZE) break;
+      }
+
+      return all;
+    },
+    staleTime: 60 * 1000,
   });
 }
 
