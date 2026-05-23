@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CustomerBehaviorCard } from '@/components/admin/CustomerBehaviorCard';
 import { TopCustomersCard } from '@/components/admin/TopCustomersCard';
 import { useProducts } from '@/hooks/useProducts';
-import { useOrderIntents } from '@/hooks/useOrders';
+import { useOrderIntentSummaries } from '@/hooks/useOrders';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Package, ShoppingCart, AlertTriangle, TrendingUp, User } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
@@ -31,7 +31,7 @@ const PERIOD_LABELS: Record<Period, string> = {
 
 const AdminDashboard = () => {
   const { data: products = [] } = useProducts();
-  const { data: orders = [] } = useOrderIntents();
+  const { data: orders = [] } = useOrderIntentSummaries();
   const { canViewPrices, isLoading: permissionsLoading } = usePermissions();
   const [period, setPeriod] = useState<Period>('today');
   const [customRange, setCustomRange] = useState<DateRange | undefined>();
