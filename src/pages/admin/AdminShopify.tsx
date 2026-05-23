@@ -131,6 +131,37 @@ export default function AdminShopify() {
     }
   }, [archiveShopifyBatch, replicateWithStockBatch, refetchMappings, refetchProducts, refetchLogs]);
 
+  const runReplicationOnly = useCallback(async () => {
+    setReplicationState({ isRunning: true, phase: 'replicating', archived: 0, replicated: 0, errors: [], log: ['Replicando produtos ativos com estoque (sem arquivar)...'] });
+    const errors: any[] = [];
+    let replicated = 0;
+    try {
+      let hasMore = true;
+      let safety = 0;
+      while (hasMore && safety < 200) {
+        safety++;
+        const res = await replicateWithStockBatch.mutateAsync({ limit: 10 });
+        replicated += res.processed;
+        errors.push(...(res.errors || []));
+        hasMore = res.hasMore;
+        setReplicationState(prev => ({
+          ...prev,
+          replicated,
+          errors: [...errors],
+          log: [...prev.log, `Replicados ${res.processed}. Restantes: ${res.remainingCount}`],
+        }));
+      }
+      setReplicationState(prev => ({ ...prev, isRunning: false, phase: 'done', log: [...prev.log, 'Concluído.'] }));
+      refetchMappings();
+      refetchProducts();
+      refetchLogs();
+      toast.success(`Replicação concluída: ${replicated} produtos criados no Shopify.`);
+    } catch (err: any) {
+      setReplicationState(prev => ({ ...prev, isRunning: false, phase: 'done', errors: [...prev.errors, { error: err.message }], log: [...prev.log, `Erro: ${err.message}`] }));
+      toast.error(`Erro na replicação: ${err.message}`);
+    }
+  }, [replicateWithStockBatch, refetchMappings, refetchProducts, refetchLogs]);
+
   // Batch sync state
   const [batchProgress, setBatchProgress] = useState<{
     isRunning: boolean;
@@ -399,6 +430,19 @@ export default function AdminShopify() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+
+              <Button
+                variant="default"
+                onClick={runReplicationOnly}
+                disabled={replicationState.isRunning || batchProgress.isRunning}
+              >
+                {replicationState.isRunning && replicationState.phase === 'replicating' ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                Replicar Ativos com Estoque
+              </Button>
             </div>
           </div>
 
