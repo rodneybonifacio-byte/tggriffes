@@ -1,6 +1,7 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { CustomerBehaviorCard } from '@/components/admin/CustomerBehaviorCard';
 import { TopCustomersCard } from '@/components/admin/TopCustomersCard';
 import { useProducts } from '@/hooks/useProducts';
@@ -9,11 +10,22 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Package, ShoppingCart, AlertTriangle, TrendingUp, User } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { useState, useMemo } from 'react';
+
+type Period = 'today' | '7d' | '30d' | 'all';
+
+const PERIOD_LABELS: Record<Period, string> = {
+  today: 'Hoje',
+  '7d': '7 dias',
+  '30d': '30 dias',
+  all: 'Tudo',
+};
 
 const AdminDashboard = () => {
   const { data: products = [] } = useProducts();
   const { data: orders = [] } = useOrderIntents();
   const { canViewPrices, isLoading: permissionsLoading } = usePermissions();
+  const [period, setPeriod] = useState<Period>('today');
 
   // Enquanto carrega permissões, NÃO exibimos valores sensíveis.
   const showPrices = permissionsLoading ? false : canViewPrices;
@@ -44,30 +56,60 @@ const AdminDashboard = () => {
       }))
   );
 
-  const today = new Date().toDateString();
-  
-  const todayOrders = orders.filter(o => 
-    new Date(o.created_at).toDateString() === today
-  );
+  // Janela do filtro selecionado
+  const periodStart = useMemo(() => {
+    const now = new Date();
+    if (period === 'today') {
+      const d = new Date(now);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    if (period === '7d') return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    if (period === '30d') return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    return null;
+  }, [period]);
 
-  // Vendas do dia (TODOS os pedidos criados hoje, independente do status)
+  const filteredOrders = useMemo(() => {
+    if (!periodStart) return orders;
+    return orders.filter(o => new Date(o.created_at) >= periodStart);
+  }, [orders, periodStart]);
+
+  const periodLabel = PERIOD_LABELS[period].toLowerCase();
+
+  // Pedidos no período
+  const todayOrders = filteredOrders;
   const todayRevenue = todayOrders.reduce((sum, o) => sum + o.total_cents, 0);
 
-  // Vendas acumuladas (todos os pedidos que não estão cancelados)
-  const activeOrders = orders.filter(o => o.status !== 'CANCELADO');
+  // Vendas acumuladas (não cancelados) no período
+  const activeOrders = filteredOrders.filter(o => o.status !== 'CANCELADO');
   const accumulatedRevenue = activeOrders.reduce((sum, o) => sum + o.total_cents, 0);
 
-  // Vendas fechadas (total FINALIZADO)
-  const closedOrders = orders.filter(o => o.status === 'FINALIZADO');
+  // Vendas finalizadas no período
+  const closedOrders = filteredOrders.filter(o => o.status === 'FINALIZADO');
   const closedRevenue = closedOrders.reduce((sum, o) => sum + o.total_cents, 0);
 
-  // Vendas canceladas
-  const cancelledOrders = orders.filter(o => o.status === 'CANCELADO');
+  // Vendas canceladas no período
+  const cancelledOrders = filteredOrders.filter(o => o.status === 'CANCELADO');
   const cancelledTotal = cancelledOrders.reduce((sum, o) => sum + o.total_cents, 0);
 
   return (
     <AdminGuard>
       <AdminLayout title="Dashboard">
+        {/* Period Filter */}
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground mr-1">Período:</span>
+          {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
+            <Button
+              key={p}
+              size="sm"
+              variant={period === p ? 'default' : 'outline'}
+              onClick={() => setPeriod(p)}
+            >
+              {PERIOD_LABELS[p]}
+            </Button>
+          ))}
+        </div>
+
         {/* Stats Cards */}
         <div className={`grid gap-4 md:grid-cols-2 ${showPrices ? 'lg:grid-cols-3 xl:grid-cols-6' : 'lg:grid-cols-4'} mb-8`}>
           <Card>
@@ -88,7 +130,7 @@ const AdminDashboard = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Pedidos Hoje
+                Pedidos ({PERIOD_LABELS[period]})
               </CardTitle>
               <ShoppingCart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
@@ -105,14 +147,14 @@ const AdminDashboard = () => {
               <Card className="border-green-500/20 bg-green-500/5">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-green-600">
-                    Vendas Hoje
+                    Vendas {PERIOD_LABELS[period]}
                   </CardTitle>
                   <TrendingUp className="h-4 w-4 text-green-600" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">{formatPrice(todayRevenue)}</div>
                   <p className="text-xs text-muted-foreground">
-                    {todayOrders.length} pedidos hoje
+                    {todayOrders.length} pedidos {periodLabel}
                   </p>
                 </CardContent>
               </Card>
@@ -120,7 +162,7 @@ const AdminDashboard = () => {
               <Card className="border-blue-500/20 bg-blue-500/5">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-blue-600">
-                    Vendas Acumuladas
+                    Vendas Ativas
                   </CardTitle>
                   <TrendingUp className="h-4 w-4 text-blue-600" />
                 </CardHeader>
