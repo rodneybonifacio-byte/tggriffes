@@ -63,6 +63,73 @@ export default function AdminShopify() {
   const syncInventory = useSyncInventory();
   const cleanupOrphans = useCleanupOrphans();
   const syncBatch = useSyncBatch();
+  const archiveShopifyBatch = useArchiveShopifyBatch();
+  const replicateWithStockBatch = useReplicateWithStockBatch();
+
+  // Full replication state (archive-all-then-replicate-with-stock)
+  const [replicationState, setReplicationState] = useState<{
+    isRunning: boolean;
+    phase: 'idle' | 'archiving' | 'replicating' | 'done';
+    archived: number;
+    replicated: number;
+    errors: any[];
+    log: string[];
+  }>({ isRunning: false, phase: 'idle', archived: 0, replicated: 0, errors: [], log: [] });
+
+  const runFullReplication = useCallback(async () => {
+    setReplicationState({ isRunning: true, phase: 'archiving', archived: 0, replicated: 0, errors: [], log: ['Iniciando arquivamento no Shopify...'] });
+    const errors: any[] = [];
+    let archived = 0;
+
+    try {
+      // Phase 1: archive ALL non-archived Shopify products (active then draft)
+      for (const status of ['active', 'draft'] as const) {
+        let hasMore = true;
+        let safety = 0;
+        while (hasMore && safety < 200) {
+          safety++;
+          const res = await archiveShopifyBatch.mutateAsync({ status, limit: 30 });
+          archived += res.archived;
+          errors.push(...(res.errors || []));
+          hasMore = res.hasMore;
+          setReplicationState(prev => ({
+            ...prev,
+            archived,
+            errors: [...errors],
+            log: [...prev.log, `Arquivados ${res.archived} (${status}). Restam mais? ${hasMore ? 'sim' : 'não'}`],
+          }));
+        }
+      }
+
+      // Phase 2: replicate active products with stock
+      setReplicationState(prev => ({ ...prev, phase: 'replicating', log: [...prev.log, 'Replicando produtos ativos com estoque...'] }));
+      let hasMore = true;
+      let safety = 0;
+      let replicated = 0;
+      while (hasMore && safety < 200) {
+        safety++;
+        const res = await replicateWithStockBatch.mutateAsync({ limit: 10 });
+        replicated += res.processed;
+        errors.push(...(res.errors || []));
+        hasMore = res.hasMore;
+        setReplicationState(prev => ({
+          ...prev,
+          replicated,
+          errors: [...errors],
+          log: [...prev.log, `Replicados ${res.processed}. Restantes: ${res.remainingCount}`],
+        }));
+      }
+
+      setReplicationState(prev => ({ ...prev, isRunning: false, phase: 'done', log: [...prev.log, 'Concluído.'] }));
+      refetchMappings();
+      refetchProducts();
+      refetchLogs();
+      toast.success(`Replicação concluída: ${archived} arquivados, ${replicated} replicados.`);
+    } catch (err: any) {
+      setReplicationState(prev => ({ ...prev, isRunning: false, phase: 'done', errors: [...prev.errors, { error: err.message }], log: [...prev.log, `Erro: ${err.message}`] }));
+      toast.error(`Erro na replicação: ${err.message}`);
+    }
+  }, [archiveShopifyBatch, replicateWithStockBatch, refetchMappings, refetchProducts, refetchLogs]);
 
   // Batch sync state
   const [batchProgress, setBatchProgress] = useState<{
