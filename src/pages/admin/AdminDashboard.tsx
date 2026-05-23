@@ -11,14 +11,22 @@ import { Package, ShoppingCart, AlertTriangle, TrendingUp, User } from 'lucide-r
 import { formatPrice } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { useState, useMemo } from 'react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { DateRange } from 'react-day-picker';
+import { cn } from '@/lib/utils';
 
-type Period = 'today' | '7d' | '30d' | 'all';
+type Period = 'today' | '7d' | '30d' | 'all' | 'custom';
 
 const PERIOD_LABELS: Record<Period, string> = {
   today: 'Hoje',
   '7d': '7 dias',
   '30d': '30 dias',
   all: 'Tudo',
+  custom: 'Personalizado',
 };
 
 const AdminDashboard = () => {
@@ -26,6 +34,7 @@ const AdminDashboard = () => {
   const { data: orders = [] } = useOrderIntents();
   const { canViewPrices, isLoading: permissionsLoading } = usePermissions();
   const [period, setPeriod] = useState<Period>('today');
+  const [customRange, setCustomRange] = useState<DateRange | undefined>();
 
   // Enquanto carrega permissões, NÃO exibimos valores sensíveis.
   const showPrices = permissionsLoading ? false : canViewPrices;
@@ -57,22 +66,34 @@ const AdminDashboard = () => {
   );
 
   // Janela do filtro selecionado
-  const periodStart = useMemo(() => {
+  const { periodStart, periodEnd } = useMemo(() => {
     const now = new Date();
     if (period === 'today') {
       const d = new Date(now);
       d.setHours(0, 0, 0, 0);
-      return d;
+      return { periodStart: d, periodEnd: null as Date | null };
     }
-    if (period === '7d') return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    if (period === '30d') return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    return null;
-  }, [period]);
+    if (period === '7d') return { periodStart: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), periodEnd: null };
+    if (period === '30d') return { periodStart: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000), periodEnd: null };
+    if (period === 'custom' && customRange?.from) {
+      const from = new Date(customRange.from);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(customRange.to ?? customRange.from);
+      to.setHours(23, 59, 59, 999);
+      return { periodStart: from, periodEnd: to };
+    }
+    return { periodStart: null as Date | null, periodEnd: null as Date | null };
+  }, [period, customRange]);
 
   const filteredOrders = useMemo(() => {
     if (!periodStart) return orders;
-    return orders.filter(o => new Date(o.created_at) >= periodStart);
-  }, [orders, periodStart]);
+    return orders.filter(o => {
+      const d = new Date(o.created_at);
+      if (d < periodStart) return false;
+      if (periodEnd && d > periodEnd) return false;
+      return true;
+    });
+  }, [orders, periodStart, periodEnd]);
 
   const periodLabel = PERIOD_LABELS[period].toLowerCase();
 
@@ -98,7 +119,7 @@ const AdminDashboard = () => {
         {/* Period Filter */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted-foreground mr-1">Período:</span>
-          {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
+          {(['today', '7d', '30d', 'all'] as Period[]).map((p) => (
             <Button
               key={p}
               size="sm"
@@ -108,6 +129,44 @@ const AdminDashboard = () => {
               {PERIOD_LABELS[p]}
             </Button>
           ))}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                size="sm"
+                variant={period === 'custom' ? 'default' : 'outline'}
+                className={cn('justify-start text-left font-normal')}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {period === 'custom' && customRange?.from ? (
+                  customRange.to ? (
+                    <>
+                      {format(customRange.from, 'dd/MM/yy', { locale: ptBR })} -{' '}
+                      {format(customRange.to, 'dd/MM/yy', { locale: ptBR })}
+                    </>
+                  ) : (
+                    format(customRange.from, 'dd/MM/yy', { locale: ptBR })
+                  )
+                ) : (
+                  <span>Personalizado</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                initialFocus
+                mode="range"
+                defaultMonth={customRange?.from}
+                selected={customRange}
+                onSelect={(range) => {
+                  setCustomRange(range);
+                  if (range?.from) setPeriod('custom');
+                }}
+                numberOfMonths={2}
+                locale={ptBR}
+                className={cn('p-3 pointer-events-auto')}
+              />
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Stats Cards */}
