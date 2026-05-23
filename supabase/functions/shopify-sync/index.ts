@@ -1074,6 +1074,80 @@ serve(async (req) => {
           errors,
         };
 
+      } else if (action === 'replicate_with_stock_batch') {
+        // Sync a batch of active products that have stock > 0 AND no Shopify mapping yet.
+        // Used after archive_shopify_batch to recreate only products that should be live.
+        const { offset = 0, limit = 15 } = body;
+        syncLog.sync_type = 'replicate_with_stock_batch';
+
+        // Get all active products with variants
+        const { data: allActive } = await supabase
+          .from('products')
+          .select(`
+            *,
+            category:categories(name),
+            variants:product_variants(*)
+          `)
+          .eq('active', true)
+          .order('name', { ascending: true });
+
+        // Get existing mappings to exclude
+        const { data: existingMappings } = await supabase
+          .from('shopify_product_mappings')
+          .select('product_id');
+        const mappedIds = new Set((existingMappings || []).map(m => m.product_id));
+
+        const eligible = (allActive || []).filter((p: any) => {
+          if (mappedIds.has(p.id)) return false;
+          const totalStock = (p.variants || []).reduce(
+            (s: number, v: any) => s + (v.stock_qty || 0),
+            0
+          );
+          return totalStock > 0;
+        });
+
+        const totalEligible = eligible.length;
+        const slice = eligible.slice(offset, offset + limit);
+
+        const results: any[] = [];
+        const errors: any[] = [];
+
+        for (let i = 0; i < slice.length; i++) {
+          const product = slice[i];
+          try {
+            console.log(`[Replicate] ${offset + i + 1}/${totalEligible}: ${product.name}`);
+            const syncResult = await syncProduct(product);
+            results.push({ id: product.id, name: product.name, ...syncResult });
+            syncLog.products_synced++;
+            syncLog.variants_synced += syncResult.variantCount;
+            await delay(700);
+          } catch (err: any) {
+            console.error(`[Replicate] Error ${product.name}: ${err.message}`);
+            errors.push({ productId: product.id, productName: product.name, error: err.message });
+            await delay(400);
+          }
+        }
+
+        if (errors.length > 0) {
+          syncLog.status = 'partial';
+          syncLog.errors = errors;
+        }
+
+        // After this batch, recompute remaining (mappings were just created)
+        const processedTotal = offset + results.length;
+        const remaining = Math.max(0, totalEligible - processedTotal);
+
+        result = {
+          message: 'Replicate batch completed',
+          processed: results.length,
+          offset,
+          nextOffset: remaining > 0 ? processedTotal : null,
+          totalEligible,
+          remainingCount: remaining,
+          hasMore: remaining > 0,
+          errors,
+        };
+
       } else if (action === 'fix_missing_images') {
         // Fetch Shopify CDN URLs for products missing shopify_image_url
         syncLog.sync_type = 'fix_images';
