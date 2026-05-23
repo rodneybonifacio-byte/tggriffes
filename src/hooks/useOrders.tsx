@@ -20,16 +20,27 @@ export function useOrderIntents() {
   return useQuery({
     queryKey: ['order-intents'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('order_intents')
-        .select(`
-          *,
-          order_intent_items(*)
-        `)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as OrderIntent[];
+      // Supabase limita 1000 linhas por query — paginamos para trazer tudo
+      const PAGE_SIZE = 1000;
+      let from = 0;
+      const all: OrderIntent[] = [];
+      // safety cap to avoid infinite loop
+      for (let i = 0; i < 50; i++) {
+        const { data, error } = await supabase
+          .from('order_intents')
+          .select(`
+            *,
+            order_intent_items(*)
+          `)
+          .order('created_at', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as OrderIntent[];
+        all.push(...batch);
+        if (batch.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+      }
+      return all;
     },
   });
 }
