@@ -18,29 +18,56 @@ export interface OrderHistoryEntry {
 
 export function useOrderIntents() {
   return useQuery({
-    queryKey: ['order-intents'],
+    queryKey: ['order-intents', 'v2-paginated'],
     queryFn: async () => {
-      // Supabase limita 1000 linhas por query — paginamos para trazer tudo
+      // PostgREST cap a 1000 linhas por request — paginamos.
+      // Buscamos os pedidos SEM o join de itens (mais leve e evita cap embutido),
+      // e depois carregamos os itens em lotes por order_intent_id.
       const PAGE_SIZE = 1000;
-      let from = 0;
-      const all: OrderIntent[] = [];
-      // safety cap to avoid infinite loop
+      const orders: Tables<'order_intents'>[] = [];
       for (let i = 0; i < 50; i++) {
+        const from = i * PAGE_SIZE;
         const { data, error } = await supabase
           .from('order_intents')
-          .select(`
-            *,
-            order_intent_items(*)
-          `)
+          .select('*')
           .order('created_at', { ascending: false })
           .range(from, from + PAGE_SIZE - 1);
         if (error) throw error;
-        const batch = (data ?? []) as OrderIntent[];
-        all.push(...batch);
+        const batch = data ?? [];
+        orders.push(...batch);
         if (batch.length < PAGE_SIZE) break;
-        from += PAGE_SIZE;
       }
-      return all;
+
+      // Carrega itens em lotes (in() por chunks de IDs)
+      const itemsByOrder = new Map<string, Tables<'order_intent_items'>[]>();
+      const ids = orders.map(o => o.id);
+      const CHUNK = 200;
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const chunk = ids.slice(i, i + CHUNK);
+        // paginar dentro do chunk também, por segurança
+        let from = 0;
+        while (true) {
+          const { data, error } = await supabase
+            .from('order_intent_items')
+            .select('*')
+            .in('order_intent_id', chunk)
+            .range(from, from + PAGE_SIZE - 1);
+          if (error) throw error;
+          const batch = data ?? [];
+          for (const it of batch) {
+            const arr = itemsByOrder.get(it.order_intent_id) ?? [];
+            arr.push(it);
+            itemsByOrder.set(it.order_intent_id, arr);
+          }
+          if (batch.length < PAGE_SIZE) break;
+          from += PAGE_SIZE;
+        }
+      }
+
+      return orders.map(o => ({
+        ...o,
+        order_intent_items: itemsByOrder.get(o.id) ?? [],
+      })) as OrderIntent[];
     },
   });
 }
