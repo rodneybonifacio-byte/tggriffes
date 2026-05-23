@@ -132,10 +132,18 @@ export default function AdminShopify() {
   }, [archiveShopifyBatch, replicateWithStockBatch, refetchMappings, refetchProducts, refetchLogs]);
 
   const runReplicationOnly = useCallback(async () => {
-    setReplicationState({ isRunning: true, phase: 'replicating', archived: 0, replicated: 0, errors: [], log: ['Replicando produtos ativos com estoque (sem arquivar)...'] });
+    setReplicationState({ isRunning: true, phase: 'replicating', archived: 0, replicated: 0, errors: [], log: ['Limpando mapeamentos locais antigos...'] });
     const errors: any[] = [];
     let replicated = 0;
     try {
+      // Wipe stale local mappings so previously-archived products become eligible again.
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { error: delVarErr } = await supabase.from('shopify_variant_mappings').delete().not('id', 'is', null);
+      if (delVarErr) throw new Error(`Falha ao limpar variant mappings: ${delVarErr.message}`);
+      const { error: delProdErr } = await supabase.from('shopify_product_mappings').delete().not('id', 'is', null);
+      if (delProdErr) throw new Error(`Falha ao limpar product mappings: ${delProdErr.message}`);
+      setReplicationState(prev => ({ ...prev, log: [...prev.log, 'Mapeamentos limpos. Iniciando replicação...'] }));
+
       let hasMore = true;
       let safety = 0;
       while (hasMore && safety < 200) {
