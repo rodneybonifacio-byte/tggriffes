@@ -1077,7 +1077,9 @@ serve(async (req) => {
       } else if (action === 'replicate_with_stock_batch') {
         // Sync a batch of active products that have stock > 0 AND no Shopify mapping yet.
         // Used after archive_shopify_batch to recreate only products that should be live.
-        const { offset = 0, limit = 15 } = body;
+        // NOTE: each call recomputes eligibility (mapped products are excluded), so the
+        // client should keep invoking this action until hasMore=false; offset is not used.
+        const { limit = 15 } = body;
         syncLog.sync_type = 'replicate_with_stock_batch';
 
         // Get all active products with variants
@@ -1107,7 +1109,7 @@ serve(async (req) => {
         });
 
         const totalEligible = eligible.length;
-        const slice = eligible.slice(offset, offset + limit);
+        const slice = eligible.slice(0, limit);
 
         const results: any[] = [];
         const errors: any[] = [];
@@ -1115,7 +1117,7 @@ serve(async (req) => {
         for (let i = 0; i < slice.length; i++) {
           const product = slice[i];
           try {
-            console.log(`[Replicate] ${offset + i + 1}/${totalEligible}: ${product.name}`);
+            console.log(`[Replicate] ${i + 1}/${totalEligible}: ${product.name}`);
             const syncResult = await syncProduct(product);
             results.push({ id: product.id, name: product.name, ...syncResult });
             syncLog.products_synced++;
@@ -1133,15 +1135,11 @@ serve(async (req) => {
           syncLog.errors = errors;
         }
 
-        // After this batch, recompute remaining (mappings were just created)
-        const processedTotal = offset + results.length;
-        const remaining = Math.max(0, totalEligible - processedTotal);
+        const remaining = Math.max(0, totalEligible - results.length);
 
         result = {
           message: 'Replicate batch completed',
           processed: results.length,
-          offset,
-          nextOffset: remaining > 0 ? processedTotal : null,
           totalEligible,
           remainingCount: remaining,
           hasMore: remaining > 0,
