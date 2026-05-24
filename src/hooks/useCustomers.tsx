@@ -25,26 +25,46 @@ export function useCustomers() {
   return useQuery({
     queryKey: ['customers'],
     queryFn: async () => {
-      const { data: customers, error: customersError } = await supabase
-        .from('customers')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const PAGE_SIZE = 1000;
 
-      if (customersError) throw customersError;
+      async function fetchAll<T>(
+        build: (from: number, to: number) => any
+      ): Promise<T[]> {
+        const all: T[] = [];
+        for (let i = 0; i < 200; i++) {
+          const from = i * PAGE_SIZE;
+          const to = from + PAGE_SIZE - 1;
+          const { data, error } = await build(from, to);
+          if (error) throw error;
+          const batch = (data ?? []) as T[];
+          all.push(...batch);
+          if (batch.length < PAGE_SIZE) break;
+        }
+        return all;
+      }
 
-      // Fetch orders with item count
-      const { data: orders, error: ordersError } = await supabase
-        .from('order_intents')
-        .select('id, customer_id, total_cents, order_number, status, created_at');
+      const customers = await fetchAll<any>((from, to) =>
+        supabase
+          .from('customers')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .range(from, to)
+      );
 
-      if (ordersError) throw ordersError;
+      const orders = await fetchAll<any>((from, to) =>
+        supabase
+          .from('order_intents')
+          .select('id, customer_id, total_cents, order_number, status, created_at')
+          .order('created_at', { ascending: false })
+          .range(from, to)
+      );
 
-      // Fetch item counts per order
-      const { data: items, error: itemsError } = await supabase
-        .from('order_intent_items')
-        .select('order_intent_id, qty');
-
-      if (itemsError) throw itemsError;
+      const items = await fetchAll<any>((from, to) =>
+        supabase
+          .from('order_intent_items')
+          .select('order_intent_id, qty')
+          .range(from, to)
+      );
 
       const itemCountMap = new Map<string, number>();
       items?.forEach(item => {
