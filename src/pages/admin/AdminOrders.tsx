@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { OrderEditModal } from '@/components/admin/OrderEditModal';
-import { useOrderIntentsLight, useOrderIntentItems, useUpdateOrderStatus, useAddOrderHistory, useOrderHistory } from '@/hooks/useOrders';
+import { useOrderIntentsLight, useOrderIntentItems, useUpdateOrderStatus, useAddOrderHistory, useOrderHistory, type OrderIntent } from '@/hooks/useOrders';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -524,9 +524,13 @@ const AdminOrders = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Order Modal */}
-        <OrderEditModal 
-          order={editingOrder}
+        {/* Edit Order Modal — items are lazy-loaded for the selected order */}
+        <OrderEditModal
+          order={
+            editingOrder
+              ? ({ ...editingOrder, order_intent_items: selectedOrderItems } as unknown as OrderIntent)
+              : null
+          }
           open={!!editingOrder}
           onClose={() => setEditingOrder(null)}
           onSaved={() => {
