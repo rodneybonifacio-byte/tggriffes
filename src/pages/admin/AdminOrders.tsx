@@ -44,7 +44,7 @@ const AdminOrders = () => {
   const { toast } = useToast();
   const { canViewPrices } = usePermissions();
 
-  const openPdfViewer = (order: OrderIntent) => {
+  const openPdfViewer = (order: OrderIntentWithCount) => {
     if (!order.order_number) {
       toast({ title: 'Pedido sem número', variant: 'destructive' });
       return;
@@ -226,7 +226,7 @@ const AdminOrders = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {order.order_intent_items?.length || 0} item(ns)
+                        {order.order_intent_items?.[0]?.count ?? 0} item(ns)
                       </TableCell>
                       {canViewPrices && (
                         <TableCell className="text-right font-medium">
@@ -319,8 +319,8 @@ const AdminOrders = () => {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                      <span>{order.order_intent_items?.length || 0} item(ns)</span>
+                     <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                       <span>{order.order_intent_items?.[0]?.count ?? 0} item(ns)</span>
                       {order.shipping_service && (
                         <span className="flex items-center gap-1">
                           <Truck className="h-3 w-3" />
