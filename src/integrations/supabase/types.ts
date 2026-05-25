@@ -346,6 +346,7 @@ export type Database = {
           customer_whatsapp: string | null
           dest_cep: string | null
           id: string
+          items_count: number
           observations: string | null
           order_number: number | null
           seller_user_id: string | null
@@ -368,6 +369,7 @@ export type Database = {
           customer_whatsapp?: string | null
           dest_cep?: string | null
           id?: string
+          items_count?: number
           observations?: string | null
           order_number?: number | null
           seller_user_id?: string | null
@@ -390,6 +392,7 @@ export type Database = {
           customer_whatsapp?: string | null
           dest_cep?: string | null
           id?: string
+          items_count?: number
           observations?: string | null
           order_number?: number | null
           seller_user_id?: string | null

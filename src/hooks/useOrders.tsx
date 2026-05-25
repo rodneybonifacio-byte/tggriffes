@@ -74,7 +74,8 @@ export function useOrderIntentSummaries() {
 }
 
 export type OrderIntentWithCount = Tables<'order_intents'> & {
-  order_intent_items: { count: number }[];
+  // Coluna pré-agregada mantida por trigger no banco.
+  items_count: number;
 };
 
 /**
@@ -84,7 +85,7 @@ export type OrderIntentWithCount = Tables<'order_intents'> & {
  */
 export function useOrderIntentsLight() {
   return useQuery({
-    queryKey: ['order-intents-light', 'v1'],
+    queryKey: ['order-intents-light', 'v2-items-count'],
     queryFn: async () => {
       const PAGE_SIZE = 1000;
       const all: OrderIntentWithCount[] = [];
@@ -92,7 +93,7 @@ export function useOrderIntentsLight() {
         const from = i * PAGE_SIZE;
         const { data, error } = await supabase
           .from('order_intents')
-          .select('*, order_intent_items(count)')
+          .select('*')
           .order('created_at', { ascending: false })
           .range(from, from + PAGE_SIZE - 1);
         if (error) {
@@ -105,6 +106,56 @@ export function useOrderIntentsLight() {
       }
       return all;
     },
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * Server-side paginated orders list. Pushes status filter and name/phone search
+ * to PostgREST so each page returns only `pageSize` rows + an exact total count.
+ */
+export interface UseOrderIntentsPageParams {
+  page: number; // 0-based
+  pageSize: number;
+  status?: string; // 'all' or specific status
+  search?: string; // name or phone substring
+}
+
+export function useOrderIntentsPage(params: UseOrderIntentsPageParams) {
+  const { page, pageSize, status = 'all', search = '' } = params;
+  return useQuery({
+    queryKey: ['order-intents-page', { page, pageSize, status, search }],
+    queryFn: async () => {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+
+      let query = supabase
+        .from('order_intents')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (status && status !== 'all') {
+        query = query.eq('status', status);
+      }
+
+      const trimmed = search.trim();
+      if (trimmed) {
+        const digits = trimmed.replace(/\D/g, '');
+        const orParts = [`customer_name.ilike.%${trimmed}%`];
+        if (digits) orParts.push(`customer_whatsapp.ilike.%${digits}%`);
+        query = query.or(orParts.join(','));
+      }
+
+      const { data, error, count } = await query;
+      if (error) {
+        console.error('[useOrderIntentsPage] erro:', error);
+        throw error;
+      }
+      const rows = (data ?? []) as unknown as OrderIntentWithCount[];
+      return { rows, total: count ?? 0 };
+    },
+    placeholderData: (prev) => prev,
     staleTime: 60 * 1000,
   });
 }
