@@ -39,8 +39,9 @@ const AdminOrders = () => {
   const { data: orders = [], isLoading } = useOrderIntentsLight();
   const { mutateAsync: updateStatus, isPending: isUpdating } = useUpdateOrderStatus();
   const { mutateAsync: addHistory } = useAddOrderHistory();
+  const activeOrderId = selectedOrder?.id || editingOrder?.id || null;
   const { data: orderHistory = [] } = useOrderHistory(selectedOrder?.id || null);
-  const { data: selectedOrderItems = [] } = useOrderIntentItems(selectedOrder?.id || null);
+  const { data: selectedOrderItems = [] } = useOrderIntentItems(activeOrderId);
   const { toast } = useToast();
   const { canViewPrices } = usePermissions();
 
