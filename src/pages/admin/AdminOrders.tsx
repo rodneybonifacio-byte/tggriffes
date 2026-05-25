@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { OrderEditModal } from '@/components/admin/OrderEditModal';
-import { useOrderIntents, useUpdateOrderStatus, useAddOrderHistory, useOrderHistory } from '@/hooks/useOrders';
+import { useOrderIntentsLight, useOrderIntentItems, useUpdateOrderStatus, useAddOrderHistory, useOrderHistory, type OrderIntent } from '@/hooks/useOrders';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,7 +15,7 @@ import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText, Phone, User, Messa
 import { Input } from '@/components/ui/input';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { OrderIntent } from '@/hooks/useOrders';
+import { OrderIntentWithCount } from '@/hooks/useOrders';
 
 const STATUS_OPTIONS = [
   { value: 'NOVO', label: 'Novo', color: 'bg-blue-100 text-blue-700' },
@@ -32,18 +32,20 @@ const getStatusColor = (status: string) => {
 const AdminOrders = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedOrder, setSelectedOrder] = useState<OrderIntent | null>(null);
-  const [editingOrder, setEditingOrder] = useState<OrderIntent | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderIntentWithCount | null>(null);
+  const [editingOrder, setEditingOrder] = useState<OrderIntentWithCount | null>(null);
   const [cancelConfirmOrder, setCancelConfirmOrder] = useState<{ id: string; currentStatus: string } | null>(null);
-  
-  const { data: orders = [], isLoading } = useOrderIntents();
+
+  const { data: orders = [], isLoading } = useOrderIntentsLight();
   const { mutateAsync: updateStatus, isPending: isUpdating } = useUpdateOrderStatus();
   const { mutateAsync: addHistory } = useAddOrderHistory();
+  const activeOrderId = selectedOrder?.id || editingOrder?.id || null;
   const { data: orderHistory = [] } = useOrderHistory(selectedOrder?.id || null);
+  const { data: selectedOrderItems = [] } = useOrderIntentItems(activeOrderId);
   const { toast } = useToast();
   const { canViewPrices } = usePermissions();
 
-  const openPdfViewer = (order: OrderIntent) => {
+  const openPdfViewer = (order: OrderIntentWithCount) => {
     if (!order.order_number) {
       toast({ title: 'Pedido sem número', variant: 'destructive' });
       return;
@@ -225,7 +227,7 @@ const AdminOrders = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {order.order_intent_items?.length || 0} item(ns)
+                        {order.order_intent_items?.[0]?.count ?? 0} item(ns)
                       </TableCell>
                       {canViewPrices && (
                         <TableCell className="text-right font-medium">
@@ -318,8 +320,8 @@ const AdminOrders = () => {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                      <span>{order.order_intent_items?.length || 0} item(ns)</span>
+                     <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                       <span>{order.order_intent_items?.[0]?.count ?? 0} item(ns)</span>
                       {order.shipping_service && (
                         <span className="flex items-center gap-1">
                           <Truck className="h-3 w-3" />
@@ -409,7 +411,7 @@ const AdminOrders = () => {
 
                 {/* Items */}
                 <div className="border rounded-lg divide-y">
-                  {selectedOrder.order_intent_items?.map((item) => (
+                  {selectedOrderItems.map((item) => (
                     <div key={item.id} className="p-3 flex justify-between">
                       <div>
                         <p className="font-medium">{item.product_name}</p>
@@ -523,9 +525,13 @@ const AdminOrders = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Order Modal */}
-        <OrderEditModal 
-          order={editingOrder}
+        {/* Edit Order Modal — items are lazy-loaded for the selected order */}
+        <OrderEditModal
+          order={
+            editingOrder
+              ? ({ ...editingOrder, order_intent_items: selectedOrderItems } as unknown as OrderIntent)
+              : null
+          }
           open={!!editingOrder}
           onClose={() => setEditingOrder(null)}
           onSaved={() => {
