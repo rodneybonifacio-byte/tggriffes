@@ -73,6 +73,63 @@ export function useOrderIntentSummaries() {
   });
 }
 
+export type OrderIntentWithCount = Tables<'order_intents'> & {
+  order_intent_items: { count: number }[];
+};
+
+/**
+ * Lightweight orders list: fetches all order_intents with only the COUNT of items
+ * per order (aggregated via PostgREST). Avoids transferring tens of thousands of
+ * item rows just to render the admin table.
+ */
+export function useOrderIntentsLight() {
+  return useQuery({
+    queryKey: ['order-intents-light', 'v1'],
+    queryFn: async () => {
+      const PAGE_SIZE = 1000;
+      const all: OrderIntentWithCount[] = [];
+      for (let i = 0; i < 50; i++) {
+        const from = i * PAGE_SIZE;
+        const { data, error } = await supabase
+          .from('order_intents')
+          .select('*, order_intent_items(count)')
+          .order('created_at', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) {
+          console.error('[useOrderIntentsLight] erro:', error);
+          throw error;
+        }
+        const batch = (data ?? []) as unknown as OrderIntentWithCount[];
+        all.push(...batch);
+        if (batch.length < PAGE_SIZE) break;
+      }
+      return all;
+    },
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * Fetches the items for a single order on demand. Used by the detail modal so
+ * we don't load every item in the catalog upfront.
+ */
+export function useOrderIntentItems(orderIntentId: string | null) {
+  return useQuery({
+    queryKey: ['order-intent-items', orderIntentId],
+    queryFn: async () => {
+      if (!orderIntentId) return [] as Tables<'order_intent_items'>[];
+      const { data, error } = await supabase
+        .from('order_intent_items')
+        .select('*')
+        .eq('order_intent_id', orderIntentId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Tables<'order_intent_items'>[];
+    },
+    enabled: !!orderIntentId,
+  });
+}
+
 export function useCreateOrderIntent() {
   const queryClient = useQueryClient();
   
