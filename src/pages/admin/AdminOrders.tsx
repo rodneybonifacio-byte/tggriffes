@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { OrderEditModal } from '@/components/admin/OrderEditModal';
-import { useOrderIntentsLight, useOrderIntentItems, useUpdateOrderStatus, useAddOrderHistory, useOrderHistory, type OrderIntent } from '@/hooks/useOrders';
+import { useOrderIntentsPage, useOrderIntentItems, useUpdateOrderStatus, useAddOrderHistory, useOrderHistory, type OrderIntent } from '@/hooks/useOrders';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -32,11 +32,21 @@ const getStatusColor = (status: string) => {
 const AdminOrders = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
   const [selectedOrder, setSelectedOrder] = useState<OrderIntentWithCount | null>(null);
   const [editingOrder, setEditingOrder] = useState<OrderIntentWithCount | null>(null);
   const [cancelConfirmOrder, setCancelConfirmOrder] = useState<{ id: string; currentStatus: string } | null>(null);
 
-  const { data: orders = [], isLoading } = useOrderIntentsLight();
+  const { data: pageData, isLoading, isFetching } = useOrderIntentsPage({
+    page,
+    pageSize: PAGE_SIZE,
+    status: statusFilter,
+    search: searchQuery,
+  });
+  const orders = pageData?.rows ?? [];
+  const total = pageData?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const { mutateAsync: updateStatus, isPending: isUpdating } = useUpdateOrderStatus();
   const { mutateAsync: addHistory } = useAddOrderHistory();
   const activeOrderId = selectedOrder?.id || editingOrder?.id || null;
@@ -56,20 +66,12 @@ const AdminOrders = () => {
     window.open(`/pedidos/pdf/${order.order_number}`, '_blank', 'noopener,noreferrer');
   };
 
-  const filteredOrders = orders.filter(order => {
-    // Filter by status
-    if (statusFilter !== 'all' && order.status !== statusFilter) return false;
-    
-    // Filter by search query (name or phone)
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      const nameMatch = order.customer_name?.toLowerCase().includes(query);
-      const phoneMatch = order.customer_whatsapp?.replace(/\D/g, '').includes(query.replace(/\D/g, ''));
-      if (!nameMatch && !phoneMatch) return false;
-    }
-    
-    return true;
-  });
+  // Filtros são aplicados no servidor; nada mais a fazer aqui.
+  const filteredOrders = orders;
+
+  // Resetar página ao mudar filtros.
+  const handleStatusFilter = (v: string) => { setStatusFilter(v); setPage(0); };
+  const handleSearch = (v: string) => { setSearchQuery(v); setPage(0); };
 
   const handleStatusChange = async (orderId: string, newStatus: string, currentStatus?: string) => {
     // Show confirmation dialog for cancellation
@@ -131,7 +133,7 @@ const AdminOrders = () => {
       <AdminLayout title="Pedidos">
         {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-6">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={handleStatusFilter}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -155,7 +157,7 @@ const AdminOrders = () => {
             <Input
               placeholder="Buscar por nome ou telefone..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
               className="pl-9 pr-9"
             />
             {searchQuery && (
@@ -163,7 +165,7 @@ const AdminOrders = () => {
                 variant="ghost"
                 size="icon"
                 className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                onClick={() => setSearchQuery('')}
+                onClick={() => handleSearch('')}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -171,7 +173,7 @@ const AdminOrders = () => {
           </div>
 
           <div className="text-right text-sm text-muted-foreground self-center whitespace-nowrap">
-            {filteredOrders.length} pedido{filteredOrders.length !== 1 ? 's' : ''}
+            {total} pedido{total !== 1 ? 's' : ''}
           </div>
         </div>
 
@@ -227,7 +229,7 @@ const AdminOrders = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {order.order_intent_items?.[0]?.count ?? 0} item(ns)
+                        {order.items_count ?? 0} item(ns)
                       </TableCell>
                       {canViewPrices && (
                         <TableCell className="text-right font-medium">
@@ -321,7 +323,7 @@ const AdminOrders = () => {
                     </div>
 
                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                       <span>{order.order_intent_items?.[0]?.count ?? 0} item(ns)</span>
+                       <span>{order.items_count ?? 0} item(ns)</span>
                       {order.shipping_service && (
                         <span className="flex items-center gap-1">
                           <Truck className="h-3 w-3" />
@@ -368,6 +370,31 @@ const AdminOrders = () => {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+
+            {/* Paginação */}
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-sm text-muted-foreground">
+                Página {page + 1} de {pageCount}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0 || isFetching}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                  disabled={page >= pageCount - 1 || isFetching}
+                >
+                  Próxima
+                </Button>
+              </div>
             </div>
           </>
         )}
