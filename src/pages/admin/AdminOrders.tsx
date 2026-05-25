@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { OrderEditModal } from '@/components/admin/OrderEditModal';
-import { useOrderIntents, useUpdateOrderStatus, useAddOrderHistory, useOrderHistory } from '@/hooks/useOrders';
+import { useOrderIntentsLight, useOrderIntentItems, useUpdateOrderStatus, useAddOrderHistory, useOrderHistory } from '@/hooks/useOrders';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,7 +15,7 @@ import { ShoppingCart, Loader2, Eye, MapPin, Truck, FileText, Phone, User, Messa
 import { Input } from '@/components/ui/input';
 import { formatPrice } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { OrderIntent } from '@/hooks/useOrders';
+import { OrderIntentWithCount } from '@/hooks/useOrders';
 
 const STATUS_OPTIONS = [
   { value: 'NOVO', label: 'Novo', color: 'bg-blue-100 text-blue-700' },
@@ -32,14 +32,15 @@ const getStatusColor = (status: string) => {
 const AdminOrders = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedOrder, setSelectedOrder] = useState<OrderIntent | null>(null);
-  const [editingOrder, setEditingOrder] = useState<OrderIntent | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderIntentWithCount | null>(null);
+  const [editingOrder, setEditingOrder] = useState<OrderIntentWithCount | null>(null);
   const [cancelConfirmOrder, setCancelConfirmOrder] = useState<{ id: string; currentStatus: string } | null>(null);
-  
-  const { data: orders = [], isLoading } = useOrderIntents();
+
+  const { data: orders = [], isLoading } = useOrderIntentsLight();
   const { mutateAsync: updateStatus, isPending: isUpdating } = useUpdateOrderStatus();
   const { mutateAsync: addHistory } = useAddOrderHistory();
   const { data: orderHistory = [] } = useOrderHistory(selectedOrder?.id || null);
+  const { data: selectedOrderItems = [] } = useOrderIntentItems(selectedOrder?.id || null);
   const { toast } = useToast();
   const { canViewPrices } = usePermissions();
 
