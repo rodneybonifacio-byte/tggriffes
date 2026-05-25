@@ -410,7 +410,7 @@ const AdminOrders = () => {
 
                 {/* Items */}
                 <div className="border rounded-lg divide-y">
-                  {selectedOrder.order_intent_items?.map((item) => (
+                  {selectedOrderItems.map((item) => (
                     <div key={item.id} className="p-3 flex justify-between">
                       <div>
                         <p className="font-medium">{item.product_name}</p>
