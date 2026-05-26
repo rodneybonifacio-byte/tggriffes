@@ -62,7 +62,7 @@ export function ShippingCalculator({
     
     try {
       const cleanOriginCep = (originCep || '01001000').replace(/\D/g, '');
-      const peso = Math.max(1, weightGrams || 300);
+      const peso = Math.max(1, weightGrams || 500);
       const comprimento = Math.max(1, Math.round(lengthCm || 30));
       const largura = Math.max(1, Math.round(widthCm || 30));
       const altura = Math.max(1, Math.round(heightCm || 2));
