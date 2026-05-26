@@ -8,6 +8,10 @@ export interface VisitsAnalytics {
   newVisitors: number;
   dailyTrend: { date: string; views: number; uniqueVisitors: number }[];
   trafficSources: { source: string; views: number; percentage: number }[];
+  trafficMediums: { medium: string; views: number; percentage: number }[];
+  topReferrerDomains: { domain: string; views: number }[];
+  topCampaigns: { campaign: string; views: number }[];
+  deviceBreakdown: { device: string; views: number; percentage: number }[];
   topProducts: { slug: string; name: string; image: string | null; views: number }[];
 }
 
@@ -28,7 +32,7 @@ export function useVisitsAnalytics(days: 7 | 30 = 30) {
         const from = i * PAGE_SIZE;
         const { data, error } = await supabase
           .from('page_views')
-          .select('visitor_id, path, page_type, traffic_source, created_at')
+          .select('visitor_id, path, page_type, traffic_source, traffic_medium, referrer_domain, utm_campaign, device_type, created_at')
           .gte('created_at', sinceIso)
           .order('created_at', { ascending: false })
           .range(from, from + PAGE_SIZE - 1);
@@ -49,6 +53,10 @@ export function useVisitsAnalytics(days: 7 | 30 = 30) {
 
       const visitorFirstSeen = new Map<string, string>();
       const sourceMap = new Map<string, number>();
+      const mediumMap = new Map<string, number>();
+      const domainMap = new Map<string, number>();
+      const campaignMap = new Map<string, number>();
+      const deviceMap = new Map<string, number>();
       const productPathCount = new Map<string, number>();
       const allVisitors = new Set<string>();
 
@@ -66,6 +74,18 @@ export function useVisitsAnalytics(days: 7 | 30 = 30) {
 
         const src = r.traffic_source || 'direct';
         sourceMap.set(src, (sourceMap.get(src) || 0) + 1);
+
+        const med = r.traffic_medium || 'direct';
+        mediumMap.set(med, (mediumMap.get(med) || 0) + 1);
+
+        if (r.referrer_domain) {
+          domainMap.set(r.referrer_domain, (domainMap.get(r.referrer_domain) || 0) + 1);
+        }
+        if (r.utm_campaign) {
+          campaignMap.set(r.utm_campaign, (campaignMap.get(r.utm_campaign) || 0) + 1);
+        }
+        const dev = r.device_type || 'unknown';
+        deviceMap.set(dev, (deviceMap.get(dev) || 0) + 1);
 
         if (r.page_type === 'product' && typeof r.path === 'string') {
           productPathCount.set(r.path, (productPathCount.get(r.path) || 0) + 1);
@@ -132,6 +152,34 @@ export function useVisitsAnalytics(days: 7 | 30 = 30) {
         }))
         .sort((a, b) => b.views - a.views);
 
+      const totalMediumViews = Array.from(mediumMap.values()).reduce((a, b) => a + b, 0) || 1;
+      const trafficMediums = Array.from(mediumMap.entries())
+        .map(([medium, views]) => ({
+          medium,
+          views,
+          percentage: Math.round((views / totalMediumViews) * 100),
+        }))
+        .sort((a, b) => b.views - a.views);
+
+      const topReferrerDomains = Array.from(domainMap.entries())
+        .map(([domain, views]) => ({ domain, views }))
+        .sort((a, b) => b.views - a.views)
+        .slice(0, 8);
+
+      const topCampaigns = Array.from(campaignMap.entries())
+        .map(([campaign, views]) => ({ campaign, views }))
+        .sort((a, b) => b.views - a.views)
+        .slice(0, 6);
+
+      const totalDeviceViews = Array.from(deviceMap.values()).reduce((a, b) => a + b, 0) || 1;
+      const deviceBreakdown = Array.from(deviceMap.entries())
+        .map(([device, views]) => ({
+          device,
+          views,
+          percentage: Math.round((views / totalDeviceViews) * 100),
+        }))
+        .sort((a, b) => b.views - a.views);
+
       const dailyTrend = Array.from(dailyMap.entries()).map(([date, v]) => ({
         date,
         views: v.views,
@@ -145,6 +193,10 @@ export function useVisitsAnalytics(days: 7 | 30 = 30) {
         newVisitors: newVisitorIds.size,
         dailyTrend,
         trafficSources,
+        trafficMediums,
+        topReferrerDomains,
+        topCampaigns,
+        deviceBreakdown,
         topProducts,
       };
     },

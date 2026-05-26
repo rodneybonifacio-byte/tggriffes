@@ -36,36 +36,123 @@ export function getSessionId(): string {
   }
 }
 
-export function detectTrafficSource(referrer: string): string {
-  // Persist first-touch source for the session
+export interface TrafficInfo {
+  source: string;          // canonical source (whatsapp, instagram, google, etc.)
+  medium: string;          // social | search | paid | email | referral | direct
+  campaign: string | null; // utm_campaign
+  content: string | null;
+  term: string | null;
+  utmSource: string | null;
+  referrerDomain: string | null;
+}
+
+function classifyByDomain(domain: string): { source: string; medium: string } {
+  const d = domain.toLowerCase();
+  if (!d) return { source: 'direct', medium: 'direct' };
+  // Social
+  if (d.includes('whatsapp') || d === 'wa.me' || d.includes('api.whatsapp')) return { source: 'whatsapp', medium: 'social' };
+  if (d.includes('instagram') || d === 'l.instagram.com') return { source: 'instagram', medium: 'social' };
+  if (d.includes('facebook') || d === 'fb.com' || d === 'l.facebook.com' || d === 'm.facebook.com') return { source: 'facebook', medium: 'social' };
+  if (d.includes('tiktok')) return { source: 'tiktok', medium: 'social' };
+  if (d.includes('twitter') || d === 't.co' || d.includes('x.com')) return { source: 'twitter', medium: 'social' };
+  if (d.includes('linkedin') || d === 'lnkd.in') return { source: 'linkedin', medium: 'social' };
+  if (d.includes('pinterest')) return { source: 'pinterest', medium: 'social' };
+  if (d.includes('youtube') || d === 'youtu.be') return { source: 'youtube', medium: 'social' };
+  if (d.includes('telegram') || d === 't.me') return { source: 'telegram', medium: 'social' };
+  if (d.includes('threads.net')) return { source: 'threads', medium: 'social' };
+  if (d.includes('reddit')) return { source: 'reddit', medium: 'social' };
+  if (d.includes('kwai')) return { source: 'kwai', medium: 'social' };
+  // Search engines
+  if (d.includes('google.')) return { source: 'google', medium: 'search' };
+  if (d.includes('bing.com')) return { source: 'bing', medium: 'search' };
+  if (d.includes('duckduckgo')) return { source: 'duckduckgo', medium: 'search' };
+  if (d.includes('yahoo.')) return { source: 'yahoo', medium: 'search' };
+  if (d.includes('yandex')) return { source: 'yandex', medium: 'search' };
+  if (d.includes('ecosia')) return { source: 'ecosia', medium: 'search' };
+  // Email webmails
+  if (d.includes('mail.google') || d.includes('outlook') || d === 'mail.yahoo.com') return { source: d, medium: 'email' };
+  return { source: d, medium: 'referral' };
+}
+
+function getReferrerDomain(referrer: string): string {
   try {
-    const cached = sessionStorage.getItem('tg_traffic_source');
-    if (cached) return cached;
+    if (!referrer) return '';
+    const u = new URL(referrer);
+    return u.hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+export function detectTrafficInfo(referrer: string): TrafficInfo {
+  // First-touch persistence for the session
+  try {
+    const cached = sessionStorage.getItem('tg_traffic_info');
+    if (cached) return JSON.parse(cached) as TrafficInfo;
   } catch {}
 
-  const ref = (referrer || '').toLowerCase();
-  let source = 'direct';
-  if (!ref) source = 'direct';
-  else if (ref.includes('whatsapp') || ref.includes('wa.me') || ref.includes('api.whatsapp')) source = 'whatsapp';
-  else if (ref.includes('instagram')) source = 'instagram';
-  else if (ref.includes('facebook') || ref.includes('fb.com') || ref.includes('fbclid')) source = 'facebook';
-  else if (ref.includes('google')) source = 'google';
-  else if (ref.includes('bing')) source = 'bing';
-  else if (ref.includes('t.co') || ref.includes('twitter') || ref.includes('x.com')) source = 'twitter';
-  else if (ref.includes('tiktok')) source = 'tiktok';
-  else source = 'other';
+  const domain = getReferrerDomain(referrer);
+  let { source, medium } = classifyByDomain(domain);
 
-  // utm_source override
+  // Same-site referrer counts as direct (internal nav)
+  try {
+    if (domain && typeof window !== 'undefined' && domain === window.location.hostname.replace(/^www\./, '')) {
+      source = 'direct';
+      medium = 'direct';
+    }
+  } catch {}
+
+  let campaign: string | null = null;
+  let content: string | null = null;
+  let term: string | null = null;
+  let utmSource: string | null = null;
+
   try {
     const params = new URLSearchParams(window.location.search);
-    const utm = params.get('utm_source');
-    if (utm) source = utm.toLowerCase();
+    utmSource = params.get('utm_source');
+    const utmMedium = params.get('utm_medium');
+    campaign = params.get('utm_campaign');
+    content = params.get('utm_content');
+    term = params.get('utm_term');
+    const fbclid = params.get('fbclid');
+    const gclid = params.get('gclid');
+
+    if (utmSource) source = utmSource.toLowerCase();
+    if (utmMedium) medium = utmMedium.toLowerCase();
+    else if (gclid) medium = 'paid';
+    else if (fbclid && medium === 'direct') { source = 'facebook'; medium = 'social'; }
   } catch {}
 
+  const info: TrafficInfo = {
+    source,
+    medium,
+    campaign,
+    content,
+    term,
+    utmSource,
+    referrerDomain: domain || null,
+  };
+
   try {
-    sessionStorage.setItem('tg_traffic_source', source);
+    sessionStorage.setItem('tg_traffic_info', JSON.stringify(info));
   } catch {}
-  return source;
+  return info;
+}
+
+// Backwards-compat helper
+export function detectTrafficSource(referrer: string): string {
+  return detectTrafficInfo(referrer).source;
+}
+
+function getDeviceType(): string {
+  try {
+    const ua = navigator.userAgent;
+    if (/iPad|Tablet|PlayBook|Silk/i.test(ua)) return 'tablet';
+    if (/Mobi|Android|iPhone|iPod/i.test(ua)) return 'mobile';
+    return 'desktop';
+  } catch {
+    return 'desktop';
+  }
 }
 
 export async function trackPageView(path: string) {
@@ -77,7 +164,7 @@ export async function trackPageView(path: string) {
   const visitorId = getVisitorId();
   const sessionId = getSessionId();
   const referrer = typeof document !== 'undefined' ? document.referrer : '';
-  const trafficSource = detectTrafficSource(referrer);
+  const info = detectTrafficInfo(referrer);
 
   let pageType: 'home' | 'product' | 'other' = 'other';
   if (path === '/' || path === '') pageType = 'home';
@@ -90,9 +177,16 @@ export async function trackPageView(path: string) {
       path,
       page_type: pageType,
       referrer: referrer || null,
-      traffic_source: trafficSource,
+      traffic_source: info.source,
+      traffic_medium: info.medium,
+      referrer_domain: info.referrerDomain,
+      utm_source: info.utmSource,
+      utm_campaign: info.campaign,
+      utm_content: info.content,
+      utm_term: info.term,
+      device_type: getDeviceType(),
       user_agent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 500) : null,
-    });
+    } as any);
   } catch (err) {
     // Silenciar erros de tracking para não impactar UX
     console.debug('[tracking] erro:', err);
