@@ -161,6 +161,20 @@ export async function trackPageView(path: string) {
     return;
   }
 
+  // Don't track development / preview environments (Lovable sandbox, localhost, etc.)
+  try {
+    const host = typeof window !== 'undefined' ? window.location.hostname : '';
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host.endsWith('.lovable.app') ||
+      host.endsWith('.lovable.dev') ||
+      host.endsWith('.lovableproject.com')
+    ) {
+      return;
+    }
+  } catch {}
+
   const visitorId = getVisitorId();
   const sessionId = getSessionId();
   const referrer = typeof document !== 'undefined' ? document.referrer : '';
