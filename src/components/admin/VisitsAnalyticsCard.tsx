@@ -81,12 +81,12 @@ export function VisitsAnalyticsCard() {
   if (!data) return null;
 
   // Defensive defaults (cached responses may pre-date new fields)
-  const trafficSources = data.trafficSources ?? [];
-  const trafficMediums = data.trafficMediums ?? [];
-  const topReferrerDomains = data.topReferrerDomains ?? [];
-  const topCampaigns = data.topCampaigns ?? [];
-  const deviceBreakdown = data.deviceBreakdown ?? [];
-  const topProducts = data.topProducts ?? [];
+  const trafficSources = trafficSources ?? [];
+  const trafficMediums = trafficMediums ?? [];
+  const topReferrerDomains = topReferrerDomains ?? [];
+  const topCampaigns = topCampaigns ?? [];
+  const deviceBreakdown = deviceBreakdown ?? [];
+  const topProducts = topProducts ?? [];
 
   const chartData = data.dailyTrend.map(d => ({
     date: formatDateLabel(d.date),
@@ -187,11 +187,11 @@ export function VisitsAnalyticsCard() {
             <h4 className="text-sm font-medium text-muted-foreground mb-3">
               Origem do tráfego (fonte)
             </h4>
-            {data.trafficSources.length === 0 ? (
+            {trafficSources.length === 0 ? (
               <p className="text-xs text-muted-foreground">Sem dados ainda</p>
             ) : (
               <div className="space-y-2">
-                {data.trafficSources.slice(0, 8).map(s => {
+                {trafficSources.slice(0, 8).map(s => {
                   const meta = sourceMeta(s.source);
                   const Icon = meta.icon;
                   return (
@@ -219,11 +219,11 @@ export function VisitsAnalyticsCard() {
             <h4 className="text-sm font-medium text-muted-foreground mt-6 mb-3">
               Por canal
             </h4>
-            {data.trafficMediums.length === 0 ? (
+            {trafficMediums.length === 0 ? (
               <p className="text-xs text-muted-foreground">Sem dados ainda</p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {data.trafficMediums.map(m => {
+                {trafficMediums.map(m => {
                   const meta = mediumMeta(m.medium);
                   const Icon = meta.icon;
                   return (
@@ -241,11 +241,11 @@ export function VisitsAnalyticsCard() {
             <h4 className="text-sm font-medium text-muted-foreground mt-6 mb-3">
               Sites que mais enviam visitas
             </h4>
-            {data.topReferrerDomains.length === 0 ? (
+            {topReferrerDomains.length === 0 ? (
               <p className="text-xs text-muted-foreground">Nenhum referenciador externo ainda</p>
             ) : (
               <div className="space-y-1">
-                {data.topReferrerDomains.map(d => (
+                {topReferrerDomains.map(d => (
                   <div key={d.domain} className="flex items-center justify-between text-xs p-1.5 rounded bg-secondary/40">
                     <span className="font-mono truncate">{d.domain}</span>
                     <Badge variant="outline" className="ml-2">{d.views}</Badge>
@@ -255,13 +255,13 @@ export function VisitsAnalyticsCard() {
             )}
 
             {/* Campaigns */}
-            {data.topCampaigns.length > 0 && (
+            {topCampaigns.length > 0 && (
               <>
                 <h4 className="text-sm font-medium text-muted-foreground mt-6 mb-3 flex items-center gap-2">
                   <Megaphone className="h-4 w-4" /> Campanhas (UTM)
                 </h4>
                 <div className="space-y-1">
-                  {data.topCampaigns.map(c => (
+                  {topCampaigns.map(c => (
                     <div key={c.campaign} className="flex items-center justify-between text-xs p-1.5 rounded bg-secondary/40">
                       <span className="truncate">{c.campaign}</span>
                       <Badge variant="outline" className="ml-2">{c.views}</Badge>
@@ -275,11 +275,11 @@ export function VisitsAnalyticsCard() {
             <h4 className="text-sm font-medium text-muted-foreground mt-6 mb-3">
               Dispositivos
             </h4>
-            {data.deviceBreakdown.length === 0 ? (
+            {deviceBreakdown.length === 0 ? (
               <p className="text-xs text-muted-foreground">Sem dados ainda</p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {data.deviceBreakdown.map(d => {
+                {deviceBreakdown.map(d => {
                   const meta = deviceMeta(d.device);
                   const Icon = meta.icon;
                   return (
@@ -299,11 +299,11 @@ export function VisitsAnalyticsCard() {
             <h4 className="text-sm font-medium text-muted-foreground mb-3">
               Produtos mais visitados
             </h4>
-            {data.topProducts.length === 0 ? (
+            {topProducts.length === 0 ? (
               <p className="text-xs text-muted-foreground">Sem visitas em páginas de produto ainda</p>
             ) : (
               <div className="space-y-2">
-                {data.topProducts.slice(0, 6).map((p, idx) => (
+                {topProducts.slice(0, 6).map((p, idx) => (
                   <Link
                     key={p.slug}
                     to={`/produto/${p.slug}`}
