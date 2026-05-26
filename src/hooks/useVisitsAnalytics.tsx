@@ -64,9 +64,10 @@ export function useVisitsAnalytics(days: 7 | 30 = 30) {
         // Ignore visits from Lovable preview/dev environments (legacy data)
         const dom = (r.referrer_domain || '').toLowerCase();
         if (
-          dom.endsWith('.lovable.app') ||
-          dom.endsWith('.lovable.dev') ||
-          dom.endsWith('.lovableproject.com') ||
+          dom.includes('lovable.app') ||
+          dom.includes('lovable.dev') ||
+          dom.includes('lovableproject.com') ||
+          dom.includes('lovable.') ||
           dom === 'localhost' ||
           dom === '127.0.0.1'
         ) {
