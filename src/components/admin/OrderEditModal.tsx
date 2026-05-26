@@ -146,7 +146,11 @@ export function OrderEditModal({ order, open, onClose, onSaved }: OrderEditModal
       setShippingService(order.shipping_service || '');
       setShippingPriceCents(order.shipping_price_cents || 0);
     }
-  }, [order]);
+    // Depend on id only — the parent rebuilds the `order` object every render
+    // (spreading editingOrder + selectedOrderItems), which would otherwise
+    // reset local edits (e.g., newly added items) on every re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id]);
 
   useEffect(() => {
     setNewColor('');
