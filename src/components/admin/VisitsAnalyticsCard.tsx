@@ -81,12 +81,12 @@ export function VisitsAnalyticsCard() {
   if (!data) return null;
 
   // Defensive defaults (cached responses may pre-date new fields)
-  const trafficSources = trafficSources ?? [];
-  const trafficMediums = trafficMediums ?? [];
-  const topReferrerDomains = topReferrerDomains ?? [];
-  const topCampaigns = topCampaigns ?? [];
-  const deviceBreakdown = deviceBreakdown ?? [];
-  const topProducts = topProducts ?? [];
+  const trafficSources = data.trafficSources ?? [];
+  const trafficMediums = data.trafficMediums ?? [];
+  const topReferrerDomains = data.topReferrerDomains ?? [];
+  const topCampaigns = data.topCampaigns ?? [];
+  const deviceBreakdown = data.deviceBreakdown ?? [];
+  const topProducts = data.topProducts ?? [];
 
   const chartData = data.dailyTrend.map(d => ({
     date: formatDateLabel(d.date),
