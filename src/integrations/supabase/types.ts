@@ -418,6 +418,45 @@ export type Database = {
           },
         ]
       }
+      page_views: {
+        Row: {
+          created_at: string
+          id: string
+          page_type: string | null
+          path: string
+          product_id: string | null
+          referrer: string | null
+          session_id: string | null
+          traffic_source: string | null
+          user_agent: string | null
+          visitor_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          page_type?: string | null
+          path: string
+          product_id?: string | null
+          referrer?: string | null
+          session_id?: string | null
+          traffic_source?: string | null
+          user_agent?: string | null
+          visitor_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          page_type?: string | null
+          path?: string
+          product_id?: string | null
+          referrer?: string | null
+          session_id?: string | null
+          traffic_source?: string | null
+          user_agent?: string | null
+          visitor_id?: string
+        }
+        Relationships: []
+      }
       product_images: {
         Row: {
           created_at: string
