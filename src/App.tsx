@@ -26,6 +26,7 @@ import AdminImageOptimizer from "./pages/admin/AdminImageOptimizer";
 import AdminHomeOrganization from "./pages/admin/AdminHomeOrganization";
 import AdminBilling from "./pages/admin/AdminBilling";
 import { SiteBlockGuard } from "@/components/SiteBlockGuard";
+import { PageViewTracker } from "@/components/PageViewTracker";
 import CustomerLogin from "./pages/customer/CustomerLogin";
 import CustomerRegister from "./pages/customer/CustomerRegister";
 import CustomerDashboard from "./pages/customer/CustomerDashboard";
@@ -52,6 +53,7 @@ const App = () => {
             <Sonner />
             <BrowserRouter>
               <SiteBlockGuard>
+              <PageViewTracker />
               <Routes>
               {/* Public Store */}
                 <Route path="/" element={<Index />} />
