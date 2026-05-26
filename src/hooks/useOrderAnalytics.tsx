@@ -56,6 +56,11 @@ export function useOrderAnalytics() {
       const PAGE_SIZE = 1000;
       const items: any[] = [];
 
+      // Limita ao histórico recente (90 dias) para evitar timeout no dashboard.
+      const since = new Date();
+      since.setDate(since.getDate() - 90);
+      const sinceIso = since.toISOString();
+
       for (let i = 0; i < 100; i++) {
         const from = i * PAGE_SIZE;
         const { data, error } = await supabase
@@ -75,6 +80,7 @@ export function useOrderAnalytics() {
               created_at
             )
           `)
+          .gte('created_at', sinceIso)
           .order('created_at', { ascending: false })
           .range(from, from + PAGE_SIZE - 1);
 
