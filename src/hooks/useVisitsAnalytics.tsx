@@ -61,6 +61,18 @@ export function useVisitsAnalytics(days: 7 | 30 = 30) {
       const allVisitors = new Set<string>();
 
       for (const r of rows) {
+        // Ignore visits from Lovable preview/dev environments (legacy data)
+        const dom = (r.referrer_domain || '').toLowerCase();
+        if (
+          dom.endsWith('.lovable.app') ||
+          dom.endsWith('.lovable.dev') ||
+          dom.endsWith('.lovableproject.com') ||
+          dom === 'localhost' ||
+          dom === '127.0.0.1'
+        ) {
+          continue;
+        }
+
         const dateKey = (r.created_at as string).split('T')[0];
         const daily = dailyMap.get(dateKey);
         if (daily) {
