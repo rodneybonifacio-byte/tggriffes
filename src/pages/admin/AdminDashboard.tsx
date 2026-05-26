@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CustomerBehaviorCard } from '@/components/admin/CustomerBehaviorCard';
 import { TopCustomersCard } from '@/components/admin/TopCustomersCard';
+import { VisitsAnalyticsCard } from '@/components/admin/VisitsAnalyticsCard';
 import { useProducts } from '@/hooks/useProducts';
 import { useOrderIntentSummaries } from '@/hooks/useOrders';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -377,6 +378,11 @@ const AdminDashboard = () => {
               )}
             </CardContent>
           </Card>
+        </div>
+
+        {/* Visitas do site */}
+        <div className="mt-8">
+          <VisitsAnalyticsCard />
         </div>
 
         {/* Top Customers + Customer Behavior */}
