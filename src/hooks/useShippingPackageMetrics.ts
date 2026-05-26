@@ -14,7 +14,7 @@ interface ShippingLine {
   quantity: number;
 }
 
-const DEFAULT_WEIGHT_GRAMS_PER_ITEM = 300;
+const DEFAULT_WEIGHT_GRAMS_PER_ITEM = 500;
 const DEFAULT_LENGTH_CM = 30;
 const DEFAULT_WIDTH_CM = 30;
 const DEFAULT_HEIGHT_CM_PER_ITEM = 2;
