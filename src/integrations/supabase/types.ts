@@ -421,38 +421,62 @@ export type Database = {
       page_views: {
         Row: {
           created_at: string
+          device_type: string | null
           id: string
           page_type: string | null
           path: string
           product_id: string | null
           referrer: string | null
+          referrer_domain: string | null
           session_id: string | null
+          traffic_medium: string | null
           traffic_source: string | null
           user_agent: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
           visitor_id: string
         }
         Insert: {
           created_at?: string
+          device_type?: string | null
           id?: string
           page_type?: string | null
           path: string
           product_id?: string | null
           referrer?: string | null
+          referrer_domain?: string | null
           session_id?: string | null
+          traffic_medium?: string | null
           traffic_source?: string | null
           user_agent?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
           visitor_id: string
         }
         Update: {
           created_at?: string
+          device_type?: string | null
           id?: string
           page_type?: string | null
           path?: string
           product_id?: string | null
           referrer?: string | null
+          referrer_domain?: string | null
           session_id?: string | null
+          traffic_medium?: string | null
           traffic_source?: string | null
           user_agent?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
           visitor_id?: string
         }
         Relationships: []
