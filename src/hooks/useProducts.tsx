@@ -223,6 +223,17 @@ export function useToggleProductActive() {
         .eq('id', id);
       
       if (error) throw error;
+
+      // Sync status to Shopify (non-blocking)
+      if (active) {
+        supabase.functions.invoke('shopify-sync', {
+          body: { action: 'sync_product', productId: id },
+        }).catch(err => console.error('Shopify activate sync failed:', err));
+      } else {
+        supabase.functions.invoke('shopify-sync', {
+          body: { action: 'delete_product', productId: id },
+        }).catch(err => console.error('Shopify archive sync failed:', err));
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
