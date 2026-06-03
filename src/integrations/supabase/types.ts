@@ -1012,6 +1012,16 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_seller: { Args: { _user_id: string }; Returns: boolean }
+      search_order_intents: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
+      unaccent: { Args: { "": string }; Returns: string }
       upsert_customer: {
         Args: { p_name: string; p_whatsapp: string }
         Returns: string
