@@ -124,36 +124,27 @@ export interface UseOrderIntentsPageParams {
 export function useOrderIntentsPage(params: UseOrderIntentsPageParams) {
   const { page, pageSize, status = 'all', search = '' } = params;
   return useQuery({
-    queryKey: ['order-intents-page', { page, pageSize, status, search }],
+    queryKey: ['order-intents-page', 'v2-rpc', { page, pageSize, status, search }],
     queryFn: async () => {
       const from = page * pageSize;
-      const to = from + pageSize - 1;
 
-      let query = supabase
-        .from('order_intents')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(from, to);
+      const { data, error } = await supabase.rpc('search_order_intents', {
+        p_status: status,
+        p_search: search ?? '',
+        p_limit: pageSize,
+        p_offset: from,
+      });
 
-      if (status && status !== 'all') {
-        query = query.eq('status', status);
-      }
-
-      const trimmed = search.trim();
-      if (trimmed) {
-        const digits = trimmed.replace(/\D/g, '');
-        const orParts = [`customer_name.ilike.%${trimmed}%`];
-        if (digits) orParts.push(`customer_whatsapp.ilike.%${digits}%`);
-        query = query.or(orParts.join(','));
-      }
-
-      const { data, error, count } = await query;
       if (error) {
         console.error('[useOrderIntentsPage] erro:', error);
         throw error;
       }
-      const rows = (data ?? []) as unknown as OrderIntentWithCount[];
-      return { rows, total: count ?? 0 };
+
+      const payload = (data ?? { rows: [], total: 0 }) as {
+        rows: OrderIntentWithCount[];
+        total: number;
+      };
+      return { rows: payload.rows ?? [], total: payload.total ?? 0 };
     },
     placeholderData: (prev) => prev,
     staleTime: 60 * 1000,
