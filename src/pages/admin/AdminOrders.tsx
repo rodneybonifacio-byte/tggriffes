@@ -155,7 +155,7 @@ const AdminOrders = () => {
           <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome ou telefone..."
+              placeholder="Buscar: nome, telefone, nº do pedido, CEP..."
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               className="pl-9 pr-9"
