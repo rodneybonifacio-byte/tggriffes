@@ -1146,9 +1146,6 @@ serve(async (req) => {
           errors,
         };
 
-      } else if (action === 'audit_weights') {
-        syncLog.sync_type = 'audit_weights';
-
       } else if (action === 'sync_weights') {
         // Replica o peso (grams) dos produtos locais para todas as variantes na Shopify
         syncLog.sync_type = 'sync_weights';
@@ -1203,7 +1200,7 @@ serve(async (req) => {
           errors,
         };
 
-      } else if (action === '__noop_weights_marker__') {
+      } else if (action === 'audit_weights') {
         syncLog.sync_type = 'audit_weights';
         const auditErrors: any[] = [];
         let page = 1;
