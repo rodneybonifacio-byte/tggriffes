@@ -1148,6 +1148,63 @@ serve(async (req) => {
 
       } else if (action === 'audit_weights') {
         syncLog.sync_type = 'audit_weights';
+
+      } else if (action === 'sync_weights') {
+        // Replica o peso (grams) dos produtos locais para todas as variantes na Shopify
+        syncLog.sync_type = 'sync_weights';
+        const { limit = 50, offset = 0 } = body;
+        const errors: any[] = [];
+        let updated = 0;
+
+        const { data: mappings, error: mErr } = await supabase
+          .from('shopify_variant_mappings')
+          .select(`
+            shopify_variant_id,
+            variant_id,
+            product_variants!inner (
+              product_id,
+              products!inner ( id, name, weight_grams )
+            )
+          `)
+          .range(offset, offset + limit - 1);
+
+        if (mErr) throw mErr;
+
+        const list = (mappings || []) as any[];
+        for (const m of list) {
+          try {
+            const grams = Number(m.product_variants?.products?.weight_grams) || 500;
+            await shopifyRequest(`/variants/${m.shopify_variant_id}.json`, 'PUT', {
+              variant: {
+                id: m.shopify_variant_id,
+                grams,
+                weight: grams / 1000,
+                weight_unit: 'kg',
+              },
+            });
+            updated++;
+            await delay(800);
+          } catch (e: any) {
+            errors.push({ shopify_variant_id: m.shopify_variant_id, error: e.message });
+          }
+        }
+
+        syncLog.products_synced = updated;
+        if (errors.length) { syncLog.status = 'partial'; syncLog.errors = errors; }
+
+        result = {
+          message: `Pesos sincronizados: ${updated}/${list.length}`,
+          updated,
+          processed: list.length,
+          offset,
+          limit,
+          hasMore: list.length === limit,
+          nextOffset: offset + list.length,
+          errors,
+        };
+
+      } else if (action === '__noop_weights_marker__') {
+        syncLog.sync_type = 'audit_weights';
         const auditErrors: any[] = [];
         let page = 1;
         let pageInfo: string | null = null;
