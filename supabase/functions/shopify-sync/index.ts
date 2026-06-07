@@ -1146,6 +1146,52 @@ serve(async (req) => {
           errors,
         };
 
+      } else if (action === 'audit_weights') {
+        syncLog.sync_type = 'audit_weights';
+        const auditErrors: any[] = [];
+        let page = 1;
+        let pageInfo: string | null = null;
+        let totalChecked = 0;
+        const missing: any[] = [];
+        let nextUrl: string | null = `${shopifyApiUrl}/products.json?limit=250&fields=id,title,handle,variants`;
+        while (nextUrl) {
+          const resp = await fetch(nextUrl, {
+            headers: { 'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN!, 'Content-Type': 'application/json' },
+          });
+          if (!resp.ok) { auditErrors.push({ status: resp.status, body: await resp.text() }); break; }
+          const json = await resp.json();
+          const products = json.products || [];
+          for (const p of products) {
+            totalChecked++;
+            const variants = p.variants || [];
+            const noWeight = variants.filter((v: any) => !v.grams || v.grams === 0);
+            if (noWeight.length > 0) {
+              missing.push({
+                shopify_product_id: String(p.id),
+                title: p.title,
+                handle: p.handle,
+                variants_without_weight: noWeight.length,
+                total_variants: variants.length,
+              });
+            }
+          }
+          const link = resp.headers.get('link') || '';
+          const m = link.match(/<([^>]+)>;\s*rel="next"/);
+          nextUrl = m ? m[1] : null;
+          page++;
+          if (page > 50) break;
+          await delay(300);
+        }
+        result = {
+          message: `Audit complete. ${missing.length} of ${totalChecked} products have variants without weight.`,
+          totalChecked,
+          missingCount: missing.length,
+          missing: missing.slice(0, 100),
+          errors: auditErrors,
+        };
+        syncLog.products_synced = totalChecked;
+        if (auditErrors.length) syncLog.status = 'partial';
+
       } else if (action === 'fix_missing_images') {
         // Fetch Shopify CDN URLs for products missing shopify_image_url
         syncLog.sync_type = 'fix_images';
