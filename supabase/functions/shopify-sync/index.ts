@@ -1146,10 +1146,6 @@ serve(async (req) => {
           errors,
         };
 
-      } else if (action === 'fix_missing_images') {
-        // Fetch Shopify CDN URLs for products missing shopify_image_url
-        syncLog.sync_type = 'fix_images';
-
       } else if (action === 'audit_weights') {
         syncLog.sync_type = 'audit_weights';
         const auditErrors: any[] = [];
@@ -1196,7 +1192,9 @@ serve(async (req) => {
         syncLog.products_synced = totalChecked;
         if (auditErrors.length) syncLog.status = 'partial';
 
-      } else if (action === 'fix_missing_images_old_placeholder') {
+      } else if (action === 'fix_missing_images') {
+        // Fetch Shopify CDN URLs for products missing shopify_image_url
+        syncLog.sync_type = 'fix_images';
         
         console.log('[FixImages] Starting fix_missing_images action...');
         
