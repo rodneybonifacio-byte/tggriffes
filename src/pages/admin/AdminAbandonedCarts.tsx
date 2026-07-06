@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { useOrderIntents, useUpdateOrderStatus, useAddOrderHistory } from '@/hooks/useOrders';
+import { useAbandonedOrderIntents, useUpdateOrderStatus, useAddOrderHistory } from '@/hooks/useOrders';
 import { useAllCartReservations, useCleanupExpiredReservations, CartReservation } from '@/hooks/useCartReservations';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,7 +37,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getColorDisplayName } from '@/lib/utils';
 
 export default function AdminAbandonedCarts() {
-  const { data: orders, isLoading: ordersLoading, refetch: refetchOrders } = useOrderIntents();
+  const { data: orders, isLoading: ordersLoading, refetch: refetchOrders } = useAbandonedOrderIntents();
   const { data: reservations, isLoading: reservationsLoading, refetch: refetchReservations } = useAllCartReservations();
   const updateStatus = useUpdateOrderStatus();
   const addHistory = useAddOrderHistory();
@@ -47,8 +47,8 @@ export default function AdminAbandonedCarts() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [isDeletingReservations, setIsDeletingReservations] = useState(false);
 
-  // Filter orders with status NOVO (these are potential abandoned carts)
-  const abandonedCarts = orders?.filter(order => order.status === 'NOVO') || [];
+  // The hook already fetches only orders with status NOVO.
+  const abandonedCarts = orders || [];
   
   // Group reservations by session
   const now = new Date();
