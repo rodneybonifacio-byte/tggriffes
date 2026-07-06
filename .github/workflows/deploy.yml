@@ -24,4 +24,20 @@ jobs:
               --build-arg VITE_SUPABASE_PROJECT_ID=dvqeitcliexenhnfradm \
               tggriffes
             docker compose up -d --no-deps tggriffes
+            docker compose ps tggriffes
+
+            # Self-heal the VPS web entrypoints after deploy. This prevents a
+            # good build from staying offline because nginx/firewall/docker was left stopped.
+            if command -v ufw >/dev/null 2>&1; then
+              sudo ufw allow 80/tcp || true
+              sudo ufw allow 443/tcp || true
+            fi
+
+            if command -v nginx >/dev/null 2>&1; then
+              sudo nginx -t
+              sudo systemctl enable --now nginx || true
+              sudo systemctl reload nginx || sudo systemctl restart nginx
+            fi
+
+            timeout 15 curl -fsSI http://127.0.0.1 >/dev/null || docker compose restart tggriffes
             docker image prune -f
