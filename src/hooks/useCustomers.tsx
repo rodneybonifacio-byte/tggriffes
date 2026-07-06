@@ -54,23 +54,10 @@ export function useCustomers() {
       const orders = await fetchAll<any>((from, to) =>
         supabase
           .from('order_intents')
-          .select('id, customer_id, total_cents, order_number, status, created_at')
+          .select('id, customer_id, total_cents, order_number, status, created_at, items_count')
           .order('created_at', { ascending: false })
           .range(from, to)
       );
-
-      const items = await fetchAll<any>((from, to) =>
-        supabase
-          .from('order_intent_items')
-          .select('order_intent_id, qty')
-          .range(from, to)
-      );
-
-      const itemCountMap = new Map<string, number>();
-      items?.forEach(item => {
-        const current = itemCountMap.get(item.order_intent_id) || 0;
-        itemCountMap.set(item.order_intent_id, current + item.qty);
-      });
 
       // Group orders by customer
       const ordersByCustomer = new Map<string, CustomerOrder[]>();
@@ -85,7 +72,7 @@ export function useCustomers() {
             status: order.status,
             total_cents: order.total_cents,
             created_at: order.created_at,
-            item_count: itemCountMap.get(order.id) || 0,
+            item_count: order.items_count || 0,
           });
           ordersByCustomer.set(order.customer_id, customerOrders);
 

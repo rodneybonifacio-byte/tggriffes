@@ -78,6 +78,38 @@ export type OrderIntentWithCount = Tables<'order_intents'> & {
   items_count: number;
 };
 
+export function useAbandonedOrderIntents() {
+  return useQuery({
+    queryKey: ['abandoned-order-intents', 'novo-v1'],
+    queryFn: async () => {
+      const PAGE_SIZE = 500;
+      const all: OrderIntent[] = [];
+
+      for (let i = 0; i < 20; i++) {
+        const from = i * PAGE_SIZE;
+        const { data, error } = await supabase
+          .from('order_intents')
+          .select(`*, order_intent_items(id, qty)`)
+          .eq('status', 'NOVO')
+          .order('created_at', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (error) {
+          console.error('[useAbandonedOrderIntents] erro:', error);
+          throw error;
+        }
+
+        const batch = (data ?? []) as OrderIntent[];
+        all.push(...batch);
+        if (batch.length < PAGE_SIZE) break;
+      }
+
+      return all;
+    },
+    staleTime: 60 * 1000,
+  });
+}
+
 /**
  * Lightweight orders list: fetches all order_intents with only the COUNT of items
  * per order (aggregated via PostgREST). Avoids transferring tens of thousands of
