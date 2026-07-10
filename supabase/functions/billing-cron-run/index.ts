@@ -59,12 +59,11 @@ Deno.serve(async (req) => {
       .eq('status', 'PENDENTE')
       .lt('due_date', todayStr);
 
-    // Faturas com mais de grace_days após o vencimento => BLOQUEADO + bloqueia site
-    const blockCutoff = new Date(today.getTime() - settings.grace_days * 86400000)
-      .toISOString().slice(0, 10);
+    // A carência já está embutida em due_date (charge_day + grace_days).
+    // Portanto, basta bloquear qualquer fatura vencida (due_date < hoje) ainda não paga.
     const { data: toBlock } = await supabase.from('billing_invoices')
       .select('id').in('status', ['ATRASADO', 'PENDENTE'])
-      .lt('due_date', blockCutoff);
+      .lt('due_date', todayStr);
 
     if (toBlock && toBlock.length > 0) {
       const ids = toBlock.map(i => i.id);
