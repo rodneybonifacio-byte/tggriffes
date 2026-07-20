@@ -26,7 +26,7 @@ export function useVisitsAnalytics(days: 7 | 30 = 30) {
         p_days: days,
       });
       if (error) throw error;
-      return (data ?? {
+      return ((data as unknown) ?? {
         totalViews: 0,
         uniqueVisitors: 0,
         returningVisitors: 0,
