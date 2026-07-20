@@ -6,7 +6,7 @@ import { useCart } from '@/hooks/useCart';
 import { getColorDisplayName } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { CheckoutDrawer } from './CheckoutDrawer';
-import { useProducts } from '@/hooks/useProducts';
+import { useVariantsStock } from '@/hooks/useProducts';
 import { useToast } from '@/hooks/use-toast';
 import { VariationsSummary } from './VariationsSummary';
 import { PromotionCelebrationModal } from './PromotionCelebrationModal';
@@ -20,8 +20,9 @@ export function CartDrawer() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const { toast } = useToast();
   
-  // Fetch products to get current stock info
-  const { data: products } = useProducts();
+  // Estoque somente das variantes atualmente no carrinho (query leve)
+  const variantIds = items.map(i => i.variantId);
+  const { data: variantStockMap } = useVariantsStock(variantIds);
   
   // Promotion celebration
   const {
@@ -33,12 +34,8 @@ export function CartDrawer() {
 
   // Get stock for a variant
   const getVariantStock = (variantId: string): number => {
-    if (!products) return 999; // fallback high number if products not loaded
-    for (const product of products) {
-      const variant = product.product_variants?.find(v => v.id === variantId);
-      if (variant) return variant.stock_qty;
-    }
-    return 999;
+    if (!variantStockMap) return 999;
+    return variantStockMap[variantId] ?? 999;
   };
 
   const handleIncrement = async (itemId: string, variantId: string, currentQty: number) => {
