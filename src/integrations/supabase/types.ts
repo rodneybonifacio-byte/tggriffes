@@ -1002,6 +1002,8 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: undefined
       }
+      dashboard_order_analytics: { Args: { p_days?: number }; Returns: Json }
+      dashboard_visits_summary: { Args: { p_days?: number }; Returns: Json }
       generate_slug: { Args: { name: string }; Returns: string }
       get_next_order_number: { Args: never; Returns: number }
       has_role: {
