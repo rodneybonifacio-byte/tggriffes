@@ -146,6 +146,99 @@ export function useCategories() {
   });
 }
 
+/**
+ * Contagem/estoque leve para o dashboard admin.
+ * Devolve apenas o que o dashboard precisa (produtos ativos, contagem total,
+ * variantes com estoque baixo e sem estoque) SEM baixar todas as imagens e
+ * variantes em memória no cliente.
+ */
+export interface DashboardStockVariant {
+  id: string;
+  size: string;
+  color: string | null;
+  stock_qty: number;
+  productId: string;
+  productName: string;
+  productImage: string | null;
+}
+
+export interface DashboardStockSummary {
+  totalProducts: number;
+  activeProducts: number;
+  lowStockVariants: DashboardStockVariant[];
+  outOfStockCount: number;
+}
+
+export function useDashboardStockSummary() {
+  return useQuery({
+    queryKey: ['dashboard-stock-summary', 'v1'],
+    queryFn: async (): Promise<DashboardStockSummary> => {
+      // Duas queries de contagem (rápidas via head:true)
+      const [totalRes, activeRes, outOfStockRes] = await Promise.all([
+        supabase.from('products').select('id', { count: 'exact', head: true }),
+        supabase.from('products').select('id', { count: 'exact', head: true }).eq('active', true),
+        supabase.from('product_variants').select('id', { count: 'exact', head: true }).eq('stock_qty', 0),
+      ]);
+      if (totalRes.error) throw totalRes.error;
+      if (activeRes.error) throw activeRes.error;
+      if (outOfStockRes.error) throw outOfStockRes.error;
+
+      // Variantes com estoque baixo (1..3) com nome + imagem do produto
+      const { data: lowRows, error: lowErr } = await supabase
+        .from('product_variants')
+        .select('id, size, color, stock_qty, product_id, products(name, main_image_url)')
+        .gt('stock_qty', 0)
+        .lte('stock_qty', 3)
+        .order('stock_qty', { ascending: true })
+        .limit(50);
+      if (lowErr) throw lowErr;
+
+      const lowStockVariants: DashboardStockVariant[] = (lowRows ?? []).map((v: any) => ({
+        id: v.id,
+        size: v.size,
+        color: v.color,
+        stock_qty: v.stock_qty,
+        productId: v.product_id,
+        productName: v.products?.name ?? '',
+        productImage: v.products?.main_image_url ?? null,
+      }));
+
+      return {
+        totalProducts: totalRes.count ?? 0,
+        activeProducts: activeRes.count ?? 0,
+        lowStockVariants,
+        outOfStockCount: outOfStockRes.count ?? 0,
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+/**
+ * Busca o estoque atual apenas das variantes atualmente no carrinho.
+ * Evita carregar o catálogo inteiro só para exibir o botão "+" com limite de estoque.
+ */
+export function useVariantsStock(variantIds: string[]) {
+  const key = [...variantIds].sort().join(',');
+  return useQuery({
+    queryKey: ['variants-stock', key],
+    queryFn: async () => {
+      if (variantIds.length === 0) return {} as Record<string, number>;
+      const { data, error } = await supabase
+        .from('product_variants')
+        .select('id, stock_qty')
+        .in('id', variantIds);
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      for (const v of data ?? []) map[v.id as string] = v.stock_qty as number;
+      return map;
+    },
+    enabled: variantIds.length > 0,
+    staleTime: 30 * 1000,
+  });
+}
+
 export function useCreateProduct() {
   const queryClient = useQueryClient();
   

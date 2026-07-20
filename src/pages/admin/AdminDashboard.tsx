@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CustomerBehaviorCard } from '@/components/admin/CustomerBehaviorCard';
 import { TopCustomersCard } from '@/components/admin/TopCustomersCard';
 import { VisitsAnalyticsCard } from '@/components/admin/VisitsAnalyticsCard';
-import { useProducts } from '@/hooks/useProducts';
+import { useDashboardStockSummary } from '@/hooks/useProducts';
 import { useOrderIntentSummaries } from '@/hooks/useOrders';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Package, ShoppingCart, AlertTriangle, TrendingUp, User } from 'lucide-react';
@@ -31,7 +31,7 @@ const PERIOD_LABELS: Record<Period, string> = {
 };
 
 const AdminDashboard = () => {
-  const { data: products = [] } = useProducts();
+  const { data: stockSummary } = useDashboardStockSummary();
   const { data: orders = [] } = useOrderIntentSummaries();
   const { canViewPrices, isLoading: permissionsLoading } = usePermissions();
   const [period, setPeriod] = useState<Period>('today');
@@ -40,31 +40,10 @@ const AdminDashboard = () => {
   // Enquanto carrega permissões, NÃO exibimos valores sensíveis.
   const showPrices = permissionsLoading ? false : canViewPrices;
 
-  const activeProducts = products.filter(p => p.active);
-  
-  // Get individual variants with low stock (1-3 units)
-  const lowStockVariants = products.flatMap(product => 
-    (product.product_variants || [])
-      .filter(v => v.stock_qty > 0 && v.stock_qty <= 3)
-      .map(variant => ({
-        ...variant,
-        productName: product.name,
-        productImage: product.main_image_url,
-        productId: product.id,
-      }))
-  );
-
-  // Get individual variants with zero stock
-  const outOfStockVariants = products.flatMap(product => 
-    (product.product_variants || [])
-      .filter(v => v.stock_qty === 0)
-      .map(variant => ({
-        ...variant,
-        productName: product.name,
-        productImage: product.main_image_url,
-        productId: product.id,
-      }))
-  );
+  const totalProducts = stockSummary?.totalProducts ?? 0;
+  const activeProductsCount = stockSummary?.activeProducts ?? 0;
+  const lowStockVariants = stockSummary?.lowStockVariants ?? [];
+  const outOfStockCount = stockSummary?.outOfStockCount ?? 0;
 
   // Janela do filtro selecionado
   const { periodStart, periodEnd } = useMemo(() => {
@@ -180,9 +159,9 @@ const AdminDashboard = () => {
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeProducts.length}</div>
+              <div className="text-2xl font-bold">{activeProductsCount}</div>
               <p className="text-xs text-muted-foreground">
-                {products.length} total
+                {totalProducts} total
               </p>
             </CardContent>
           </Card>
@@ -276,7 +255,7 @@ const AdminDashboard = () => {
             <CardContent>
               <div className="text-2xl font-bold text-warning">{lowStockVariants.length}</div>
               <p className="text-xs text-muted-foreground">
-                {outOfStockVariants.length} sem estoque
+                {outOfStockCount} sem estoque
               </p>
             </CardContent>
           </Card>
