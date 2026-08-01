@@ -2,6 +2,12 @@ name: Deploy fashion-retail-clone
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: tggriffes-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -41,3 +47,17 @@ jobs:
 
             timeout 15 curl -fsSI http://127.0.0.1 >/dev/null || docker compose restart tggriffes
             docker image prune -f
+
+      - name: Verify production contains Google Tag Manager
+        run: |
+          set -e
+          for attempt in $(seq 1 12); do
+            if curl -fsSL --max-time 20 "https://atacado.tggriffes.com.br/?deploy=${GITHUB_SHA}" | grep -q "GTM-57PD35M9"; then
+              echo "GTM-57PD35M9 confirmed in production"
+              exit 0
+            fi
+            echo "Waiting for the new production container (${attempt}/12)..."
+            sleep 10
+          done
+          echo "Deployment finished, but production is still serving HTML without GTM-57PD35M9"
+          exit 1
