@@ -67,7 +67,12 @@ jobs:
           for i in 1 2 3 4 5 6; do
             if curl -fsS --connect-timeout 5 --max-time 12 https://atacado.tggriffes.com.br >/dev/null; then
               echo "Site is online"
-              exit 0
+              if curl -fsSL --max-time 20 "https://atacado.tggriffes.com.br/?health=${GITHUB_RUN_ID}" | grep -q "GTM-57PD35M9"; then
+                echo "GTM-57PD35M9 confirmed in production"
+                exit 0
+              fi
+              echo "Site online but serving HTML without GTM-57PD35M9 (stale build?)"
+              exit 1
             fi
             sleep 10
           done
