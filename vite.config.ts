@@ -4,8 +4,25 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 
+// Fallback de segurança: se o build (ex.: Docker no VPS) rodar sem as build-args
+// VITE_SUPABASE_*, o bundle quebrava com "supabaseKey is required" e o site ficava em branco.
+// Estes valores são públicos (anon key), então podem ficar no código.
+const FALLBACK_ENV: Record<string, string> = {
+  VITE_SUPABASE_URL: "https://dvqeitcliexenhnfradm.supabase.co",
+  VITE_SUPABASE_PUBLISHABLE_KEY:
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2cWVpdGNsaWV4ZW5obmZyYWRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2MjY3ODksImV4cCI6MjA4MzIwMjc4OX0.UJrQF1SALl0qYRZqY7H-PGI_83DEJ6hFzY8OaJPpwl4",
+  VITE_SUPABASE_PROJECT_ID: "dvqeitcliexenhnfradm",
+};
+
+const envFallbackDefines = Object.fromEntries(
+  Object.entries(FALLBACK_ENV)
+    .filter(([key]) => !process.env[key])
+    .map(([key, value]) => [`import.meta.env.${key}`, JSON.stringify(value)]),
+);
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  define: envFallbackDefines,
   server: {
     host: "::",
     port: 8080,
