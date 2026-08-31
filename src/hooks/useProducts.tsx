@@ -34,8 +34,20 @@ export function useProducts(filters?: ProductFilters) {
         .order('created_at', { ascending: false });
 
       if (filters?.search) {
-        query = query.or(`name.ilike.%${filters.search}%,slug.ilike.%${filters.search}%`);
+        // Busca "tipo Google": quebra em palavras e exige todas (em nome ou slug),
+        // ignorando espaços duplicados e ordem dos termos.
+        const tokens = filters.search
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((t) => t.replace(/[,%()]/g, ''))
+          .filter(Boolean);
+
+        for (const token of tokens) {
+          query = query.or(`name.ilike.%${token}%,slug.ilike.%${token}%`);
+        }
       }
+
 
       if (filters?.categoryId) {
         query = query.eq('category_id', filters.categoryId);
