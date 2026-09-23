@@ -1,59 +1,25 @@
+# Preço único de R$ 35 e pedido mínimo de 10 peças
 
-## Diagnóstico Atual do SP2
+## Objetivo
+Aplicar R$ 35,00 como preço definitivo de todos os produtos da loja e impedir a finalização de pedidos com menos de 10 peças.
 
-| Serviço | Status | Observação |
-|---------|--------|------------|
-| Kong (Gateway) | ✅ 200 OK | JWT aceito corretamente |
-| PostgREST (API) | ✅ 200 OK | Respondendo, mas tabelas vazias |
-| Auth (GoTrue) | ✅ 200 OK | Login/signup funcional |
-| Storage | ✅ 200 OK | Buckets product-images e order-pdfs existem |
-| **Dados** | ❌ Vazio | products=0, categories=0, orders=0 |
+## Alterações
+- Atualizar todos os produtos existentes para R$ 35,00 no banco de dados.
+- Garantir que novos produtos sejam criados com R$ 35,00 por padrão, preservando a edição administrativa permitida pelas regras atuais.
+- Atualizar o banner para comunicar claramente: “Tudo por R$ 35” e “Pedido mínimo de 10 peças”.
+- Remover da experiência pública a antiga condição promocional por quantidade/tamanhos, evitando desconto duplicado.
+- Mostrar no carrinho quantas peças faltam para atingir o mínimo.
+- Manter “Finalizar compra” desabilitado até o carrinho chegar a 10 peças.
+- Validar novamente o mínimo ao concluir o pedido, evitando contorno da regra por estado antigo do navegador.
+- Garantir que carrinho, pedido salvo, PDF e mensagem do WhatsApp usem o valor unitário definitivo de R$ 35,00.
 
-### Problema Principal
-O PostgREST provavelmente está conectado ao banco `postgres` padrão, mas os dados migrados estão no banco `supabase_sp2`. Apenas `store_settings` (1), `customers` (2) e `user_roles` (2) possuem dados.
+## Segurança da mudança
+- A alteração em massa de preços será feita por migração rastreável.
+- Produtos inativos também receberão o novo preço, para voltarem corretos quando reativados.
+- O Shopify não será alterado, conforme a opção escolhida.
 
----
-
-## Plano de Ação (7 etapas)
-
-### Etapa 1: Confirmar banco do PostgREST
-Verificar no VPS qual database o PostgREST está usando:
-```bash
-cd /opt/apps/supabase-sp2 && docker compose exec rest env | grep PGRST_DB_URI
-```
-Se apontar para `postgres` em vez de `supabase_sp2`, corrigir no `.env` e recriar.
-
-### Etapa 2: Re-sincronizar dados do Lovable Cloud → SP2
-Após confirmar o banco correto, executar sync completo das 17 tabelas:
-- products, categories, product_variants, product_images
-- customers, order_intents, order_intent_items, order_history
-- promotions, stock_movements, store_settings
-- shopify_product_mappings, shopify_variant_mappings, shopify_sync_logs
-- user_roles, profiles
-- Sequência `order_number_seq`
-
-### Etapa 3: Validar auth com login real
-Testar login com `contato@tggriffes.com.br` via endpoint Auth do SP2 para garantir que os usuários migrados funcionam.
-
-### Etapa 4: Validar Edge Functions
-Verificar se o edge-runtime do SP2 está rodando e se as 9 funções estão respondendo (calculate-shipping, generate-order-pdf, etc.)
-
-### Etapa 5: Configurar DNS/Domínio
-Apontar `atacado.tggriffes.com.br` para o frontend no VPS que conectará ao SP2 como backend.
-
-### Etapa 6: Switchover do Frontend
-Atualizar as variáveis de ambiente do frontend para usar:
-- `SUPABASE_URL` → `https://sp2.srv981319.hstgr.cloud`
-- `SUPABASE_ANON_KEY` → nova chave gerada
-
-### Etapa 7: Monitoramento pós-switchover
-- Verificar pedidos entrando
-- Confirmar sync Shopify funcionando
-- Validar cálculo de frete
-
----
-
-## Riscos e Mitigação
-- **Perda de dados durante switchover**: Fazer sync delta imediatamente antes da troca
-- **Downtime**: Switchover pode ser feito em horário de baixo movimento
-- **Rollback**: Manter Lovable Cloud como fallback por 48h
+## Validação
+- Conferir catálogo e página do produto com R$ 35,00.
+- Testar carrinho com 9 peças bloqueado e 10 peças liberado.
+- Testar um pedido completo e conferir total, PDF e mensagem do WhatsApp.
+- Conferir a versão móvel e a versão para computador.
