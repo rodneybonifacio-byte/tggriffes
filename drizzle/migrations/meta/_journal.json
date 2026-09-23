@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790194314415,
+      "tag": "0000_set_default_product_price_35",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790194431661,
+      "tag": "0001_enforce_fixed_price_and_minimum_order",
+      "breakpoints": true
+    }
+  ]
+}

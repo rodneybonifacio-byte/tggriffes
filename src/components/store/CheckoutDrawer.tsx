@@ -10,13 +10,13 @@ import { useSessionId } from '@/hooks/useCartReservations';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { ShippingCalculator, ShippingOption } from './ShippingCalculator';
 import { VariationsSummary } from './VariationsSummary';
-import { formatPrice, formatCEP, formatWhatsApp, getColorDisplayName } from '@/lib/utils';
-import { Loader2, Package, Truck, User, FileText, CheckCircle, RefreshCw, Tag } from 'lucide-react';
+import { formatCEP, getColorDisplayName } from '@/lib/utils';
+import { Loader2, Package, Truck, User, FileText, CheckCircle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useApplicablePromotions, calculatePromotionDiscount } from '@/hooks/usePromotions';
 import { useShippingPackageMetrics } from '@/hooks/useShippingPackageMetrics';
 import { getThumbnailUrl } from '@/lib/imageCompression';
+import { MIN_ORDER_QUANTITY, UNIT_PRICE_CENTS } from '@/lib/commerceRules';
 
 const CHECKOUT_STORAGE_KEY = 'tg-checkout-state';
 
@@ -94,13 +94,7 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const [observations, setObservations] = useState(storedState.observations || '');
   const [cartFingerprintAtShippingCalc, setCartFingerprintAtShippingCalc] = useState<string>(storedState.cartFingerprint || '');
 
-  // Promotions
-  const { data: promotion } = useApplicablePromotions(totalItems);
-  const { discountCents, finalCents: subtotalAfterDiscount, description: promoDescription } = calculatePromotionDiscount(
-    promotion,
-    totalCents,
-    totalItems
-  );
+  const subtotalAfterDiscount = totalCents;
 
   // Current cart fingerprint to detect changes
   const currentCartFingerprint = useMemo(() => generateCartFingerprint(items), [items]);
@@ -216,6 +210,16 @@ ${pdfUrl}`;
     // Prevent double-click / concurrent submissions
     if (isSubmittingRef.current) return;
 
+    if (totalItems < MIN_ORDER_QUANTITY) {
+      toast({
+        title: 'Pedido mínimo não atingido',
+        description: `Adicione pelo menos ${MIN_ORDER_QUANTITY} peças para finalizar.`,
+        variant: 'destructive',
+      });
+      setStep('info');
+      return;
+    }
+
     if (!settings?.seller_whatsapp) {
       toast({
         title: 'Erro',
@@ -269,9 +273,7 @@ ${pdfUrl}`;
           shipping_deadline_days: skipShipping ? null : selectedShipping?.deadline,
           total_cents: skipShipping ? subtotalAfterDiscount : finalTotalCents,
           status: 'NOVO',
-          observations: discountCents > 0 
-            ? `${observations.trim() ? observations.trim() + ' | ' : ''}Promoção aplicada: ${promoDescription} (-${formatPrice(discountCents)})`
-            : (observations.trim() || null),
+          observations: observations.trim() || null,
           // Save shipping package metrics for PDF generation
           shipping_weight_grams: !skipShipping && selectedShipping ? shippingMetrics.weightGrams : null,
           shipping_length_cm: !skipShipping && selectedShipping ? shippingMetrics.lengthCm : null,
@@ -290,8 +292,8 @@ ${pdfUrl}`;
         size: item.size,
         color: item.color || null,
         qty: item.quantity,
-        unit_price_cents: item.unitPriceCents,
-        line_total_cents: item.unitPriceCents * item.quantity,
+        unit_price_cents: UNIT_PRICE_CENTS,
+        line_total_cents: UNIT_PRICE_CENTS * item.quantity,
         added_from: item.addedFrom || 'catalog',
       }));
 
@@ -308,6 +310,12 @@ ${pdfUrl}`;
 
       if (itemsError) throw itemsError;
 
+      // O banco valida o mínimo de peças, recalcula os valores e baixa o estoque.
+      const { error: finalizeError } = await supabase
+        .rpc('finalize_public_order', { p_order_id: orderIntentId });
+
+      if (finalizeError) throw finalizeError;
+
       // 4. Generate PDF
       const baseUrl = window.location.origin;
       const logoUrl = `${baseUrl}/logo.png`;
@@ -322,7 +330,7 @@ ${pdfUrl}`;
           size: item.size,
           color: item.color,
           quantity: item.quantity,
-          unitPriceCents: item.unitPriceCents,
+          unitPriceCents: UNIT_PRICE_CENTS,
           imageUrl: item.imageUrl,
           category: item.category,
         })),
@@ -766,7 +774,7 @@ ${pdfUrl}`;
                 className="w-full gap-2" 
                 size="lg"
                 onClick={handleFinalize}
-                disabled={isSubmitting}
+                disabled={isSubmitting || totalItems < MIN_ORDER_QUANTITY}
               >
                 {isSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

@@ -1,0 +1,1 @@
+ALTER TABLE public.products ALTER COLUMN price_cents SET DEFAULT 3500;
