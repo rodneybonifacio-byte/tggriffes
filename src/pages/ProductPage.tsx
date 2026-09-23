@@ -12,6 +12,7 @@ import { ChevronLeft, Plus, Minus, Loader2, ArrowLeft, ChevronRight } from 'luci
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/hooks/useCart';
+import { UNIT_PRICE_CENTS } from '@/lib/commerceRules';
 
 const COLOR_MAP: Record<string, string> = {
   preto: '#000000',
@@ -222,7 +223,7 @@ const ProductPage = () => {
         size: size,
         color: color,
         quantity: 1,
-        unitPriceCents: 3_500,
+        unitPriceCents: UNIT_PRICE_CENTS,
         imageUrl: product.main_image_url,
         category: product.categories?.name || null,
         addedFrom: 'product_page',

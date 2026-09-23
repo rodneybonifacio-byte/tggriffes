@@ -14,7 +14,7 @@ import { getThumbnailUrl } from '@/lib/imageCompression';
 import { MIN_ORDER_QUANTITY } from '@/lib/commerceRules';
 
 export function CartDrawer() {
-  const { items, removeItem, updateQuantity, totalItems, totalCents, clearCart } = useCart();
+  const { items, removeItem, updateQuantity, totalItems, clearCart } = useCart();
   const [open, setOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const { toast } = useToast();

@@ -10,7 +10,7 @@ import { useSessionId } from '@/hooks/useCartReservations';
 import { useStoreSettings } from '@/hooks/useStoreSettings';
 import { ShippingCalculator, ShippingOption } from './ShippingCalculator';
 import { VariationsSummary } from './VariationsSummary';
-import { formatPrice, formatCEP, formatWhatsApp, getColorDisplayName } from '@/lib/utils';
+import { formatCEP, getColorDisplayName } from '@/lib/utils';
 import { Loader2, Package, Truck, User, FileText, CheckCircle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';

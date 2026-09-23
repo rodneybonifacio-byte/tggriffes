@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { UNIT_PRICE_CENTS } from '@/lib/commerceRules';
 
 const SESSION_ID_KEY = 'tg-cart-session-id';
 
@@ -83,7 +84,7 @@ export function useCreateReservation() {
         p_color: params.color || '',
         p_quantity: params.quantity,
         p_product_name: params.productName,
-        p_unit_price_cents: params.unitPriceCents,
+        p_unit_price_cents: UNIT_PRICE_CENTS,
         p_image_url: params.imageUrl,
         p_added_from: params.addedFrom,
       });
@@ -130,7 +131,7 @@ export function useCreateReservation() {
           size: params.size,
           color: params.color,
           quantity: params.quantity,
-          unit_price_cents: params.unitPriceCents,
+          unit_price_cents: UNIT_PRICE_CENTS,
           image_url: params.imageUrl,
           reserved_at: new Date().toISOString(),
           expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
