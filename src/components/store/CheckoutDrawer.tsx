@@ -310,6 +310,12 @@ ${pdfUrl}`;
 
       if (itemsError) throw itemsError;
 
+      // O banco valida o mínimo de peças, recalcula os valores e baixa o estoque.
+      const { error: finalizeError } = await supabase
+        .rpc('finalize_public_order', { p_order_id: orderIntentId });
+
+      if (finalizeError) throw finalizeError;
+
       // 4. Generate PDF
       const baseUrl = window.location.origin;
       const logoUrl = `${baseUrl}/logo.png`;
