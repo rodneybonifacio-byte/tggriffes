@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Loader2, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateSlug } from '@/lib/utils';
+import { UNIT_PRICE_CENTS } from '@/lib/commerceRules';
 
 const AdminProductForm = () => {
   const { id } = useParams<{ id: string }>();
@@ -41,7 +42,7 @@ const AdminProductForm = () => {
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
-  const [priceCents, setPriceCents] = useState(0);
+  const [priceCents, setPriceCents] = useState(UNIT_PRICE_CENTS);
   const [categoryId, setCategoryId] = useState<string>('');
   const [active, setActive] = useState(true);
   const [weightGrams, setWeightGrams] = useState<number | undefined>();

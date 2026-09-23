@@ -8,6 +8,7 @@ import {
   CartReservation,
   AddedFromSource
 } from './useCartReservations';
+import { UNIT_PRICE_CENTS } from '@/lib/commerceRules';
 
 export interface CartItem {
   id: string;
@@ -74,7 +75,7 @@ function reservationToCartItem(reservation: CartReservation): CartItem {
     size: reservation.size,
     color: reservation.color,
     quantity: reservation.quantity,
-    unitPriceCents: reservation.unit_price_cents,
+    unitPriceCents: UNIT_PRICE_CENTS,
     imageUrl: reservation.image_url,
     category: null,
     addedFrom: reservation.added_from as AddedFromSource | null,
@@ -103,7 +104,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         size: item.size,
         color: item.color,
         quantity: item.quantity,
-        unitPriceCents: item.unitPriceCents,
+          unitPriceCents: UNIT_PRICE_CENTS,
         imageUrl: item.imageUrl,
         addedFrom: item.addedFrom,
       });

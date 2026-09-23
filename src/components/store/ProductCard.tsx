@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Minus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getProductThumbnailUrl, createImageFallbackHandler } from '@/lib/productImageUrl';
+import { UNIT_PRICE_CENTS } from '@/lib/commerceRules';
 
 interface ProductCardProps {
   product: Product;
@@ -190,7 +191,7 @@ export const ProductCard = React.forwardRef<HTMLDivElement, ProductCardProps>(
           size: size,
           color: color,
           quantity: 1,
-          unitPriceCents: product.price_cents,
+          unitPriceCents: UNIT_PRICE_CENTS,
           imageUrl: product.main_image_url,
           category: product.categories?.name || null,
           addedFrom: 'catalog',

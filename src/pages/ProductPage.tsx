@@ -222,7 +222,7 @@ const ProductPage = () => {
         size: size,
         color: color,
         quantity: 1,
-        unitPriceCents: product.price_cents,
+        unitPriceCents: 3_500,
         imageUrl: product.main_image_url,
         category: product.categories?.name || null,
         addedFrom: 'product_page',

@@ -9,10 +9,9 @@ import { CheckoutDrawer } from './CheckoutDrawer';
 import { useVariantsStock } from '@/hooks/useProducts';
 import { useToast } from '@/hooks/use-toast';
 import { VariationsSummary } from './VariationsSummary';
-import { PromotionCelebrationModal } from './PromotionCelebrationModal';
 import { PromotionProgress } from './PromotionProgress';
-import { usePromotionCelebration } from '@/hooks/usePromotionCelebration';
 import { getThumbnailUrl } from '@/lib/imageCompression';
+import { MIN_ORDER_QUANTITY } from '@/lib/commerceRules';
 
 export function CartDrawer() {
   const { items, removeItem, updateQuantity, totalItems, totalCents, clearCart } = useCart();
@@ -24,13 +23,7 @@ export function CartDrawer() {
   const variantIds = items.map(i => i.variantId);
   const { data: variantStockMap } = useVariantsStock(variantIds);
   
-  // Promotion celebration
-  const {
-    shouldCelebrate,
-    promotionDescription,
-    discountAmount,
-    markCelebrated,
-  } = usePromotionCelebration(totalItems, totalCents);
+  const canCheckout = totalItems >= MIN_ORDER_QUANTITY;
 
   // Get stock for a variant
   const getVariantStock = (variantId: string): number => {
@@ -168,8 +161,9 @@ export function CartDrawer() {
                   className="w-full gap-2" 
                   size="lg"
                   onClick={handleCheckout}
+                  disabled={!canCheckout}
                 >
-                  Finalizar Compra
+                  {canCheckout ? 'Finalizar Compra' : `Adicione mais ${MIN_ORDER_QUANTITY - totalItems} peças`}
                 </Button>
               </div>
             </SheetFooter>
@@ -178,16 +172,6 @@ export function CartDrawer() {
       </Sheet>
 
       <CheckoutDrawer open={checkoutOpen} onOpenChange={setCheckoutOpen} />
-      
-      {/* Promotion celebration modal */}
-      <PromotionCelebrationModal
-        open={shouldCelebrate}
-        onOpenChange={(open) => {
-          if (!open) markCelebrated();
-        }}
-        promotionDescription={promotionDescription}
-        discountAmount={discountAmount}
-      />
     </>
   );
 }

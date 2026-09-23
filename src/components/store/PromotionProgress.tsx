@@ -1,52 +1,35 @@
-import { Package, Flame } from 'lucide-react';
+import { Package, CheckCircle2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { useApplicablePromotions } from '@/hooks/usePromotions';
-import { formatPrice } from '@/lib/utils';
+import { MIN_ORDER_QUANTITY } from '@/lib/commerceRules';
 
 interface PromotionProgressProps {
   totalItems: number;
 }
 
 export function PromotionProgress({ totalItems }: PromotionProgressProps) {
-  // Fetch promotions with a high quantity to get the threshold
-  const { data: promotion } = useApplicablePromotions(999);
-
-  if (!promotion || totalItems >= promotion.min_quantity) {
-    return null;
-  }
-
-  const remaining = promotion.min_quantity - totalItems;
-  const progressPercent = (totalItems / promotion.min_quantity) * 100;
-
-  // Get discount price for display
-  const discountPrice = promotion.discount_type === 'fixed_price' 
-    ? formatPrice(promotion.discount_value * 100)
-    : null;
+  const remaining = Math.max(0, MIN_ORDER_QUANTITY - totalItems);
+  const progressPercent = Math.min(100, (totalItems / MIN_ORDER_QUANTITY) * 100);
+  const reachedMinimum = remaining === 0;
 
   return (
-    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3 space-y-2">
+    <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-2">
       <div className="flex items-center gap-2">
-        <div className="p-1.5 bg-amber-100 rounded-full">
-          <Package className="h-4 w-4 text-amber-600" />
+        <div className="p-1.5 bg-primary/10 rounded-full">
+          {reachedMinimum ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <Package className="h-4 w-4 text-primary" />}
         </div>
         <div className="flex-1">
-          <p className="text-sm font-medium text-amber-900">
-            Faltam <span className="font-bold text-orange-600">{remaining} {remaining === 1 ? 'peça' : 'peças'}</span> para atacado!
+          <p className="text-sm font-medium text-foreground">
+            {reachedMinimum ? 'Pedido mínimo atingido!' : <>Faltam <span className="font-bold text-primary">{remaining} {remaining === 1 ? 'peça' : 'peças'}</span> para finalizar.</>}
           </p>
-          {discountPrice && (
-            <p className="text-xs text-amber-700 flex items-center gap-1">
-              <Flame className="h-3 w-3" />
-              Cada peça por apenas {discountPrice}
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground">Todos os produtos por R$ 35,00 cada.</p>
         </div>
       </div>
       
       <div className="space-y-1">
-        <Progress value={progressPercent} className="h-2 bg-amber-100" />
-        <div className="flex justify-between text-xs text-amber-600">
+        <Progress value={progressPercent} className="h-2" />
+        <div className="flex justify-between text-xs text-muted-foreground">
           <span>{totalItems} {totalItems === 1 ? 'peça' : 'peças'}</span>
-          <span>{promotion.min_quantity} peças</span>
+          <span>{MIN_ORDER_QUANTITY} peças</span>
         </div>
       </div>
     </div>
