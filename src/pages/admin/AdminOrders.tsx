@@ -456,7 +456,7 @@ const AdminOrders = () => {
                       size="sm"
                       onClick={() => {
                         setEditingOrder(selectedOrder);
-                        setSelectedOrder(null);
+                        closeOrderDetails();
                       }}
                     >
                       <Pencil className="h-4 w-4 mr-2" />
