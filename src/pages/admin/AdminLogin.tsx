@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,11 @@ const passwordSchema = z.string().min(6, 'A senha deve ter pelo menos 6 caracter
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedPath = (location.state as { from?: unknown } | null)?.from;
+  const destination = typeof requestedPath === 'string' && requestedPath.startsWith('/admin/') && !requestedPath.startsWith('//')
+    ? requestedPath
+    : '/admin';
   const { signIn, signUp, user, isAdmin, isLoading } = useAuth();
   const { toast } = useToast();
 
@@ -26,7 +31,7 @@ const AdminLogin = () => {
 
   // Redirect if already logged in as admin
   if (!isLoading && user && isAdmin) {
-    navigate('/admin');
+    navigate(destination, { replace: true });
     return null;
   }
 

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { OrderEditModal } from '@/components/admin/OrderEditModal';
@@ -30,8 +31,10 @@ const getStatusColor = (status: string) => {
 };
 
 const AdminOrders = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const linkedOrderNumber = searchParams.get('order');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>(() => linkedOrderNumber && /^\d+$/.test(linkedOrderNumber) ? linkedOrderNumber : '');
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
   const [selectedOrder, setSelectedOrder] = useState<OrderIntentWithCount | null>(null);
@@ -55,6 +58,30 @@ const AdminOrders = () => {
   const { toast } = useToast();
   const { canViewPrices } = usePermissions();
 
+  useEffect(() => {
+    if (!linkedOrderNumber || !/^\d+$/.test(linkedOrderNumber)) return;
+    setStatusFilter('all');
+    setPage(0);
+    setSearchQuery(linkedOrderNumber);
+  }, [linkedOrderNumber]);
+
+  useEffect(() => {
+    if (!linkedOrderNumber || isFetching || searchQuery !== linkedOrderNumber || statusFilter !== 'all') return;
+    const linkedOrder = orders.find(order => String(order.order_number) === linkedOrderNumber);
+    if (linkedOrder) setSelectedOrder(linkedOrder);
+  }, [linkedOrderNumber, isFetching, searchQuery, statusFilter, orders]);
+
+  const closeOrderDetails = () => {
+    setSelectedOrder(null);
+    if (linkedOrderNumber) {
+      setSearchParams(current => {
+        const next = new URLSearchParams(current);
+        next.delete('order');
+        return next;
+      }, { replace: true });
+    }
+  };
+
   const openPdfViewer = (order: OrderIntentWithCount) => {
     if (!order.order_number) {
       toast({ title: 'Pedido sem número', variant: 'destructive' });
@@ -71,7 +98,17 @@ const AdminOrders = () => {
 
   // Resetar página ao mudar filtros.
   const handleStatusFilter = (v: string) => { setStatusFilter(v); setPage(0); };
-  const handleSearch = (v: string) => { setSearchQuery(v); setPage(0); };
+  const handleSearch = (v: string) => {
+    setSearchQuery(v);
+    setPage(0);
+    if (linkedOrderNumber) {
+      setSearchParams(current => {
+        const next = new URLSearchParams(current);
+        next.delete('order');
+        return next;
+      }, { replace: true });
+    }
+  };
 
   const handleStatusChange = async (orderId: string, newStatus: string, currentStatus?: string) => {
     // Show confirmation dialog for cancellation
@@ -400,7 +437,7 @@ const AdminOrders = () => {
         )}
 
         {/* Order Details Modal */}
-        <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
+        <Dialog open={!!selectedOrder} onOpenChange={(open) => { if (!open) closeOrderDetails(); }}>
           <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Pedido #{selectedOrder?.order_number}</DialogTitle>
@@ -419,7 +456,7 @@ const AdminOrders = () => {
                       size="sm"
                       onClick={() => {
                         setEditingOrder(selectedOrder);
-                        setSelectedOrder(null);
+                        closeOrderDetails();
                       }}
                     >
                       <Pencil className="h-4 w-4 mr-2" />
