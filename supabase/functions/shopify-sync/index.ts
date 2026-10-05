@@ -997,6 +997,79 @@ serve(async (req) => {
           ...cleanupResult
         };
 
+      } else if (action === 'audit_active_products') {
+        // Read-only comparison. Shopify status, not the existence of a mapping,
+        // determines whether a product is actually active in that store.
+        syncLog.sync_type = 'audit_active_products';
+        const localProducts: { id: string; name: string; active: boolean; price_cents: number }[] = [];
+        const mappings: { product_id: string; shopify_product_id: string }[] = [];
+        for (let offset = 0; ; offset += 500) {
+          const { data, error } = await supabase.from('products')
+            .select('id,name,active,price_cents').order('id').range(offset, offset + 499);
+          if (error) throw error;
+          localProducts.push(...(data || []));
+          if (!data || data.length < 500) break;
+        }
+        for (let offset = 0; ; offset += 500) {
+          const { data, error } = await supabase.from('shopify_product_mappings')
+            .select('product_id,shopify_product_id').order('id').range(offset, offset + 499);
+          if (error) throw error;
+          mappings.push(...(data || []));
+          if (!data || data.length < 500) break;
+        }
+        const localById = new Map(localProducts.map(p => [p.id, p]));
+        const localByShopifyId = new Map(mappings.map(m => [m.shopify_product_id, localById.get(m.product_id)]));
+        const seenShopifyIds = new Set<string>();
+        const examples: Record<string, { id: string; name: string; shopifyId?: string }[]> = {
+          activeThereInactiveHere: [], activeHereNotActiveThere: [], activeThereWithoutMapping: [],
+        };
+        const counts = {
+          localActive: localProducts.filter(p => p.active).length,
+          shopifyActive: 0, activeBoth: 0, activeThereInactiveHere: 0,
+          activeHereNotActiveThere: 0, activeThereWithoutMapping: 0,
+          activeHereWithoutMapping: 0,
+        };
+        let nextUrl: string | null = `${shopifyApiUrl}/products.json?status=active&limit=250&fields=id,title,status`;
+        let pages = 0;
+        while (nextUrl) {
+          if (++pages > 100) throw new Error('Shopify audit exceeded 100 pages; results incomplete');
+          const resp = await fetch(nextUrl, { headers: { 'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN! } });
+          if (!resp.ok) throw new Error(`Shopify audit failed: ${resp.status} ${await resp.text()}`);
+          const json = await resp.json();
+          for (const sp of json.products || []) {
+            const shopifyId = String(sp.id);
+            seenShopifyIds.add(shopifyId);
+            counts.shopifyActive++;
+            const local = localByShopifyId.get(shopifyId);
+            if (local?.active) counts.activeBoth++;
+            else if (local) {
+              counts.activeThereInactiveHere++;
+              if (examples.activeThereInactiveHere.length < 20)
+                examples.activeThereInactiveHere.push({ id: local.id, name: local.name, shopifyId });
+            } else {
+              counts.activeThereWithoutMapping++;
+              if (examples.activeThereWithoutMapping.length < 20)
+                examples.activeThereWithoutMapping.push({ id: shopifyId, name: sp.title });
+            }
+          }
+          const link = resp.headers.get('link') || '';
+          const next = link.match(/<([^>]+)>;\s*rel="next"/);
+          nextUrl = next ? next[1] : null;
+          if (nextUrl) await delay(500);
+        }
+        const mappingByLocalId = new Map(mappings.map(m => [m.product_id, m.shopify_product_id]));
+        for (const local of localProducts.filter(p => p.active)) {
+          const shopifyId = mappingByLocalId.get(local.id);
+          if (!shopifyId) counts.activeHereWithoutMapping++;
+          if (!shopifyId || !seenShopifyIds.has(shopifyId)) {
+            counts.activeHereNotActiveThere++;
+            if (examples.activeHereNotActiveThere.length < 20)
+              examples.activeHereNotActiveThere.push({ id: local.id, name: local.name, shopifyId });
+          }
+        }
+        syncLog.products_synced = counts.shopifyActive;
+        result = { counts, examples, complete: true };
+
       } else if (action === 'archive_shopify_batch') {
         // Archive a batch of non-archived Shopify products (active or draft).
         // Also wipes local mappings for archived products so they can be re-created.
