@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
@@ -7,6 +7,7 @@ interface AdminGuardProps {
 }
 
 export function AdminGuard({ children }: AdminGuardProps) {
+  const location = useLocation();
   const { user, isLoading, isAdmin } = useAuth();
 
   if (isLoading) {
@@ -18,7 +19,7 @@ export function AdminGuard({ children }: AdminGuardProps) {
   }
 
   if (!user) {
-    return <Navigate to="/admin/login" replace />;
+    return <Navigate to="/admin/login" state={{ from: location.pathname + location.search }} replace />;
   }
 
   if (!isAdmin) {
