@@ -22,7 +22,7 @@ export function BillingPaymentModal() {
   const qc = useQueryClient();
   const [regenerating, setRegenerating] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('monthly');
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
   const [annualInvoiceId, setAnnualInvoiceId] = useState<string | null>(null);
   const monthlyCents = settings?.monthly_amount_cents ?? 20000;
   const annualCents = annualPriceCents(monthlyCents);
@@ -112,7 +112,7 @@ export function BillingPaymentModal() {
     <Dialog open modal>
       {/* Sem onOpenChange: o modal só fecha quando a fatura for marcada como PAGA */}
       <DialogContent
-        className="max-w-md"
+        className="max-w-md max-h-[90dvh] overflow-y-auto"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
