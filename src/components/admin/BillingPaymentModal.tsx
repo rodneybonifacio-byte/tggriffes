@@ -35,6 +35,18 @@ export function BillingPaymentModal() {
   const annual = pending.find(i => i.id === annualInvoiceId) ?? pending.find(i => i.plan === 'annual');
   const open = selectedPlan === 'annual' && annual ? annual : monthly ?? annual;
 
+  // Pagar apenas a mensalidade (R$ 200): usa a fatura mensal já aberta ou gera uma
+  const payMonthly = () => {
+    if (monthly) { setSelectedPlan('monthly'); return; }
+    generate.mutate({}, {
+      onSuccess: (result: any) => {
+        if (result?.invoice?.id) setSelectedPlan('monthly');
+        toast.success('PIX da mensalidade disponível');
+      },
+      onError: (error: any) => toast.error(error.message ?? 'Falha ao gerar PIX da mensalidade'),
+    });
+  };
+
   const generateAnnual = () => generate.mutate({ plan: 'annual' }, {
     onSuccess: (result: any) => {
       if (result?.invoice?.id) {
