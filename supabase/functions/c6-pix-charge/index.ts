@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { createPixCob } from '../_shared/c6.ts';
+import { annualPriceCents, annualCoverageEnd } from '../_shared/billingRules.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,6 +35,18 @@ Deno.serve(async (req) => {
       .from('billing_settings').select('*').limit(1).single();
     if (settingsErr) throw settingsErr;
 
+    // A confirmed annual payment replaces monthly charges throughout its coverage.
+    const { data: coverage, error: coverageError } = await supabase.from('billing_invoices')
+      .select('*').eq('plan', 'annual').eq('status', 'PAGO').not('paid_at', 'is', null)
+      .lte('reference_month', referenceMonth).gt('coverage_end', referenceMonth)
+      .limit(1).maybeSingle();
+    if (coverageError) throw coverageError;
+    if (!invoiceId && coverage) {
+      return new Response(JSON.stringify({ ok: true, covered: true, invoice: coverage }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     let existing: any = null;
     if (invoiceId) {
       const { data } = await supabase
@@ -41,13 +54,10 @@ Deno.serve(async (req) => {
         .eq('id', invoiceId).maybeSingle();
       existing = data;
     } else if (plan === 'annual') {
-      const year = referenceMonth.slice(0, 4);
       const { data } = await supabase
         .from('billing_invoices').select('*')
-        .gte('reference_month', `${year}-01-01`)
-        .lte('reference_month', `${year}-12-31`)
-        .ilike('custom_label', 'Anual%')
-        .neq('status', 'PAGO')
+        .eq('reference_month', referenceMonth)
+        .eq('plan', 'annual')
         .order('created_at', { ascending: false })
         .limit(1).maybeSingle();
       existing = data;
@@ -55,6 +65,7 @@ Deno.serve(async (req) => {
       const { data } = await supabase
         .from('billing_invoices').select('*')
         .eq('reference_month', referenceMonth)
+        .eq('plan', 'monthly')
         .maybeSingle();
       existing = data;
     }
@@ -62,7 +73,7 @@ Deno.serve(async (req) => {
     let invoice = existing;
     if (!invoice) {
       const monthlyCents = settings.monthly_amount_cents;
-      const annualCents = Math.round(monthlyCents * 12 * 0.8); // 20% off
+      const annualCents = annualPriceCents(monthlyCents);
       const amountCents = plan === 'annual' ? annualCents : monthlyCents;
       const customLabel = plan === 'annual'
         ? `Anual ${referenceMonth.slice(0, 4)} (12 meses, 20% OFF)`
@@ -74,12 +85,15 @@ Deno.serve(async (req) => {
           due_date: dueDate(referenceMonth, settings.charge_day, settings.grace_days),
           status: 'PENDENTE',
           custom_label: customLabel,
+          plan,
+          coverage_end: plan === 'annual' ? annualCoverageEnd(referenceMonth) : null,
         }).select().single();
       if (insErr) throw insErr;
       invoice = created;
     }
 
-    if (invoice.status === 'PAGO') {
+    if (invoice.status === 'PAGO' || invoice.status === 'CANCELADO' ||
+        (invoice.pix_copia_cola && invoice.pix_expires_at > new Date().toISOString())) {
       return new Response(JSON.stringify({ ok: true, invoice }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -90,7 +104,7 @@ Deno.serve(async (req) => {
       amountCents: invoice.amount_cents,
       expiresInSeconds: 7 * 24 * 3600,
       payerName: 'TG Griffes',
-      description: plan === 'annual'
+      description: invoice.plan === 'annual'
         ? `Plano Anual BRHUB ${referenceMonth.slice(0, 4)} - 20% OFF`
         : `Mensalidade BRHUB ${referenceMonth.slice(0, 7)}`,
     });

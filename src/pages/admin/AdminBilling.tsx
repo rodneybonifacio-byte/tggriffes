@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useBillingInvoices, useBillingSettings, useGenerateCharge, useCheckPayment } from '@/hooks/useBilling';
 import { Copy, RefreshCw, Zap, AlertTriangle, CheckCircle2, Clock, Lock, Headphones, Wrench, Server, Sparkles, Crown, BadgePercent } from 'lucide-react';
 import { toast } from 'sonner';
+import { annualPriceCents } from '@/lib/billingRules';
 
 const STATUS_STYLES: Record<string, string> = {
   PAGO: 'bg-emerald-100 text-emerald-800 border-emerald-300',
@@ -34,7 +35,7 @@ export default function AdminBilling() {
 
   const monthlyCents = settings?.monthly_amount_cents ?? 0;
   const annualFullCents = monthlyCents * 12;
-  const annualDiscountedCents = Math.round(annualFullCents * 0.8);
+  const annualDiscountedCents = annualPriceCents(monthlyCents);
   const annualSavingsCents = annualFullCents - annualDiscountedCents;
 
   const handleAnnual = () => {
