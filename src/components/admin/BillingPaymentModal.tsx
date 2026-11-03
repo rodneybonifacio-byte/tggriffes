@@ -141,7 +141,7 @@ export function BillingPaymentModal() {
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2" role="group" aria-label="Plano de pagamento">
-            <Button variant={selectedPlan === 'monthly' ? 'default' : 'outline'} onClick={() => setSelectedPlan('monthly')}>
+            <Button variant={selectedPlan === 'monthly' ? 'default' : 'outline'} onClick={payMonthly} disabled={generate.isPending}>
               Mensal · {formatBRL(monthlyCents)}
             </Button>
             <Button variant={selectedPlan === 'annual' ? 'default' : 'outline'} onClick={() => annual ? setSelectedPlan('annual') : generateAnnual()} disabled={generate.isPending}>
