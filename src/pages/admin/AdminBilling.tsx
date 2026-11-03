@@ -154,6 +154,15 @@ export default function AdminBilling() {
                 <p className="text-[11px] text-zinc-600 text-center md:text-right">
                   PIX gerado na hora • válido por 7 dias
                 </p>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto w-full p-0 text-xs font-normal text-zinc-600 underline underline-offset-2 md:w-auto"
+                  onClick={handleMonthly}
+                  disabled={generate.isPending}
+                >
+                  {generate.isPending ? 'Gerando PIX…' : `Prefiro pagar só a mensalidade de ${formatBRL(monthlyCents)}`}
+                </Button>
               </div>
             </div>
           </CardContent>
