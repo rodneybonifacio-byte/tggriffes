@@ -64,7 +64,7 @@ export function BillingPaymentModal() {
   // Polling automático: verifica pagamento a cada 20s enquanto há fatura aberta
   useEffect(() => {
     if (!open) return;
-    const id = setInterval(() => check.mutate(), 20_000);
+    const id = setInterval(() => check.mutate(undefined), 20_000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open?.id]);
