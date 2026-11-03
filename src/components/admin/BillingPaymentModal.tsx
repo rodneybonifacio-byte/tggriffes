@@ -35,6 +35,18 @@ export function BillingPaymentModal() {
   const annual = pending.find(i => i.id === annualInvoiceId) ?? pending.find(i => i.plan === 'annual');
   const open = selectedPlan === 'annual' && annual ? annual : monthly ?? annual;
 
+  // Pagar apenas a mensalidade (R$ 200): usa a fatura mensal já aberta ou gera uma
+  const payMonthly = () => {
+    if (monthly) { setSelectedPlan('monthly'); return; }
+    generate.mutate({}, {
+      onSuccess: (result: any) => {
+        if (result?.invoice?.id) setSelectedPlan('monthly');
+        toast.success('PIX da mensalidade disponível');
+      },
+      onError: (error: any) => toast.error(error.message ?? 'Falha ao gerar PIX da mensalidade'),
+    });
+  };
+
   const generateAnnual = () => generate.mutate({ plan: 'annual' }, {
     onSuccess: (result: any) => {
       if (result?.invoice?.id) {
@@ -129,7 +141,7 @@ export function BillingPaymentModal() {
 
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2" role="group" aria-label="Plano de pagamento">
-            <Button variant={selectedPlan === 'monthly' ? 'default' : 'outline'} onClick={() => setSelectedPlan('monthly')}>
+            <Button variant={selectedPlan === 'monthly' ? 'default' : 'outline'} onClick={payMonthly} disabled={generate.isPending}>
               Mensal · {formatBRL(monthlyCents)}
             </Button>
             <Button variant={selectedPlan === 'annual' ? 'default' : 'outline'} onClick={() => annual ? setSelectedPlan('annual') : generateAnnual()} disabled={generate.isPending}>
@@ -145,6 +157,17 @@ export function BillingPaymentModal() {
               <Button className="w-full" onClick={generateAnnual} disabled={generate.isPending}>
                 {generate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 Pagar 1 ano · {formatBRL(annualCents)}
+              </Button>
+            )}
+            {open.plan !== 'monthly' && (
+              <Button
+                variant="link"
+                size="sm"
+                className="w-full h-auto p-0 text-xs font-normal text-muted-foreground underline underline-offset-2"
+                onClick={payMonthly}
+                disabled={generate.isPending}
+              >
+                {generate.isPending ? 'Gerando PIX da mensalidade…' : `Prefiro pagar só a mensalidade de ${formatBRL(monthlyCents)}`}
               </Button>
             )}
           </div>

@@ -38,6 +38,18 @@ export default function AdminBilling() {
   const annualDiscountedCents = annualPriceCents(monthlyCents);
   const annualSavingsCents = annualFullCents - annualDiscountedCents;
 
+  const handleMonthly = () => {
+    generate.mutate({}, {
+      onSuccess: (res: any) => {
+        if (res?.invoice?.id) {
+          setOpen(res.invoice.id);
+          toast.success('PIX da mensalidade gerado!');
+        }
+      },
+      onError: (e: any) => toast.error(e.message),
+    });
+  };
+
   const handleAnnual = () => {
     generate.mutate({ plan: 'annual' }, {
       onSuccess: (res: any) => {
@@ -154,6 +166,15 @@ export default function AdminBilling() {
                 <p className="text-[11px] text-zinc-600 text-center md:text-right">
                   PIX gerado na hora • válido por 7 dias
                 </p>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto w-full p-0 text-xs font-normal text-zinc-600 underline underline-offset-2 md:w-auto"
+                  onClick={handleMonthly}
+                  disabled={generate.isPending}
+                >
+                  {generate.isPending ? 'Gerando PIX…' : `Prefiro pagar só a mensalidade de ${formatBRL(monthlyCents)}`}
+                </Button>
               </div>
             </div>
           </CardContent>
