@@ -8,6 +8,7 @@ import { useBillingInvoices, useBillingSettings, useGenerateCharge, useCheckPaym
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { annualPriceCents } from '@/lib/billingRules';
 
 function formatBRL(cents: number) {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -21,11 +22,29 @@ export function BillingPaymentModal() {
   const qc = useQueryClient();
   const [regenerating, setRegenerating] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
+  const [annualInvoiceId, setAnnualInvoiceId] = useState<string | null>(null);
+  const monthlyCents = settings?.monthly_amount_cents ?? 20000;
+  const annualCents = annualPriceCents(monthlyCents);
 
   // Fatura mais antiga em aberto (pendente, atrasada ou bloqueada)
-  const open = invoices
+  const pending = invoices
     .filter(i => ['PENDENTE', 'ATRASADO', 'BLOQUEADO'].includes(i.status) && !i.paid_at)
-    .sort((a, b) => a.reference_month.localeCompare(b.reference_month))[0];
+    .sort((a, b) => a.reference_month.localeCompare(b.reference_month));
+  const monthly = pending.find(i => i.plan !== 'annual');
+  const annual = pending.find(i => i.id === annualInvoiceId) ?? pending.find(i => i.plan === 'annual');
+  const open = selectedPlan === 'annual' && annual ? annual : monthly ?? annual;
+
+  const generateAnnual = () => generate.mutate({ plan: 'annual' }, {
+    onSuccess: (result: any) => {
+      if (result?.invoice?.id) {
+        setAnnualInvoiceId(result.invoice.id);
+        setSelectedPlan('annual');
+        toast.success('PIX anual disponível');
+      }
+    },
+    onError: (error: any) => toast.error(error.message ?? 'Falha ao gerar PIX anual'),
+  });
 
   // Gera QR localmente a partir do "copia e cola" caso o provedor não tenha retornado imagem
   useEffect(() => {
@@ -45,7 +64,7 @@ export function BillingPaymentModal() {
   // Polling automático: verifica pagamento a cada 20s enquanto há fatura aberta
   useEffect(() => {
     if (!open) return;
-    const id = setInterval(() => check.mutate(open.id), 20_000);
+    const id = setInterval(() => check.mutate(undefined), 20_000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open?.id]);
@@ -93,7 +112,7 @@ export function BillingPaymentModal() {
     <Dialog open modal>
       {/* Sem onOpenChange: o modal só fecha quando a fatura for marcada como PAGA */}
       <DialogContent
-        className="max-w-md"
+        className="max-w-md max-h-[90dvh] overflow-y-auto"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
@@ -109,6 +128,26 @@ export function BillingPaymentModal() {
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2" role="group" aria-label="Plano de pagamento">
+            <Button variant={selectedPlan === 'monthly' ? 'default' : 'outline'} onClick={() => setSelectedPlan('monthly')}>
+              Mensal · {formatBRL(monthlyCents)}
+            </Button>
+            <Button variant={selectedPlan === 'annual' ? 'default' : 'outline'} onClick={() => annual ? setSelectedPlan('annual') : generateAnnual()} disabled={generate.isPending}>
+              Anual · 20% OFF
+            </Button>
+          </div>
+          <div className="space-y-2 border-b border-border pb-4">
+            <p className="font-semibold">1 ano por {formatBRL(annualCents)}</p>
+            <p className="text-sm text-muted-foreground">
+              Economize {formatBRL(monthlyCents * 12 - annualCents)}. Após a confirmação, sua loja fica quitada por 12 meses, sem bloqueio por mensalidades nesse período.
+            </p>
+            {open.plan !== 'annual' && (
+              <Button className="w-full" onClick={generateAnnual} disabled={generate.isPending}>
+                {generate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Pagar 1 ano · {formatBRL(annualCents)}
+              </Button>
+            )}
+          </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground capitalize">
               {open.custom_label

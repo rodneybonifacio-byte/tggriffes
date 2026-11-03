@@ -25,8 +25,13 @@ Deno.serve(async (req) => {
     const refMonth = monthStart(today);
     const actions: any[] = [];
 
-    // 1. Se hoje é dia de cobrança, garante fatura do mês com PIX
-    if (day === settings.charge_day) {
+    const { data: annualCoverage, error: coverageError } = await supabase.from('billing_invoices')
+      .select('id').eq('plan', 'annual').eq('status', 'PAGO').not('paid_at', 'is', null)
+      .lte('reference_month', refMonth).gt('coverage_end', refMonth).limit(1);
+    if (coverageError) throw coverageError;
+
+    // 1. Cobrança mensal somente fora de um período anual quitado.
+    if (day === settings.charge_day && !annualCoverage?.length) {
       const url = `${Deno.env.get('SUPABASE_URL')}/functions/v1/c6-pix-charge`;
       const r = await fetch(url, {
         method: 'POST',
@@ -56,6 +61,7 @@ Deno.serve(async (req) => {
     // Marca como ATRASADO faturas vencidas e não pagas
     await supabase.from('billing_invoices')
       .update({ status: 'ATRASADO' })
+      .eq('plan', 'monthly')
       .eq('status', 'PENDENTE')
       .lt('due_date', todayStr);
 
@@ -63,6 +69,7 @@ Deno.serve(async (req) => {
     // Portanto, basta bloquear qualquer fatura vencida (due_date < hoje) ainda não paga.
     const { data: toBlock } = await supabase.from('billing_invoices')
       .select('id').in('status', ['ATRASADO', 'PENDENTE'])
+      .eq('plan', 'monthly')
       .lt('due_date', todayStr);
 
     if (toBlock && toBlock.length > 0) {
