@@ -38,6 +38,18 @@ export default function AdminBilling() {
   const annualDiscountedCents = annualPriceCents(monthlyCents);
   const annualSavingsCents = annualFullCents - annualDiscountedCents;
 
+  const handleMonthly = () => {
+    generate.mutate({}, {
+      onSuccess: (res: any) => {
+        if (res?.invoice?.id) {
+          setOpen(res.invoice.id);
+          toast.success('PIX da mensalidade gerado!');
+        }
+      },
+      onError: (e: any) => toast.error(e.message),
+    });
+  };
+
   const handleAnnual = () => {
     generate.mutate({ plan: 'annual' }, {
       onSuccess: (res: any) => {
