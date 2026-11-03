@@ -20,6 +20,7 @@ export type Database = {
           attempts: number
           c6_correlation_id: string | null
           c6_txid: string | null
+          coverage_end: string | null
           created_at: string
           custom_label: string | null
           due_date: string
@@ -30,6 +31,7 @@ export type Database = {
           pix_copia_cola: string | null
           pix_expires_at: string | null
           pix_qrcode: string | null
+          plan: string
           reference_month: string
           status: string
           updated_at: string
@@ -39,6 +41,7 @@ export type Database = {
           attempts?: number
           c6_correlation_id?: string | null
           c6_txid?: string | null
+          coverage_end?: string | null
           created_at?: string
           custom_label?: string | null
           due_date: string
@@ -49,6 +52,7 @@ export type Database = {
           pix_copia_cola?: string | null
           pix_expires_at?: string | null
           pix_qrcode?: string | null
+          plan?: string
           reference_month: string
           status?: string
           updated_at?: string
@@ -58,6 +62,7 @@ export type Database = {
           attempts?: number
           c6_correlation_id?: string | null
           c6_txid?: string | null
+          coverage_end?: string | null
           created_at?: string
           custom_label?: string | null
           due_date?: string
@@ -68,6 +73,7 @@ export type Database = {
           pix_copia_cola?: string | null
           pix_expires_at?: string | null
           pix_qrcode?: string | null
+          plan?: string
           reference_month?: string
           status?: string
           updated_at?: string
