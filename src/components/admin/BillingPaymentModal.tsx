@@ -159,6 +159,17 @@ export function BillingPaymentModal() {
                 Pagar 1 ano · {formatBRL(annualCents)}
               </Button>
             )}
+            {open.plan !== 'monthly' && (
+              <Button
+                variant="link"
+                size="sm"
+                className="w-full h-auto p-0 text-xs font-normal text-muted-foreground underline underline-offset-2"
+                onClick={payMonthly}
+                disabled={generate.isPending}
+              >
+                {generate.isPending ? 'Gerando PIX da mensalidade…' : `Prefiro pagar só a mensalidade de ${formatBRL(monthlyCents)}`}
+              </Button>
+            )}
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground capitalize">
