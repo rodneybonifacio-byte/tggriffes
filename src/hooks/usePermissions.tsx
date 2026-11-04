@@ -1,6 +1,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { canViewBilling as roleCanViewBilling } from '@/lib/billingAccess';
 
 export type UserRole = 'admin' | 'seller' | 'customer' | null;
 
@@ -17,6 +18,7 @@ interface Permissions {
   canViewShopify: boolean;
   canViewDashboard: boolean;
   canViewAbandonedCarts: boolean;
+  canViewBilling: boolean;
   
   // Edição
   canEditProducts: boolean;
@@ -79,6 +81,7 @@ export function usePermissions(): Permissions & { isLoading: boolean } {
     canViewShopify: isAdmin, // Apenas admin
     canViewDashboard: isAdmin || isCollaborator,
     canViewAbandonedCarts: isAdmin || isCollaborator,
+    canViewBilling: roleCanViewBilling(role), // Admin e colaborador pagam a mensalidade
     
     // Edição
     canEditProducts: isAdmin || isCollaborator, // Colaborador pode editar produtos (exceto preços)
