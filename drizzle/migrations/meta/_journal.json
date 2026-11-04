@@ -36,6 +36,13 @@
       "when": 1793804015676,
       "tag": "0004_force_product_price_35",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793812621687,
+      "tag": "0005_billing_invoices_visible_to_sellers",
+      "breakpoints": true
     }
   ]
 }
