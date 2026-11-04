@@ -1044,11 +1044,11 @@ serve(async (req) => {
             if (local?.active) counts.activeBoth++;
             else if (local) {
               counts.activeThereInactiveHere++;
-              if (examples.activeThereInactiveHere.length < 20)
+              if (examples.activeThereInactiveHere.length < (body.exampleLimit || 20))
                 examples.activeThereInactiveHere.push({ id: local.id, name: local.name, shopifyId });
             } else {
               counts.activeThereWithoutMapping++;
-              if (examples.activeThereWithoutMapping.length < 20)
+              if (examples.activeThereWithoutMapping.length < (body.exampleLimit || 20))
                 examples.activeThereWithoutMapping.push({ id: shopifyId, name: sp.title });
             }
           }
@@ -1063,12 +1063,31 @@ serve(async (req) => {
           if (!shopifyId) counts.activeHereWithoutMapping++;
           if (!shopifyId || !seenShopifyIds.has(shopifyId)) {
             counts.activeHereNotActiveThere++;
-            if (examples.activeHereNotActiveThere.length < 20)
+            if (examples.activeHereNotActiveThere.length < (body.exampleLimit || 20))
               examples.activeHereNotActiveThere.push({ id: local.id, name: local.name, shopifyId });
           }
         }
         syncLog.products_synced = counts.shopifyActive;
         result = { counts, examples, complete: true };
+
+      } else if (action === 'set_status_batch') {
+        // Only changes Shopify product status (active/draft). Never touches prices.
+        const { shopifyIds = [], status } = body;
+        if (!['active', 'draft'].includes(status)) throw new Error('invalid status');
+        syncLog.sync_type = 'set_status_batch';
+        const errors: any[] = [];
+        let updated = 0;
+        for (const sid of (shopifyIds as string[]).slice(0, 40)) {
+          try {
+            await shopifyRequest(`/products/${sid}.json`, 'PUT', { product: { id: sid, status } });
+            updated++;
+          } catch (err: any) {
+            errors.push({ shopifyId: sid, error: err.message });
+          }
+          await delay(400);
+        }
+        syncLog.products_synced = updated;
+        result = { updated, errors };
 
       } else if (action === 'archive_shopify_batch') {
         // Archive a batch of non-archived Shopify products (active or draft).
