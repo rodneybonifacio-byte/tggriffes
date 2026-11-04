@@ -6,8 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Copy, RefreshCw, Lock, AlertTriangle, Clock, Loader2 } from 'lucide-react';
 import { useBillingInvoices, useBillingSettings, useGenerateCharge, useCheckPayment } from '@/hooks/useBilling';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { annualPriceCents } from '@/lib/billingRules';
 
 function formatBRL(cents: number) {
@@ -19,7 +17,6 @@ export function BillingPaymentModal() {
   const { data: invoices = [] } = useBillingInvoices();
   const generate = useGenerateCharge();
   const check = useCheckPayment();
-  const qc = useQueryClient();
   const [regenerating, setRegenerating] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
@@ -98,20 +95,9 @@ export function BillingPaymentModal() {
     if (!open) return;
     setRegenerating(true);
     try {
-      // Limpa o PIX atual para forçar geração de um novo
-      const { error: clearErr } = await supabase
-        .from('billing_invoices' as any)
-        .update({
-          pix_copia_cola: null,
-          pix_qrcode: null,
-          c6_txid: null,
-          c6_correlation_id: null,
-          pix_expires_at: null,
-        })
-        .eq('id', open.id);
-      if (clearErr) throw clearErr;
-      await qc.invalidateQueries({ queryKey: ['billing-invoices'] });
-      await generate.mutateAsync({ invoiceId: open.id });
+      // A limpeza do PIX antigo é feita na função de cobrança, assim qualquer
+      // usuário do painel consegue um novo código sem escrever nas faturas.
+      await generate.mutateAsync({ invoiceId: open.id, regenerate: true });
       toast.success('Novo PIX gerado');
     } catch (e: any) {
       toast.error(e?.message ?? 'Falha ao gerar novo PIX');
