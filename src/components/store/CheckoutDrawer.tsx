@@ -297,18 +297,18 @@ ${pdfUrl}`;
         added_from: item.addedFrom || 'catalog',
       }));
 
-      // 4. Deletar reservas de carrinho (restaura estoque via trigger)
-      await supabase
-        .from('cart_reservations')
-        .delete()
-        .eq('session_id', sessionId);
-
-      // 5. Inserir itens do pedido (decrementa estoque via trigger)
+      // 4. Inserir itens do pedido (pedido ainda é rascunho, não baixa estoque)
       const { error: itemsError } = await supabase
         .from('order_intent_items')
         .insert(orderItems);
 
       if (itemsError) throw itemsError;
+
+      // 5. Só agora libera as reservas (restaura estoque) para o finalize baixar de novo
+      await supabase
+        .from('cart_reservations')
+        .delete()
+        .eq('session_id', sessionId);
 
       // O banco valida o mínimo de peças, recalcula os valores e baixa o estoque.
       const { error: finalizeError } = await supabase
@@ -364,6 +364,15 @@ ${pdfUrl}`;
       
       // 8. Limpar estado local e mostrar sucesso
       setOrderComplete(true);
+      // Esvazia o carrinho na tela e limpa os dados do checkout,
+      // evitando que o cliente volte do WhatsApp e reenvie o mesmo pedido.
+      clearCart();
+      setStep('info');
+      setSelectedShipping(null);
+      setShowShippingCalculator(false);
+      setSkipShipping(false);
+      setObservations('');
+      setCartFingerprintAtShippingCalc('');
       clearStoredState();
 
       toast({
