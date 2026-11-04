@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminGuard } from '@/components/admin/AdminGuard';
 import { Button } from '@/components/ui/button';
@@ -194,8 +194,13 @@ function AdminHomeOrganizationContent() {
   const [isDirty, setIsDirty] = useState(false);
 
   // Initialize local state when data loads
+  const savedRef = useRef<Map<string, string>>(new Map());
+  const dirtyRef = useRef(false);
+  dirtyRef.current = isDirty;
+  const sig = (p: OrgProduct, idx: number) => `${idx}|${p.is_featured}|${p.hidden_from_home}`;
+
   useEffect(() => {
-    if (products.length === 0) return;
+    if (products.length === 0 || dirtyRef.current) return;
     const sorted = [...products].sort((a, b) => {
       const ao = (a as any).display_order;
       const bo = (b as any).display_order;
@@ -211,6 +216,7 @@ function AdminHomeOrganizationContent() {
       return a.name.localeCompare(b.name, 'pt-BR');
     }) as OrgProduct[];
     setLocalProducts(sorted);
+    savedRef.current = new Map(sorted.map((p, i) => [p.id, sig(p, i)]));
     setIsDirty(false);
   }, [products]);
 
@@ -263,22 +269,34 @@ function AdminHomeOrganizationContent() {
   };
 
   const handleSave = async () => {
-    const updates = localProducts.map((p, idx) => ({
-      id: p.id,
-      display_order: idx,
-      is_featured: p.is_featured,
-      hidden_from_home: p.hidden_from_home,
-    }));
+    const snapshot = localProducts;
+    const updates = snapshot
+      .map((p, idx) => ({ p, idx }))
+      .filter(({ p, idx }) => savedRef.current.get(p.id) !== sig(p, idx))
+      .map(({ p, idx }) => ({
+        id: p.id,
+        display_order: idx,
+        is_featured: p.is_featured,
+        hidden_from_home: p.hidden_from_home,
+      }));
+    if (updates.length === 0) { setIsDirty(false); return; }
     try {
       await updateMutation.mutateAsync(updates);
-      toast.success('Organização da home salva!', {
-        description: `${updates.length} produtos atualizados.`,
-      });
-      setIsDirty(false);
+      updates.forEach(u => savedRef.current.set(u.id, sig(snapshot.find(p => p.id === u.id)!, u.display_order)));
+      toast.success('Salvo automaticamente', { duration: 1500 });
+      setIsDirty(localProducts !== snapshot);
     } catch (e) {
       toast.error('Erro ao salvar organização');
     }
   };
+
+  // Autosave: salva automaticamente ~0,8s após qualquer alteração
+  useEffect(() => {
+    if (!isDirty || updateMutation.isPending) return;
+    const t = setTimeout(() => { handleSave(); }, 800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [localProducts, isDirty, updateMutation.isPending]);
 
   const handleReset = () => {
     if (!confirm('Limpar toda a organização manual? Os produtos voltarão à ordem automática.')) return;
@@ -367,25 +385,15 @@ function AdminHomeOrganizationContent() {
             <Button variant="outline" size="sm" onClick={handleReset} disabled={updateMutation.isPending}>
               <RotateCcw className="h-4 w-4 mr-1" /> Resetar
             </Button>
-            <Button
-              onClick={handleSave}
-              disabled={!isDirty || updateMutation.isPending}
-              className={cn(isDirty && 'animate-pulse')}
-            >
-              {updateMutation.isPending ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            <span className="text-xs text-muted-foreground flex items-center gap-1 px-2 whitespace-nowrap">
+              {updateMutation.isPending || isDirty ? (
+                <><Loader2 className="h-3 w-3 animate-spin" /> Salvando...</>
               ) : (
-                <Save className="h-4 w-4 mr-1" />
+                <><Save className="h-3 w-3" /> Salvo automaticamente</>
               )}
-              Salvar Ordem
-            </Button>
+            </span>
           </div>
         </div>
-        {isDirty && (
-          <p className="text-xs text-primary mt-2 flex items-center gap-1">
-            <Sparkles className="h-3 w-3" /> Você tem alterações não salvas
-          </p>
-        )}
       </Card>
 
       {/* Main grid + preview */}
