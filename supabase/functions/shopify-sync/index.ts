@@ -211,8 +211,8 @@ serve(async (req) => {
         console.log(`Skipping non-absolute image URL for product ${product.id}: ${product.main_image_url}`);
       }
 
-      // Build variants with size and color options - fixed price R$69,90
-      const FIXED_PRICE = '69.90';
+      // Build variants with size and color options - fixed price R$35,00 (todo o catálogo)
+      const FIXED_PRICE = '35.00';
       const variants = product.variants || [];
       
       // Check if any variant has a color defined
