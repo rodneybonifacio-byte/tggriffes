@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
+import { AdminGuard } from '@/components/admin/AdminGuard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -63,6 +64,7 @@ export default function AdminBilling() {
   };
 
   return (
+    <AdminGuard>
     <AdminLayout title="Mensalidade">
       <Card className="mb-6 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
         <CardHeader>
@@ -284,5 +286,6 @@ export default function AdminBilling() {
         </DialogContent>
       </Dialog>
     </AdminLayout>
+    </AdminGuard>
   );
 }

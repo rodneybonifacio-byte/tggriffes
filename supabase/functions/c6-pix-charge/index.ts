@@ -30,6 +30,7 @@ Deno.serve(async (req) => {
     const referenceMonth: string = body.reference_month ?? monthStart();
     const plan: 'monthly' | 'annual' = body.plan === 'annual' ? 'annual' : 'monthly';
     const invoiceId: string | undefined = body.invoice_id;
+    const regenerate: boolean = body.regenerate === true;
 
     const { data: settings, error: settingsErr } = await supabase
       .from('billing_settings').select('*').limit(1).single();
@@ -71,6 +72,30 @@ Deno.serve(async (req) => {
     }
 
     let invoice = existing;
+
+    // "Gerar novo PIX": limpa o código atual para forçar uma cobrança nova.
+    // Feito aqui (com chave de serviço) para que quem paga não precise de
+    // permissão de escrita nas faturas.
+    if (invoice && regenerate && invoice.status !== 'PAGO' && invoice.status !== 'CANCELADO') {
+      const { error: clearErr } = await supabase
+        .from('billing_invoices').update({
+          c6_txid: null,
+          c6_correlation_id: null,
+          pix_qrcode: null,
+          pix_copia_cola: null,
+          pix_expires_at: null,
+        }).eq('id', invoice.id);
+      if (clearErr) throw clearErr;
+      invoice = {
+        ...invoice,
+        c6_txid: null,
+        c6_correlation_id: null,
+        pix_qrcode: null,
+        pix_copia_cola: null,
+        pix_expires_at: null,
+      };
+    }
+
     if (!invoice) {
       const monthlyCents = settings.monthly_amount_cents;
       const annualCents = annualPriceCents(monthlyCents);
