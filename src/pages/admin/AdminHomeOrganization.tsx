@@ -197,6 +197,8 @@ function AdminHomeOrganizationContent() {
   const savedRef = useRef<Map<string, string>>(new Map());
   const dirtyRef = useRef(false);
   dirtyRef.current = isDirty;
+  const latestRef = useRef<OrgProduct[]>([]);
+  latestRef.current = localProducts;
   const sig = (p: OrgProduct, idx: number) => `${idx}|${p.is_featured}|${p.hidden_from_home}`;
 
   useEffect(() => {
@@ -284,7 +286,7 @@ function AdminHomeOrganizationContent() {
       await updateMutation.mutateAsync(updates);
       updates.forEach(u => savedRef.current.set(u.id, sig(snapshot.find(p => p.id === u.id)!, u.display_order)));
       toast.success('Salvo automaticamente', { duration: 1500 });
-      setIsDirty(localProducts !== snapshot);
+      setIsDirty(latestRef.current !== snapshot);
     } catch (e) {
       toast.error('Erro ao salvar organização');
     }
