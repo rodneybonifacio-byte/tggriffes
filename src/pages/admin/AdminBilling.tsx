@@ -64,6 +64,7 @@ export default function AdminBilling() {
   };
 
   return (
+    <AdminGuard>
     <AdminLayout title="Mensalidade">
       <Card className="mb-6 border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background">
         <CardHeader>
@@ -285,5 +286,6 @@ export default function AdminBilling() {
         </DialogContent>
       </Dialog>
     </AdminLayout>
+    </AdminGuard>
   );
 }
