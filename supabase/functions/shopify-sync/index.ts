@@ -1044,11 +1044,11 @@ serve(async (req) => {
             if (local?.active) counts.activeBoth++;
             else if (local) {
               counts.activeThereInactiveHere++;
-              if (examples.activeThereInactiveHere.length < 20)
+              if (examples.activeThereInactiveHere.length < (body.exampleLimit || 20))
                 examples.activeThereInactiveHere.push({ id: local.id, name: local.name, shopifyId });
             } else {
               counts.activeThereWithoutMapping++;
-              if (examples.activeThereWithoutMapping.length < 20)
+              if (examples.activeThereWithoutMapping.length < (body.exampleLimit || 20))
                 examples.activeThereWithoutMapping.push({ id: shopifyId, name: sp.title });
             }
           }
@@ -1063,7 +1063,7 @@ serve(async (req) => {
           if (!shopifyId) counts.activeHereWithoutMapping++;
           if (!shopifyId || !seenShopifyIds.has(shopifyId)) {
             counts.activeHereNotActiveThere++;
-            if (examples.activeHereNotActiveThere.length < 20)
+            if (examples.activeHereNotActiveThere.length < (body.exampleLimit || 20))
               examples.activeHereNotActiveThere.push({ id: local.id, name: local.name, shopifyId });
           }
         }
