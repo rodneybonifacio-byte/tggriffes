@@ -6,7 +6,9 @@ export function BillingBanner() {
   const { data: settings } = useBillingSettings();
   const { data: invoices = [] } = useBillingInvoices();
 
-  const open = invoices.find(i => ['PENDENTE', 'ATRASADO', 'BLOQUEADO'].includes(i.status));
+  // Só mensalidades contam como "em aberto"; a oferta anual não paga não é dívida.
+  const open = invoices.find(i =>
+    i.plan !== 'annual' && !i.paid_at && ['PENDENTE', 'ATRASADO', 'BLOQUEADO'].includes(i.status));
   if (!open) return null;
 
   const blocked = settings?.is_blocked || open.status === 'BLOQUEADO';
