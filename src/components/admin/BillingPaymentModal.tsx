@@ -30,7 +30,11 @@ export function BillingPaymentModal() {
     .sort((a, b) => a.reference_month.localeCompare(b.reference_month));
   const monthly = pending.find(i => i.plan !== 'annual');
   const annual = pending.find(i => i.id === annualInvoiceId) ?? pending.find(i => i.plan === 'annual');
-  const open = selectedPlan === 'annual' && annual ? annual : monthly ?? annual;
+  // Oferta anual em aberto não bloqueia o painel sozinha: a janela só aparece
+  // quando há mensalidade em aberto (ou o usuário acabou de pedir o PIX anual).
+  const open = monthly
+    ? (selectedPlan === 'annual' && annual ? annual : monthly)
+    : (annualInvoiceId ? annual : undefined);
 
   // Pagar apenas a mensalidade (R$ 200): usa a fatura mensal já aberta ou gera uma
   const payMonthly = () => {
