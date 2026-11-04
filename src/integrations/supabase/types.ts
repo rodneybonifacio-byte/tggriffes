@@ -519,6 +519,39 @@ export type Database = {
           },
         ]
       }
+      product_status_log: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          id: string
+          new_active: boolean | null
+          old_active: boolean | null
+          product_id: string
+          product_name: string | null
+          source: string | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_active?: boolean | null
+          old_active?: boolean | null
+          product_id: string
+          product_name?: string | null
+          source?: string | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          new_active?: boolean | null
+          old_active?: boolean | null
+          product_id?: string
+          product_name?: string | null
+          source?: string | null
+        }
+        Relationships: []
+      }
       product_variants: {
         Row: {
           color: string | null

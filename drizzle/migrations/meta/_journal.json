@@ -22,6 +22,13 @@
       "when": 1793746101431,
       "tag": "0002_annual_billing_coverage",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793803829689,
+      "tag": "0003_block_inactive_products_and_audit",
+      "breakpoints": true
     }
   ]
 }
