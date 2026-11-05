@@ -7,4 +7,4 @@
 # Checkout video failure
 - [x] Reproduce checkout failure with the cart and staff session shown in the video, without retaining test changes.
 - [x] Start storefront orders as drafts for all sessions and send only remaining active pieces in the WhatsApp summary.
-- [ ] Verify draft finalization and stock accounting with rolled-back live-data tests and check the checkout screen.
+- [x] Verify draft finalization and stock accounting with rolled-back live-data tests; verify the checkout button reaches WhatsApp with intercepted writes. Production deployment was not verified.
