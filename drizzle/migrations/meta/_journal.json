@@ -43,6 +43,13 @@
       "when": 1793812621687,
       "tag": "0005_billing_invoices_visible_to_sellers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793876559573,
+      "tag": "0006_delete_empty_order_intent",
+      "breakpoints": true
     }
   ]
 }
