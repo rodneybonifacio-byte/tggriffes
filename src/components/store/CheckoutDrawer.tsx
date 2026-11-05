@@ -330,7 +330,7 @@ ${pdfUrl}`;
 
       if (itemsError) {
         // Rollback: apaga o pedido recém-criado para não ficar pedido vazio (0 itens)
-        await supabase.from('order_intents').delete().eq('id', orderIntentId);
+        await supabase.rpc('delete_empty_order_intent', { p_order_id: orderIntentId });
         throw itemsError;
       }
 
