@@ -69,7 +69,7 @@ interface CheckoutDrawerProps {
 }
 
 export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
-  const { items, totalCents, totalItems, clearCart } = useCart();
+  const { items, totalCents, totalItems, clearCart, removeItem } = useCart();
   const sessionId = useSessionId();
   const { data: settings } = useStoreSettings();
   const { toast } = useToast();
@@ -233,6 +233,32 @@ ${pdfUrl}`;
     setIsSubmitting(true);
 
     try {
+      // 0. Validar se todos os produtos do carrinho ainda estão ativos.
+      // Sem isso, um produto desativado no carrinho fazia o insert dos itens falhar
+      // DEPOIS do pedido já criado, gerando pedidos vazios (0 itens) a cada tentativa.
+      const productIds = [...new Set(items.map(i => i.productId))];
+      const { data: activeProducts, error: activeError } = await supabase
+        .from('products')
+        .select('id')
+        .in('id', productIds)
+        .eq('active', true);
+
+      if (activeError) throw activeError;
+
+      const activeIds = new Set((activeProducts || []).map(p => p.id));
+      const unavailable = items.filter(i => !activeIds.has(i.productId));
+
+      if (unavailable.length > 0) {
+        unavailable.forEach(i => removeItem(i.id));
+        toast({
+          title: 'Produtos indisponíveis removidos',
+          description: `${unavailable.length} ${unavailable.length === 1 ? 'item ficou indisponível e foi removido' : 'itens ficaram indisponíveis e foram removidos'} do carrinho. Revise antes de finalizar.`,
+          variant: 'destructive',
+        });
+        setStep('info');
+        return;
+      }
+
       // Nota: O estoque já está reservado pelas reservas de carrinho
       // Ao deletar reservas (clearCart), o estoque é restaurado
       // Ao inserir order_intent_items, o estoque é decrementado novamente
