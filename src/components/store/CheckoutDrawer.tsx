@@ -247,12 +247,34 @@ ${pdfUrl}`;
 
       const activeIds = new Set((activeProducts || []).map(p => p.id));
       const unavailable = items.filter(i => !activeIds.has(i.productId));
+      const availableItems = items.filter(i => activeIds.has(i.productId));
 
       if (unavailable.length > 0) {
+        // Remove os itens indisponíveis do carrinho e segue com o pedido
+        // apenas com as peças que ainda estão ativas.
         unavailable.forEach(i => removeItem(i.id));
         toast({
           title: 'Produtos indisponíveis removidos',
-          description: `${unavailable.length} ${unavailable.length === 1 ? 'item ficou indisponível e foi removido' : 'itens ficaram indisponíveis e foram removidos'} do carrinho. Revise antes de finalizar.`,
+          description: `${unavailable.length} ${unavailable.length === 1 ? 'item ficou indisponível e foi removido' : 'itens ficaram indisponíveis e foram removidos'} do carrinho. O pedido segue com as demais peças.`,
+        });
+      }
+
+      const availableTotalQty = availableItems.reduce((sum, i) => sum + i.quantity, 0);
+
+      if (availableItems.length === 0) {
+        toast({
+          title: 'Carrinho sem itens disponíveis',
+          description: 'Todos os itens ficaram indisponíveis. Monte o carrinho novamente.',
+          variant: 'destructive',
+        });
+        setStep('info');
+        return;
+      }
+
+      if (availableTotalQty < MIN_ORDER_QUANTITY) {
+        toast({
+          title: 'Pedido mínimo não atingido',
+          description: `Após remover os itens indisponíveis, restaram ${availableTotalQty} peças. Adicione pelo menos ${MIN_ORDER_QUANTITY} peças para finalizar.`,
           variant: 'destructive',
         });
         setStep('info');
