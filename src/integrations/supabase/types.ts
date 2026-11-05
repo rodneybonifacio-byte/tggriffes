@@ -1043,6 +1043,10 @@ export type Database = {
       }
       dashboard_order_analytics: { Args: { p_days?: number }; Returns: Json }
       dashboard_visits_summary: { Args: { p_days?: number }; Returns: Json }
+      delete_empty_order_intent: {
+        Args: { p_order_id: string }
+        Returns: boolean
+      }
       finalize_public_order: { Args: { p_order_id: string }; Returns: boolean }
       generate_slug: { Args: { name: string }; Returns: string }
       get_next_order_number: { Args: never; Returns: number }
