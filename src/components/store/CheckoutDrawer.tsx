@@ -328,7 +328,11 @@ ${pdfUrl}`;
         .from('order_intent_items')
         .insert(orderItems);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        // Rollback: apaga o pedido recém-criado para não ficar pedido vazio (0 itens)
+        await supabase.from('order_intents').delete().eq('id', orderIntentId);
+        throw itemsError;
+      }
 
       // 5. Só agora libera as reservas (restaura estoque) para o finalize baixar de novo
       await supabase
