@@ -247,12 +247,36 @@ ${pdfUrl}`;
 
       const activeIds = new Set((activeProducts || []).map(p => p.id));
       const unavailable = items.filter(i => !activeIds.has(i.productId));
+      const availableItems = items.filter(i => activeIds.has(i.productId));
 
       if (unavailable.length > 0) {
+        // Remove os itens indisponíveis do carrinho e segue com o pedido
+        // apenas com as peças que ainda estão ativas.
         unavailable.forEach(i => removeItem(i.id));
         toast({
           title: 'Produtos indisponíveis removidos',
-          description: `${unavailable.length} ${unavailable.length === 1 ? 'item ficou indisponível e foi removido' : 'itens ficaram indisponíveis e foram removidos'} do carrinho. Revise antes de finalizar.`,
+          description: `${unavailable.length} ${unavailable.length === 1 ? 'item ficou indisponível e foi removido' : 'itens ficaram indisponíveis e foram removidos'} do carrinho. O pedido segue com as demais peças.`,
+        });
+      }
+
+      const availableTotalQty = availableItems.reduce((sum, i) => sum + i.quantity, 0);
+      const availableSubtotalCents = availableTotalQty * UNIT_PRICE_CENTS;
+      const availableFinalTotalCents = availableSubtotalCents + shippingCents;
+
+      if (availableItems.length === 0) {
+        toast({
+          title: 'Carrinho sem itens disponíveis',
+          description: 'Todos os itens ficaram indisponíveis. Monte o carrinho novamente.',
+          variant: 'destructive',
+        });
+        setStep('info');
+        return;
+      }
+
+      if (availableTotalQty < MIN_ORDER_QUANTITY) {
+        toast({
+          title: 'Pedido mínimo não atingido',
+          description: `Após remover os itens indisponíveis, restaram ${availableTotalQty} peças. Adicione pelo menos ${MIN_ORDER_QUANTITY} peças para finalizar.`,
           variant: 'destructive',
         });
         setStep('info');
@@ -293,11 +317,11 @@ ${pdfUrl}`;
           customer_name: customerName,
           customer_whatsapp: cleanWhatsapp,
           dest_cep: destCep,
-          subtotal_cents: subtotalAfterDiscount,
+          subtotal_cents: availableSubtotalCents,
           shipping_service: skipShipping ? 'A combinar' : selectedShipping?.service,
           shipping_price_cents: skipShipping ? 0 : shippingCents,
           shipping_deadline_days: skipShipping ? null : selectedShipping?.deadline,
-          total_cents: skipShipping ? subtotalAfterDiscount : finalTotalCents,
+          total_cents: skipShipping ? availableSubtotalCents : availableFinalTotalCents,
           status: 'NOVO',
           observations: observations.trim() || null,
           // Save shipping package metrics for PDF generation
@@ -310,7 +334,8 @@ ${pdfUrl}`;
       if (orderError) throw orderError;
 
       // 3. Preparar itens do pedido ANTES de deletar reservas
-      const orderItems = items.map(item => ({
+      // Usa apenas os itens ainda ativos (indisponíveis já foram removidos do carrinho)
+      const orderItems = availableItems.map(item => ({
         order_intent_id: orderIntentId,
         product_id: item.productId,
         variant_id: item.variantId,
@@ -355,7 +380,7 @@ ${pdfUrl}`;
         customerName,
         customerWhatsapp: customerWhatsapp.replace(/\D/g, ''),
         destCep,
-        items: items.map(item => ({
+        items: availableItems.map(item => ({
           productName: item.productName,
           size: item.size,
           color: item.color,
@@ -364,11 +389,11 @@ ${pdfUrl}`;
           imageUrl: item.imageUrl,
           category: item.category,
         })),
-        subtotalCents,
+        subtotalCents: availableSubtotalCents,
         shippingService: skipShipping ? 'A combinar' : (selectedShipping?.service || ''),
         shippingPriceCents: skipShipping ? 0 : shippingCents,
         shippingDeadlineDays: skipShipping ? 0 : (selectedShipping?.deadline || 0),
-        totalCents: skipShipping ? subtotalCents : finalTotalCents,
+        totalCents: skipShipping ? availableSubtotalCents : availableFinalTotalCents,
         skipShipping,
         observations: observations.trim() || null,
         orderDate: new Date().toLocaleDateString('pt-BR'),
