@@ -260,6 +260,8 @@ ${pdfUrl}`;
       }
 
       const availableTotalQty = availableItems.reduce((sum, i) => sum + i.quantity, 0);
+      const availableSubtotalCents = availableTotalQty * UNIT_PRICE_CENTS;
+      const availableFinalTotalCents = availableSubtotalCents + shippingCents;
 
       if (availableItems.length === 0) {
         toast({
@@ -315,11 +317,11 @@ ${pdfUrl}`;
           customer_name: customerName,
           customer_whatsapp: cleanWhatsapp,
           dest_cep: destCep,
-          subtotal_cents: subtotalAfterDiscount,
+          subtotal_cents: availableSubtotalCents,
           shipping_service: skipShipping ? 'A combinar' : selectedShipping?.service,
           shipping_price_cents: skipShipping ? 0 : shippingCents,
           shipping_deadline_days: skipShipping ? null : selectedShipping?.deadline,
-          total_cents: skipShipping ? subtotalAfterDiscount : finalTotalCents,
+          total_cents: skipShipping ? availableSubtotalCents : availableFinalTotalCents,
           status: 'NOVO',
           observations: observations.trim() || null,
           // Save shipping package metrics for PDF generation
@@ -332,7 +334,8 @@ ${pdfUrl}`;
       if (orderError) throw orderError;
 
       // 3. Preparar itens do pedido ANTES de deletar reservas
-      const orderItems = items.map(item => ({
+      // Usa apenas os itens ainda ativos (indisponíveis já foram removidos do carrinho)
+      const orderItems = availableItems.map(item => ({
         order_intent_id: orderIntentId,
         product_id: item.productId,
         variant_id: item.variantId,
