@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useShippingPackageMetrics } from '@/hooks/useShippingPackageMetrics';
 import { getThumbnailUrl } from '@/lib/imageCompression';
-import { MIN_ORDER_QUANTITY, UNIT_PRICE_CENTS } from '@/lib/commerceRules';
+import { MIN_ORDER_QUANTITY, UNIT_PRICE_CENTS, STOREFRONT_INITIAL_ORDER_STATUS } from '@/lib/commerceRules';
 
 const CHECKOUT_STORAGE_KEY = 'tg-checkout-state';
 
@@ -151,8 +151,8 @@ export function CheckoutDrawer({ open, onOpenChange }: CheckoutDrawerProps) {
   const canProceedToShipping = customerName.trim().length >= 2 && customerWhatsapp.replace(/\D/g, '').length >= 7;
   const canProceedToReview = selectedShipping !== null || skipShipping;
 
-  const generateOrderSummaryText = (orderNumber?: number, pdfUrl?: string) => {
-    const itemsList = items.map(item => {
+  const generateOrderSummaryText = (orderNumber?: number, pdfUrl?: string, orderItems: CartItem[] = items) => {
+    const itemsList = orderItems.map(item => {
       const colorText = item.color ? ` • ${getColorDisplayName(item.color)}` : '';
       return `📌 ${item.quantity}x ${item.productName}\n   Tam: ${item.size}${colorText}`;
     }).join('\n\n');
@@ -322,7 +322,7 @@ ${pdfUrl}`;
           shipping_price_cents: skipShipping ? 0 : shippingCents,
           shipping_deadline_days: skipShipping ? null : selectedShipping?.deadline,
           total_cents: skipShipping ? availableSubtotalCents : availableFinalTotalCents,
-          status: 'NOVO',
+          status: STOREFRONT_INITIAL_ORDER_STATUS,
           observations: observations.trim() || null,
           // Save shipping package metrics for PDF generation
           shipping_weight_grams: !skipShipping && selectedShipping ? shippingMetrics.weightGrams : null,
@@ -360,10 +360,12 @@ ${pdfUrl}`;
       }
 
       // 5. Só agora libera as reservas (restaura estoque) para o finalize baixar de novo
-      await supabase
+      const { error: reservationsError } = await supabase
         .from('cart_reservations')
         .delete()
         .eq('session_id', sessionId);
+
+      if (reservationsError) throw reservationsError;
 
       // O banco valida o mínimo de peças, recalcula os valores e baixa o estoque.
       const { error: finalizeError } = await supabase
@@ -411,7 +413,7 @@ ${pdfUrl}`;
 
       // 5. Generate message with clean PDF URL and open WhatsApp
       const cleanPdfUrl = `${window.location.origin}/pedidos/pdf/${orderNumber}`;
-      const message = generateOrderSummaryText(orderNumber, cleanPdfUrl);
+      const message = generateOrderSummaryText(orderNumber, cleanPdfUrl, availableItems);
       const whatsappNumber = settings.seller_whatsapp.replace(/\D/g, '');
       // Use encodeURIComponent which properly handles UTF-8 emojis
       const encodedMessage = encodeURIComponent(message);
