@@ -380,7 +380,7 @@ ${pdfUrl}`;
         customerName,
         customerWhatsapp: customerWhatsapp.replace(/\D/g, ''),
         destCep,
-        items: items.map(item => ({
+        items: availableItems.map(item => ({
           productName: item.productName,
           size: item.size,
           color: item.color,
@@ -389,11 +389,11 @@ ${pdfUrl}`;
           imageUrl: item.imageUrl,
           category: item.category,
         })),
-        subtotalCents,
+        subtotalCents: availableSubtotalCents,
         shippingService: skipShipping ? 'A combinar' : (selectedShipping?.service || ''),
         shippingPriceCents: skipShipping ? 0 : shippingCents,
         shippingDeadlineDays: skipShipping ? 0 : (selectedShipping?.deadline || 0),
-        totalCents: skipShipping ? subtotalCents : finalTotalCents,
+        totalCents: skipShipping ? availableSubtotalCents : availableFinalTotalCents,
         skipShipping,
         observations: observations.trim() || null,
         orderDate: new Date().toLocaleDateString('pt-BR'),
