@@ -1,4 +1,5 @@
 import { Sparkles, Package, Flame } from 'lucide-react';
+import { BANNER_MIN_DISTINCT_SIZES } from '@/lib/commerceRules';
 
 export function PromoBanner() {
   return (
@@ -37,7 +38,7 @@ export function PromoBanner() {
               Pedido mínimo: 10 peças
             </span>
             <span className="text-white/80 text-xs md:text-sm font-medium">
-              com no mínimo 3 tamanhos diferentes — a compra só libera assim
+              com no mínimo {BANNER_MIN_DISTINCT_SIZES} tamanhos diferentes — a compra só libera assim
             </span>
           </div>
         </div>
