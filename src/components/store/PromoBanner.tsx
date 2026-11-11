@@ -37,7 +37,7 @@ export function PromoBanner() {
               Pedido mínimo: 10 peças
             </span>
             <span className="text-white/80 text-xs md:text-sm font-medium">
-              escolha livre de modelos e tamanhos
+              pode variar os tamanhos e modelos — compra liberada a partir de 10 peças no carrinho
             </span>
           </div>
         </div>
