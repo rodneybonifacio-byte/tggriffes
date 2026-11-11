@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useShippingPackageMetrics } from '@/hooks/useShippingPackageMetrics';
 import { getThumbnailUrl } from '@/lib/imageCompression';
-import { MIN_ORDER_QUANTITY, UNIT_PRICE_CENTS, STOREFRONT_INITIAL_ORDER_STATUS } from '@/lib/commerceRules';
+import { MIN_ORDER_QUANTITY, UNIT_PRICE_CENTS, STOREFRONT_INITIAL_ORDER_STATUS, MIN_DISTINCT_SIZES, countDistinctSizes } from '@/lib/commerceRules';
 
 const CHECKOUT_STORAGE_KEY = 'tg-checkout-state';
 
@@ -210,6 +210,16 @@ ${pdfUrl}`;
     // Prevent double-click / concurrent submissions
     if (isSubmittingRef.current) return;
 
+    if (countDistinctSizes(items) < MIN_DISTINCT_SIZES) {
+      toast({
+        title: 'Varie os tamanhos',
+        description: `O pedido precisa ter pelo menos ${MIN_DISTINCT_SIZES} tamanhos diferentes.`,
+        variant: 'destructive',
+      });
+      setStep('info');
+      return;
+    }
+
     if (totalItems < MIN_ORDER_QUANTITY) {
       toast({
         title: 'Pedido mínimo não atingido',
@@ -267,6 +277,16 @@ ${pdfUrl}`;
         toast({
           title: 'Carrinho sem itens disponíveis',
           description: 'Todos os itens ficaram indisponíveis. Monte o carrinho novamente.',
+          variant: 'destructive',
+        });
+        setStep('info');
+        return;
+      }
+
+      if (countDistinctSizes(availableItems) < MIN_DISTINCT_SIZES) {
+        toast({
+          title: 'Varie os tamanhos',
+          description: `Após remover os itens indisponíveis, o pedido precisa ter pelo menos ${MIN_DISTINCT_SIZES} tamanhos diferentes.`,
           variant: 'destructive',
         });
         setStep('info');
@@ -840,7 +860,7 @@ ${pdfUrl}`;
                 className="w-full gap-2" 
                 size="lg"
                 onClick={handleFinalize}
-                disabled={isSubmitting || totalItems < MIN_ORDER_QUANTITY}
+                disabled={isSubmitting || totalItems < MIN_ORDER_QUANTITY || countDistinctSizes(items) < MIN_DISTINCT_SIZES}
               >
                 {isSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

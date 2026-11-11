@@ -50,6 +50,13 @@
       "when": 1793876559573,
       "tag": "0006_delete_empty_order_intent",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794416916220,
+      "tag": "0007_require_three_distinct_sizes",
+      "breakpoints": true
     }
   ]
 }

@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { VariationsSummary } from './VariationsSummary';
 import { PromotionProgress } from './PromotionProgress';
 import { getThumbnailUrl } from '@/lib/imageCompression';
-import { MIN_ORDER_QUANTITY } from '@/lib/commerceRules';
+import { MIN_ORDER_QUANTITY, MIN_DISTINCT_SIZES, countDistinctSizes } from '@/lib/commerceRules';
 
 export function CartDrawer() {
   const { items, removeItem, updateQuantity, totalItems, clearCart } = useCart();
@@ -23,7 +23,8 @@ export function CartDrawer() {
   const variantIds = items.map(i => i.variantId);
   const { data: variantStockMap } = useVariantsStock(variantIds);
   
-  const canCheckout = totalItems >= MIN_ORDER_QUANTITY;
+  const distinctSizes = countDistinctSizes(items);
+  const canCheckout = totalItems >= MIN_ORDER_QUANTITY && distinctSizes >= MIN_DISTINCT_SIZES;
 
   // Get stock for a variant
   const getVariantStock = (variantId: string): number => {
@@ -163,7 +164,7 @@ export function CartDrawer() {
                   onClick={handleCheckout}
                   disabled={!canCheckout}
                 >
-                  {canCheckout ? 'Finalizar Compra' : `Adicione mais ${MIN_ORDER_QUANTITY - totalItems} peças`}
+                  {canCheckout ? 'Finalizar Compra' : totalItems < MIN_ORDER_QUANTITY ? `Adicione mais ${MIN_ORDER_QUANTITY - totalItems} peças` : `Varie os tamanhos: faltam ${MIN_DISTINCT_SIZES - distinctSizes}`}
                 </Button>
               </div>
             </SheetFooter>
