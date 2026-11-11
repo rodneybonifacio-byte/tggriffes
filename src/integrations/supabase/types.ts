@@ -1058,6 +1058,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_seller: { Args: { _user_id: string }; Returns: boolean }
+      request_cart_session: { Args: never; Returns: string }
       search_order_intents: {
         Args: {
           p_limit?: number

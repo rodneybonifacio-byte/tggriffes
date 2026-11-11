@@ -383,6 +383,7 @@ ${pdfUrl}`;
       const { error: reservationsError } = await supabase
         .from('cart_reservations')
         .delete()
+        .setHeader('x-cart-session', sessionId)
         .eq('session_id', sessionId);
 
       if (reservationsError) throw reservationsError;

@@ -6,7 +6,7 @@ const SESSION_ID_KEY = 'tg-cart-session-id';
 
 // Gerar ou recuperar ID de sessão (cached)
 let cachedSessionId: string | null = null;
-const getSessionId = (): string => {
+export const getSessionId = (): string => {
   if (cachedSessionId) return cachedSessionId;
   let sessionId = localStorage.getItem(SESSION_ID_KEY);
   if (!sessionId) {
@@ -56,6 +56,7 @@ export function useMyCartReservations() {
       const { data, error } = await supabase
         .from('cart_reservations')
         .select('*')
+        .setHeader('x-cart-session', sessionId)
         .eq('session_id', sessionId)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
@@ -165,6 +166,7 @@ export function useUpdateReservation() {
         const { error } = await supabase
           .from('cart_reservations')
           .delete()
+          .setHeader('x-cart-session', sessionId)
           .eq('id', id);
         if (error) throw error;
         return { deleted: true };
@@ -176,6 +178,7 @@ export function useUpdateReservation() {
           quantity,
           expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
         })
+        .setHeader('x-cart-session', getSessionId())
         .eq('id', id);
       
       if (error) throw error;
@@ -217,6 +220,7 @@ export function useDeleteReservation() {
       const { error } = await supabase
         .from('cart_reservations')
         .delete()
+        .setHeader('x-cart-session', getSessionId())
         .eq('id', id);
       
       if (error) throw error;
@@ -254,6 +258,7 @@ export function useClearSessionReservations() {
       const { error } = await supabase
         .from('cart_reservations')
         .delete()
+        .setHeader('x-cart-session', sessionId)
         .eq('session_id', sessionId);
       
       if (error) throw error;

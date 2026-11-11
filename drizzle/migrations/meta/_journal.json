@@ -57,6 +57,13 @@
       "when": 1794416916220,
       "tag": "0007_require_three_distinct_sizes",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794417105220,
+      "tag": "0008_scope_cart_reservations_to_session",
+      "breakpoints": true
     }
   ]
 }
