@@ -71,6 +71,13 @@
       "when": 1794420197131,
       "tag": "0009_finalize_order_requires_two_sizes",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794420619552,
+      "tag": "0010_restrict_product_image_update_delete_to_staff",
+      "breakpoints": true
     }
   ]
 }
